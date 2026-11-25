@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import io
 from pathlib import Path
 import tempfile
 import unittest
@@ -32,7 +33,7 @@ class AudioPublicationTest(unittest.TestCase):
 
     def test_unconfigured_policy_cannot_publish(self):
         with self.assertRaisesRegex(ValueError, 'disabled'):
-            MODULE.approved(json.loads(MODULE.POLICY.read_text()))
+            MODULE.approved(dict(json.loads(MODULE.POLICY.read_text()), status='awaiting-corrected-native-proof'))
         policy, *_ = self.fixture()
         for key, value in [('repository', 'other/repo'), ('releaseTag', 'existing-release'),
                            ('wheelSha256', None), ('attempt', 0), ('evidenceHashes', {})]:
@@ -85,19 +86,65 @@ class AudioPublicationTest(unittest.TestCase):
         self.assertEqual(workflow.count('ref: ${{ github.workflow_sha }}'), 3)
         self.assertEqual(workflow.count('contents: write'), 1)
 
+    def native_fixture(self):
+        content = {'av/__init__.py': b'# fixture', 'av.libs/libavcodec-test.so.63': b'ELF fixture',
+                   'av-19.0.2.dist-info/METADATA': b'Name: av'}
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, 'w') as wheel:
+            wheel.writestr('av/', b'')
+            for name, data in content.items():
+                wheel.writestr(name, data)
+        members = {name: MODULE.sha(data) for name, data in content.items()}
+        installed = {name: digest for name, digest in members.items() if name.startswith(('av/', 'av.libs/'))}
+        native = {'status': 'passed', 'ffmpegVersion': '9.1', 'pyavVersion': '19.0.2',
+                  'installedMemberCount': len(installed),
+                  'compiledFilters': ['abuffer', 'abuffersink', 'aformat', 'aresample', 'buffer', 'buffersink'],
+                  'compiledDecoders': ['flac', 'mp3', 'mp3float', 'pcm_s16le'], 'compiledEncoders': [],
+                  'nativeMuxers': [], 'nativeProtocols': {'0': ['file', 'pipe'], '1': ['file', 'pipe']},
+                  'loadedCandidateElfs': ['/opt/videoq-audio/av.libs/libavcodec-test.so.63']}
+        names = ['pcm16-16k-mono', 'pcm16-48k-stereo', 'extra_overread.mp3', 'luckynight.flac']
+        native['decodeResample'] = [{'fixture': name, 'samples16kMono': 1600} for name in names]
+        native['whisperPreprocessing'] = [{'fixture': name, 'samples': 1600, 'duration': 0.1} for name in names]
+        native['decodeResample'][2]['samples16kMono'] = 160079
+        native['whisperPreprocessing'][2].update(samples=159887, duration=9.9929375)
+        return stream.getvalue(), {'wheel': {'members': members}}, native, {'overlayFiles': installed}
+
+    def test_wheel_members_installed_subset_and_native_semantics_bound_separately(self):
+        MODULE.validate_members_and_native(*self.native_fixture())
+        for control in ['member', 'installed', 'count', 'loaded', 'filters', 'short-pcm', 'empty-serving']:
+            wheel, provenance, native, identity = copy.deepcopy(self.native_fixture())
+            if control == 'member':
+                provenance['wheel']['members']['av/__init__.py'] = '0' * 64
+            elif control == 'installed':
+                identity['overlayFiles'].clear()
+            elif control == 'count':
+                native['installedMemberCount'] = len(provenance['wheel']['members'])
+            elif control == 'loaded':
+                native['loadedCandidateElfs'] = ['/usr/lib/libavcodec.so']
+            elif control == 'filters':
+                native['compiledFilters'].append('azmq')
+            elif control == 'short-pcm':
+                native['whisperPreprocessing'][1]['samples'] = 1584
+            else:
+                native['whisperPreprocessing'] = []
+            with self.subTest(control=control), self.assertRaises(ValueError):
+                MODULE.validate_members_and_native(wheel, provenance, native, identity)
+
     def test_exact_archive_and_actual_native_receipt_are_required(self):
         policy, *_ = self.fixture()
         files = {name: b'{}' for name in MODULE.EVIDENCE}
         files['audio-evidence/source.json'] = json.dumps({'source': policy['source'], 'run': '123',
                                                         'attempt': '1', 'architecture': 'x86_64'}).encode()
-        files['audio-native/native-smoke.json'] = json.dumps({'status': 'passed', 'ffmpegVersion': '9.1',
-                                                             'pyavVersion': '19.0.2',
-                                                             'whisperPreprocessing': [1, 2, 3, 4]}).encode()
+        wheel, provenance, native, identity = self.native_fixture()
+        policy['wheelSha256'] = MODULE.sha(wheel)
+        policy['wheelSize'] = len(wheel)
+        files['audio-native/native-smoke.json'] = json.dumps(native).encode()
+        files['audio-evidence/identity.json'] = json.dumps(identity).encode()
         files['audio-evidence/security.json.grype.json'] = json.dumps({
             'matches': [], 'ignoredMatches': [], 'descriptor': {'db': {'status': {'valid': True}}}}).encode()
-        files['audio-candidate/provenance.json'] = json.dumps({'wheel': {
-            'sha256': policy['wheelSha256'], 'filename': MODULE.ASSET}}).encode()
-        files['audio-candidate/wheels/' + MODULE.ASSET] = b'exact tested wheel'
+        provenance['wheel'].update(sha256=policy['wheelSha256'], filename=MODULE.ASSET)
+        files['audio-candidate/provenance.json'] = json.dumps(provenance).encode()
+        files['audio-candidate/wheels/' + MODULE.ASSET] = wheel
         with tempfile.TemporaryDirectory() as temporary:
             archive = Path(temporary) / 'candidate.zip'
 
@@ -109,7 +156,7 @@ class AudioPublicationTest(unittest.TestCase):
                 policy['evidenceHashes'] = {name: MODULE.sha(files[name]) for name in MODULE.EVIDENCE if name in files}
 
             write()
-            self.assertEqual(MODULE.artifact_bytes(policy, archive), b'exact tested wheel')
+            self.assertEqual(MODULE.artifact_bytes(policy, archive), wheel)
             original = dict(files)
             for control in ['missing-native', 'failed-native', 'scan-findings', 'ignored-findings',
                             'invalid-db', 'changed-wheel', 'traversal']:
