@@ -24,7 +24,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6.2.0
         with:
-          python-version: '3.12'
+          # Host orchestration follows the canonical pin; the offline builder
+          # independently targets its pinned /opt/python/cp312-cp312 toolchain.
+          python-version-file: .python-version
       - name: Record exact candidate source and native host
         run: |
           test "$(uname -m)" = x86_64
