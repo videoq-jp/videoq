@@ -4,5 +4,10 @@
   "apiDeployment": 8044929726,
   "pythonSource": "12a5e668daf1e5e608a971dfd4bd428688e359b6",
   "pythonReceipt": "https://github.com/videoq-jp/videoq/actions/runs/45448577612/job/138643359543",
-  "scope": "Successful cloud deployment receipts, not proof of customer on-prem installation or current live runtime revision"
+  "scope": "Successful cloud deployment receipts, not proof of customer on-prem installation or current live runtime revision",
+  "apiDeployedSource": "0790f016f724e75d52903989344fbc4d8a007b19",
+  "apiDeployedReceipt": "https://github.com/videoq-jp/videoq/actions/runs/45547431599/job/138981776751",
+  "apiDeployedDeployment": 8048504029,
+  "apiDeployedSuccessAt": "2026-11-25T04:36:53Z",
+  "apiDeployedScope": "Frozen point-in-time successful source deployment receipt, not runtime inspection or a current-live assertion"
 }
