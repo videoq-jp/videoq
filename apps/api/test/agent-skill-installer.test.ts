@@ -6,39 +6,37 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'node:http';
 import { skillInstallerRoutes } from '../src/features/skills/installer-routes';
-import { installerPackage } from '../src/features/skills/installer-package';
+import { installerSource } from '../src/features/skills/installer-source';
 import { skillFixtureId } from './fixtures/agent-skill';
 import type { Bindings } from '../src/types/bindings';
 
 const execute = promisify(execFile);
 afterEach(() => vi.unstubAllGlobals());
-it('serves only a bounded installer package and binds it to the configured service', async () => {
-  const fetcher = vi.fn().mockResolvedValue(new Response('// public installer', { headers: { 'content-type': 'text/javascript' } }));
+it('serves the bundled installer without a frontend subrequest and binds it to the configured service', async () => {
+  const fetcher = vi.fn().mockRejectedValue(new Error('Frontend unavailable'));
   vi.stubGlobal('fetch', fetcher);
   const env = { FRONTEND_URL: 'https://videoq.example' } as Bindings;
   const response = await skillInstallerRoutes.request(`https://untrusted.example/${skillFixtureId}.tgz`, {}, env);
   expect(response.status).toBe(200); expect(response.headers.get('content-type')).toBe('application/gzip');
-  expect(String(fetcher.mock.calls[0][0])).toBe('https://videoq.example/skills/install.mjs');
-  expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(100);
+  const tar = await new Response(response.body!.pipeThrough(new DecompressionStream('gzip'))).text();
+  expect(tar).toContain(installerSource);
+  expect(tar).toContain('https://videoq.example');
+  expect(tar).not.toContain('https://untrusted.example');
+  expect(fetcher).not.toHaveBeenCalled();
   expect((await skillInstallerRoutes.request('/invalid.tgz', {}, env)).status).toBe(404);
-  fetcher.mockResolvedValueOnce(new Response('// Nginx installer download', { headers: { 'content-type': 'application/octet-stream' } }));
-  const nginx = await skillInstallerRoutes.request(`/${skillFixtureId}.tgz`, {}, env);
-  expect(nginx.status).toBe(200); await nginx.arrayBuffer();
-  fetcher.mockResolvedValueOnce(new Response('x'.repeat(64_001), { headers: { 'content-type': 'text/javascript' } }));
-  expect((await skillInstallerRoutes.request(`/${skillFixtureId}.tgz`, {}, env)).status).toBe(503);
-  fetcher.mockResolvedValueOnce(new Response('<html>wrong asset</html>', { headers: { 'content-type': 'text/html' } }));
-  expect((await skillInstallerRoutes.request(`/${skillFixtureId}.tgz`, {}, env)).status).toBe(503);
+  expect(installerSource).toBe(await readFile(new URL('../../web/public/skills/install.mjs', import.meta.url), 'utf8'));
 });
 
 it('runs the short npx URL command and installs an authenticated multi-skill set without touching project dependencies', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'videoq-npx-test-'));
-  const script = await readFile(new URL('../../web/public/skills/install.mjs', import.meta.url), 'utf8');
   const skills = ['videoq-client-fixture', 'videoq-sql-fixture'].map(name => ({ id: skillFixtureId, name, files: { 'SKILL.md': `---\nname: ${name}\ndescription: Use this source-derived fixture.\n---\nFollow the source policy.`, 'references/sources.md': '# Source evidence' } }));
   let origin = '';
   const server = createServer((request, response) => {
     void (async () => {
     if (request.url?.endsWith('.tgz')) {
-      const bytes = new Uint8Array(await new Response(installerPackage(origin, skillFixtureId, script)).arrayBuffer());
+      const artifact = await skillInstallerRoutes.request(`${origin}/${skillFixtureId}.tgz`, {}, { FRONTEND_URL: origin });
+      if (!artifact.ok) throw new Error('Installer endpoint failed');
+      const bytes = new Uint8Array(await artifact.arrayBuffer());
       response.writeHead(200, { 'content-type': 'application/gzip' }).end(bytes); return;
     }
     if (request.url !== '/api/mcp' || request.headers.authorization !== 'Bearer fixture-key') { response.writeHead(401).end(); return; }
