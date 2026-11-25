@@ -165,6 +165,11 @@ def initialize(args):
         raise ValueError("ストレージにはVideoQとは別のオリジンが必要です")
     refs = image_refs(json.loads(Path(args.images).read_text()))
     ai = getattr(args, "ai", "hosted")
+    revision = (getattr(args, "embedding_revision", None) or "").strip()
+    preprocessing = (getattr(args, "embedding_preprocessing", None) or "").strip()
+    if (ai != "hosted" or revision or preprocessing) and (
+            not revision or not preprocessing or revision == "provider-managed"):
+        raise ValueError("Private embedding identity requires --embedding-revision (immutable weights revision) and --embedding-preprocessing")
     key = (os.environ.get("VIDEOQ_OPENAI_API_KEY") or getpass.getpass("OpenAI API key: ")) if ai == "hosted" else "local-inference"
     if not key.strip():
         raise ValueError("OpenAI API keyが必要です")
@@ -211,6 +216,8 @@ def initialize(args):
             "LLM_REQUEST_TIMEOUT_MS": "600000", "LLM_STREAM_TIMEOUT_MS": "600000",
             "WHISPER_CHUNK_SECONDS": "30" if ai == "local-cpu" else "300", "VIDEO_VISUAL_ENABLED": "false",
         })
+    if revision:
+        runtime.update(EMBEDDING_REVISION=revision, EMBEDDING_PREPROCESSING=preprocessing)
     files = {
         "runtime.env": env_text(runtime),
         "postgres.env": env_text({"POSTGRES_USER": "videoq", "POSTGRES_DB": "videoq", "POSTGRES_PASSWORD": password}),
@@ -526,6 +533,8 @@ def main():
     init.add_argument("--transcription-url")
     init.add_argument("--chat-model")
     init.add_argument("--embedding-model")
+    init.add_argument("--embedding-revision", help="Immutable embedding weights revision; required for private inference")
+    init.add_argument("--embedding-preprocessing", help="Explicit preprocessing contract, e.g. raw-text-v1")
     init.add_argument("--tls-cert", help="両ホスト名を含むPEM証明書チェーン")
     init.add_argument("--tls-key", help="PEM秘密鍵")
     commands.add_parser("init", parents=[setup_options], help="秘密鍵と単一サーバー構成を生成")
