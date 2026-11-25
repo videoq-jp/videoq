@@ -156,7 +156,7 @@ class AudioBoundary:
 
 
 REVIEWED_MASKED_FFMPEG_PATHS = ('/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62.28.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62.3.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11.14.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62.12.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60.26.101', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6', '/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6.3.101', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavcodec-c4204469.so.62.28.101', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavformat-4762a711.so.62.12.101', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavutil-befbbc48.so.60.26.101', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libswresample-2dfded3b.so.6.3.101')
-REVIEWED_NATIVE_MASKS = ('/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs', '/usr/local/lib/python3.12/dist-packages/mooncake')
+REVIEWED_NATIVE_MASKS = ('/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec', '/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs', '/usr/local/lib/python3.12/dist-packages/mooncake', '/usr/local/lib/python3.12/dist-packages/torchcodec')
 
 
 def verify_native_masks():
@@ -169,12 +169,53 @@ def verify_native_masks():
     return list(REVIEWED_NATIVE_MASKS)
 
 
+def verify_torchcodec_mask():
+    """The optional engine must be an empty namespace, never cached native code."""
+    import importlib.util
+
+    verify_native_masks()
+    directory = REVIEWED_NATIVE_MASKS[3]
+    if any(name.startswith("torchcodec.") for name in sys.modules):
+        raise ValueError("Preloaded TorchCodec submodule invalidates native exclusion")
+    spec = importlib.util.find_spec("torchcodec")
+    if (spec is None or spec.origin is not None
+            or list(spec.submodule_search_locations or []) != [directory]
+            or (spec.loader is not None
+                and not isinstance(spec.loader, importlib.machinery.NamespaceLoader))):
+        raise ValueError("TorchCodec root must be the exact empty masked namespace")
+    module = importlib.import_module("torchcodec")
+    if (getattr(module, "__file__", None) is not None
+            or list(getattr(module, "__path__", [])) != [directory]
+            or not isinstance(getattr(module, "__loader__", None), importlib.machinery.NamespaceLoader)):
+        raise ValueError("Executable or alternate preloaded TorchCodec root")
+    denied = []
+    for name in ("torchcodec.decoders", "torchcodec._core", "torchcodec._core.ops"):
+        try:
+            candidate = importlib.util.find_spec(name)
+        except ModuleNotFoundError as error:
+            if error.name not in (name, "torchcodec._core"):
+                raise ValueError("Unexpected TorchCodec dependency lookup") from error
+            candidate = None
+        if candidate is not None:
+            raise ValueError(f"TorchCodec executable submodule remains visible: {name}")
+        try:
+            importlib.import_module(name)
+        except ModuleNotFoundError as error:
+            if error.name not in (name, "torchcodec._core"):
+                raise ValueError("Unexpected TorchCodec dependency import") from error
+            denied.append(name)
+        else:
+            raise ValueError(f"TorchCodec executable submodule imported: {name}")
+    return {"root": "empty_namespace_only", "path": directory, "importsDenied": denied}
+
+
 def verify_masked_native_denial(audio_root):
     """Only constant reviewed paths are probed; no report-provided code is loaded."""
     import ctypes
     import importlib.util
 
     verify_native_masks()
+    torchcodec = verify_torchcodec_mask()
     before = loaded_ffmpeg_libraries(audio_root)
     imports = []
     for name, directory in (("PyNvVideoCodec", REVIEWED_NATIVE_MASKS[0]),
@@ -214,7 +255,8 @@ def verify_masked_native_denial(audio_root):
     if before != after:
         raise ValueError("Loaded FFmpeg mappings changed during denied-load probe")
     verify_native_masks()
-    return {"imports": imports, "absoluteLoadsDenied": denied, "loadedFfmpeg": after,
+    return {"imports": imports, "torchcodec": torchcodec,
+            "absoluteLoadsDenied": denied, "loadedFfmpeg": after,
             "nativeFilterTraceComplete": False}
 
 
@@ -302,6 +344,16 @@ def verify_pyav_prefix(waveform, decoded_rate, emitted, complete):
             "upstreamFallbackFlushesResampler": False}
 
 
+def verify_auto_serving_waveform(chunks, duration, normalized_reference):
+    import numpy as np
+
+    if (len(chunks) != 1 or chunks[0].ndim != 1 or chunks[0].size != 1600
+            or not np.isfinite(chunks[0]).all() or not np.isfinite(duration)
+            or abs(duration - .1) > .001 or normalized_reference.shape != (1600,)
+            or not np.allclose(chunks[0], normalized_reference, rtol=0, atol=1e-6)):
+        raise ValueError("Actual auto-serving waveform/normalization/duration mismatch")
+
+
 def inspect_serving_audio_boundary(audio_root):
     import io
     from types import SimpleNamespace
@@ -310,6 +362,7 @@ def inspect_serving_audio_boundary(audio_root):
     import numpy as np
     import soundfile
     import sitecustomize
+    torchcodec_mask = verify_torchcodec_mask()
     stages = {"beforeVllmImport": ffmpeg_mapping_snapshot()}
     import vllm
     stages["afterVllmImport"] = ffmpeg_mapping_snapshot()
@@ -328,6 +381,9 @@ def inspect_serving_audio_boundary(audio_root):
     stages["afterMultimodalAudioImport"] = ffmpeg_mapping_snapshot()
     import vllm.multimodal.media.audio as loader
     stages["afterMediaAudioImport"] = ffmpeg_mapping_snapshot()
+    if (loader.AudioDecoder is not None
+            or not isinstance(loader._torchcodec_import_exc, ModuleNotFoundError)):
+        raise ValueError("Actual serving loader did not reject masked TorchCodec decoder")
     from vllm.entrypoints.speech_to_text.base.serving import SpeechToTextBaseServing
     boundary = AudioBoundary(av)
     # No engine/model/weights. Execute the actual installed unbound serving
@@ -353,14 +409,16 @@ def inspect_serving_audio_boundary(audio_root):
                 stages[f"beforeAutoServing-{fmt}-{rate}-{channels}"] = ffmpeg_mapping_snapshot()
                 chunks, duration = SpeechToTextBaseServing._decode_and_chunk_speech(server, raw)
                 stages[f"afterAutoServing-{fmt}-{rate}-{channels}"] = ffmpeg_mapping_snapshot()
-                if (len(chunks) != 1 or chunks[0].ndim != 1 or chunks[0].size != 1600
-                        or not np.isfinite(chunks[0]).all() or not np.isfinite(duration)
-                        or abs(duration - .1) > .001):
-                    raise ValueError(f"Actual serving preprocessing shape mismatch: format={fmt}, "
-                                     f"inputRate={rate}, channels={channels}, duration={duration}, "
-                                     f"chunkShapes={[chunk.shape for chunk in chunks]}; "
+                normalized, native_rate = soundfile.read(io.BytesIO(raw), dtype="float32", always_2d=True)
+                normalized = np.mean(normalized, axis=1)
+                normalized = audio_utils.resample_audio_pyav(normalized, orig_sr=native_rate, target_sr=16000)
+                try:
+                    verify_auto_serving_waveform(chunks, duration, normalized)
+                except ValueError as error:
+                    raise ValueError(f"{error}: format={fmt}, inputRate={rate}, channels={channels}, "
+                                     f"duration={duration}, chunkShapes={[chunk.shape for chunk in chunks]}; "
                                      f"fallbackReference={json.dumps(fallback, sort_keys=True)}; "
-                                     f"diagnosticImportMaps={json.dumps(stages, sort_keys=True)}")
+                                     f"diagnosticImportMaps={json.dumps(stages, sort_keys=True)}") from error
                 cases.append({"format": fmt, "rate": rate, "channels": channels,
                               "fallbackReference": fallback})
         for backend in ("azmq", "dynaudnorm", "rtmp"):
@@ -407,6 +465,7 @@ def inspect_serving_audio_boundary(audio_root):
     return {
         "loadedFfmpegLibraries": libraries,
         "diagnosticImportMaps": stages,
+        "torchcodecMask": torchcodec_mask,
         "guardSha256": hashlib.sha256(guard.read_bytes()).hexdigest(),
         "vllmSources": sources, "pyavWheelMembers": members,
         "validCases": cases, "calls": boundary.calls, "guardDenials": rejected,

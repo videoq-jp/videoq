@@ -1,5 +1,6 @@
 """Offline tests; native serving probes run only in the pinned hosted image."""
 import ctypes
+from contextlib import contextmanager
 import hashlib
 import importlib.util
 import io
@@ -100,7 +101,7 @@ class SourceIdentityTests(unittest.TestCase):
 class MaskDenialTests(unittest.TestCase):
     def test_masks_require_existing_empty_readonly_directories(self):
         with tempfile.TemporaryDirectory() as directory:
-            masks = [Path(directory) / str(index) for index in range(3)]
+            masks = [Path(directory) / str(index) for index in range(4)]
             for path in masks:
                 path.mkdir()
             with patch.object(PROBE, "REVIEWED_NATIVE_MASKS", tuple(map(str, masks))):
@@ -122,6 +123,7 @@ class MaskDenialTests(unittest.TestCase):
         def absent(name):
             raise ModuleNotFoundError(name, name=name)
         with patch.object(PROBE, "verify_native_masks", return_value=list(PROBE.REVIEWED_NATIVE_MASKS)), \
+             patch.object(PROBE, "verify_torchcodec_mask", return_value={"root": "empty_namespace_only"}), \
              patch.object(PROBE, "loaded_ffmpeg_libraries", side_effect=mappings or [["reviewed"], ["reviewed"]]), \
              patch("importlib.util.find_spec", return_value=spec), \
              patch.object(PROBE.importlib, "import_module", side_effect=importer or absent), \
@@ -173,6 +175,7 @@ class MaskDenialTests(unittest.TestCase):
                 return SimpleNamespace(__file__=None, __path__=[specs[name]])
             raise ModuleNotFoundError(name, name=name)
         with patch.object(PROBE, "verify_native_masks"), \
+             patch.object(PROBE, "verify_torchcodec_mask", return_value={"root": "empty_namespace_only"}), \
              patch.object(PROBE, "loaded_ffmpeg_libraries", return_value=["reviewed"]), \
              patch("importlib.util.find_spec", side_effect=find), \
              patch.object(PROBE.importlib, "import_module", side_effect=load), \
@@ -180,6 +183,64 @@ class MaskDenialTests(unittest.TestCase):
             result = PROBE.verify_masked_native_denial("/opt/videoq-audio")
             self.assertEqual([r["result"] for r in result["imports"]],
                              ["empty_namespace_only", "not_found", "empty_namespace_only"])
+
+
+class TorchCodecMaskTests(unittest.TestCase):
+    @contextmanager
+    def masked_package(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(PROBE.sys.modules):
+            for name in list(PROBE.sys.modules):
+                if name == "torchcodec" or name.startswith("torchcodec."):
+                    del PROBE.sys.modules[name]
+            root = Path(directory).resolve()
+            masks = [root / name for name in ("PyNvVideoCodec", "opencv.libs", "mooncake", "torchcodec")]
+            for mask in masks:
+                mask.mkdir()
+            with patch.object(PROBE, "REVIEWED_NATIVE_MASKS", tuple(map(str, masks))), \
+                 patch.object(PROBE.sys, "path", [str(root)]), \
+                 patch.object(PROBE.os, "access", return_value=False):
+                PROBE.importlib.invalidate_caches()
+                yield masks
+
+    def test_real_empty_namespace_denies_decoders_and_native_core(self):
+        with self.masked_package() as masks:
+            result = PROBE.verify_torchcodec_mask()
+            self.assertEqual(result["path"], str(masks[3]))
+            self.assertEqual(result["importsDenied"],
+                             ["torchcodec.decoders", "torchcodec._core", "torchcodec._core.ops"])
+            self.assertIsNone(PROBE.sys.modules["torchcodec"].__file__)
+            # Re-observation of the genuine cached empty namespace remains valid.
+            self.assertEqual(PROBE.verify_torchcodec_mask(), result)
+
+    def test_preloaded_code_submodule_or_alternate_root_rejected(self):
+        for variant in ("submodule", "code-root", "alternate-root", "custom-loader"):
+            with self.subTest(variant=variant), self.masked_package() as masks:
+                PROBE.verify_torchcodec_mask()
+                module = PROBE.sys.modules["torchcodec"]
+                if variant == "submodule":
+                    PROBE.sys.modules["torchcodec._core"] = SimpleNamespace()
+                elif variant == "code-root":
+                    module.__file__ = str(masks[3] / "__init__.py")
+                elif variant == "alternate-root":
+                    module.__path__ = ["/unmasked/torchcodec"]
+                else:
+                    module.__loader__ = object()
+                with self.assertRaises(ValueError):
+                    PROBE.verify_torchcodec_mask()
+
+    def test_executable_file_missing_or_writable_fourth_mask_rejected(self):
+        for variant in ("code", "missing", "writable", "symlink"):
+            with self.subTest(variant=variant), self.masked_package() as masks:
+                if variant == "code":
+                    (masks[3] / "__init__.py").write_text("raise AssertionError('must never execute')")
+                elif variant == "missing":
+                    masks[3].rmdir()
+                elif variant == "symlink":
+                    masks[3].rmdir()
+                    masks[3].symlink_to(masks[0], target_is_directory=True)
+                with patch.object(PROBE.os, "access", side_effect=lambda path, mode: variant == "writable" and path == masks[3]):
+                    with self.assertRaises(ValueError):
+                        PROBE.verify_torchcodec_mask()
 
 
 class DecodeReferenceTests(unittest.TestCase):
@@ -221,6 +282,16 @@ class DecodeReferenceTests(unittest.TestCase):
             self.assertEqual(PROBE.ffmpeg_mapping_snapshot(maps), [unknown])
             with self.assertRaisesRegex(ValueError, "Unreviewed loaded"):
                 PROBE.loaded_ffmpeg_libraries(directory, maps)
+
+    def test_auto_serving_preserves_normalization_full_samples_and_duration(self):
+        import numpy as np
+        reference = np.linspace(-0.2, 0.2, 1600, dtype=np.float32)
+        PROBE.verify_auto_serving_waveform([reference.copy()], .1, reference)
+        for chunks, duration in [([reference * 32768], .1), ([reference[:-16]], .1),
+                                 ([reference.reshape(1, -1)], .1), ([reference * np.nan], .1),
+                                 ([reference], float("nan")), ([reference], .09)]:
+            with self.subTest(duration=duration), self.assertRaises(ValueError):
+                PROBE.verify_auto_serving_waveform(chunks, duration, reference)
 
     def test_rate_channels_nonfinite_corrupt_prefix_or_incomplete_reference_fail(self):
         import numpy as np
