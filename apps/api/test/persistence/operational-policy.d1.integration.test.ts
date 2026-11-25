@@ -37,7 +37,7 @@ it('delivers private deduplicated notifications; failed and concurrent send rema
  const db=f.database;
  await db.prepare("INSERT INTO policy_cleanup(id,scope,task_id,logical_deleted_at) VALUES('private-object-identifier','active-object','1','2026-11-23T00:00:00Z')").run();
  const env={DEPLOYMENT_EDITION:'cloud',PERSISTENCE_BACKEND:'d1',DB:db,OPERATIONAL_POLICY_WEBHOOK_URL:'https://operator.example.test/events',OPERATIONAL_POLICY_WEBHOOK_TOKEN:'synthetic-token'} as Bindings;
- const send=vi.fn(async(_input:unknown,init?:RequestInit)=>{expect(init?.redirect).toBe('error');expect(init?.body).not.toContain('private-object');return new Response(null,{status:204});});
+ const send=vi.fn(async(_input:unknown,init?:RequestInit)=>{expect(init?.redirect).toBe('manual');expect(init?.body).not.toContain('private-object');return new Response(null,{status:204});});
  const results=await Promise.all([observeOperationalPolicy(env,new Date('2026-11-25T00:00:00Z'),send),observeOperationalPolicy(env,new Date('2026-11-25T00:00:00Z'),send)]);
  expect(results.reduce((n,r)=>n+r.delivered,0)).toBe(1);expect(send).toHaveBeenCalledTimes(1);
  await observeOperationalPolicy(env,new Date('2026-11-25T00:00:00Z'),send);expect(send).toHaveBeenCalledTimes(1);
@@ -53,6 +53,7 @@ it('rejects insecure webhook targets without sending and masks transport details
  const send=vi.fn(),event={kind:'active_cleanup_incident',id:'private',severity:'incident' as const,ageMs:1,owner:'yukiharada1228',policyDate:'2026-11-25'};
  await expect(deliverPolicyNotification({url:'http://operator.test',token:'secret'},event,'id',send)).rejects.toThrow('Invalid policy notification configuration');expect(send).not.toHaveBeenCalled();
  await expect(deliverPolicyNotification({url:'https://operator.test',token:'secret'},event,'id',async()=>{throw Error('secret remote URL')})).rejects.toThrow(/^Policy notification delivery failed$/);
+ await expect(deliverPolicyNotification({url:'https://operator.test',token:'secret'},event,'id',async(_input,init)=>{expect(init?.redirect).toBe('manual');return new Response(null,{status:302,headers:{location:'https://untrusted.test'}});})).rejects.toThrow(/^Policy notification delivery failed$/);
 });
 it('respects delivery backoff/live leases without starving eligible rows beyond the first hundred',async()=>{
  const f=await createD1Fixture();try {

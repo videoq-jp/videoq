@@ -5,7 +5,7 @@ export async function deliverPolicyNotification(sink:PolicyNotificationSink,even
   const url=new URL(sink.url);
   if(url.protocol!=='https:'||url.username||url.password||url.hash||!sink.token) throw Error('Invalid policy notification configuration');
   try {
-    const response=await send(url,{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),headers:{'content-type':'application/json',authorization:`Bearer ${sink.token}`,'Idempotency-Key':idempotencyKey},
+    const response=await send(url,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(10000),headers:{'content-type':'application/json',authorization:`Bearer ${sink.token}`,'Idempotency-Key':idempotencyKey},
       body:JSON.stringify({event:event.kind,subject:idempotencyKey,severity:event.severity,ageMs:event.ageMs,owner:event.owner,policyDate:event.policyDate})});
     await response.body?.cancel();
     if(!response.ok) throw Error('Delivery rejected');
