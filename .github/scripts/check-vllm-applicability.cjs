@@ -1,6 +1,8 @@
 // Evaluate exact findings only after verifying the image's actual files and workload.
 const assert = require('node:assert/strict');
 const {createHash} = require('node:crypto');
+const {readFileSync} = require('node:fs');
+const {join} = require('node:path');
 const checksum = value => createHash('sha256').update(value).digest('hex');
 
 function verifyWorkload(documents, policy) {
@@ -62,6 +64,45 @@ function verifyWorkload(documents, policy) {
   assert.ok(servers > 0, 'No assessed vLLM servers rendered');
 }
 
+function verifyKernelReview(policy, files) {
+  const reference = policy.kernelAffectedFileReview;
+  assert.equal(reference.file, 'kernel-20261126-review.json');
+  const bytes = readFileSync(join(__dirname, '../../apps/inference/vllm/security', reference.file));
+  assert.equal(checksum(bytes), reference.sha256);
+  const evidence = JSON.parse(bytes);
+  assert.equal(evidence.image, policy.image);
+  assert.equal(evidence.inventorySha256, policy.kernelHeaderInventorySha256);
+  assert.equal(evidence.rows.length, reference.count);
+  assert.equal(reference.count, 75);
+  assert.equal(new Set(evidence.rows.map(row => row.cve)).size, reference.count);
+  assert.deepEqual(files, [...evidence.inventoryFiles].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  const paths = new Set(files.map(file => file.path));
+  for (const row of evidence.rows) {
+    assert.equal(checksum(row.primaryRecord), row.primarySha256);
+    assert.equal(row.primaryUrl, `https://raw.githubusercontent.com/CVEProject/cvelistV5/${evidence.sourceCommit}/cves/2026/${row.cve.split('-')[2].slice(0, -3)}xxx/${row.cve}.json`);
+    assert.match(evidence.sourceCommit, /^[a-f0-9]{40}$/);
+    const record = JSON.parse(row.primaryRecord);
+    assert.equal(record.cveMetadata.cveId, row.cve);
+    assert.equal(record.cveMetadata.state, 'PUBLISHED');
+    const affected = [...new Set(record.containers.cna.affected.flatMap(product => product.programFiles || []))].sort();
+    assert.deepEqual(affected, row.affectedFiles);
+    assert.ok(affected.length);
+    assert.equal(row.classification, 'kernel_implementation_absent_from_user_space_header_package');
+    assert.equal(row.package, 'linux-libc-dev');
+    assert.equal(row.version, policy.osPackages['linux-libc-dev']);
+    assert.equal(row.normalizedPurl, `pkg:deb/ubuntu/linux-libc-dev@${row.version}?arch=amd64&distro=ubuntu-24.04`);
+    // Keep original scanner identity alongside the deliberately derived PURL.
+    assert.equal(row.rawGrypePurl, row.normalizedPurl + '&upstream=linux');
+    for (const path of affected) {
+      assert.match(path, /^(?:arch|drivers|fs|include|mm|net|sound|virt|Documentation)\//);
+      assert.ok(!path.includes('..') && !path.includes('/uapi/'));
+      assert.ok(!paths.has('/usr/include/' + path));
+      if (path.startsWith('include/')) assert.ok(!paths.has('/usr/include/' + path.slice(8)));
+    }
+  }
+  return evidence.rows;
+}
+
 function assess(report, policy, native, profiles, now = new Date(), runtime) {
   assert.equal(policy.status, 'not_affected');
   assert.ok(policy.owner && policy.scope && policy.references.length);
@@ -79,6 +120,14 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
   const files = actual.kernelHeaders.files.map(f => ({mode: f.mode, path: f.path, sha256: f.sha256})).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   assert.equal(checksum(JSON.stringify(files)), policy.kernelHeaderInventorySha256, 'Header inventory checksum must match its actual entries');
   assert.equal(actual.kernelHeaders.kernelBinariesOrModules, false);
+  assert.equal(new Set(files.map(file => file.path)).size, files.length);
+  for (const file of files) {
+    assert.ok((file.path.startsWith('/usr/include/') && file.path.endsWith('.h')) || file.path.startsWith('/usr/share/doc/linux-libc-dev/'));
+    assert.ok(!file.path.includes('..'));
+    assert.ok(Number.isSafeInteger(file.mode) && file.mode >= 0 && file.mode <= 0o777 && !(file.mode & 0o111));
+    assert.match(file.sha256, /^[a-f0-9]{64}$/);
+  }
+  const kernelRows = policy.kernelAffectedFileReview ? verifyKernelReview(policy, files) : [];
   assert.equal(actual.pipVendor.sha256, policy.pipVendorBomSha256);
   for (const [name, version] of Object.entries(policy.runtimePython)) {
     assert.equal(actual.python[name].version, version);
@@ -98,7 +147,15 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
       if (group) {
         assert.equal(group.status, 'not_affected');
         assert.ok(group.impactStatement && group.references.length);
-        assert.ok(['kernel-headers', 'unused-tools', 'openssl-unused-protocol', 'pip-vendor', 'runtime-overlay', 'masked-native'].includes(group.origin));
+        assert.ok(['kernel-headers', 'unused-tools', 'openssl-unused-protocol', 'pip-vendor', 'runtime-overlay', 'masked-native', 'kernel-headers-exact-files'].includes(group.origin));
+      }
+      if (group?.origin === 'kernel-headers-exact-files') {
+        const row = kernelRows.find(row => row.cve === finding.VulnerabilityID);
+        assert.ok(row, 'Exact primary CVE evidence required; aliases cannot extend this review');
+        assert.equal(finding.PkgName, row.package);
+        assert.equal(finding.InstalledVersion, row.version);
+        assert.equal(finding.PkgIdentifier.PURL, row.normalizedPurl);
+        assert.deepEqual([...finding.Locations].sort(), row.locations);
       }
       if (group?.origin === 'masked-native') {
         assert.equal(runtime?.status, 'passed');
@@ -131,4 +188,4 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
   }
   return {image: policy.image, reviewedAt: policy.reviewedAt, expiresAt: policy.expiresAt, scope: policy.scope, accepted, blocking};
 }
-module.exports = {assess, verifyWorkload};
+module.exports = {assess, verifyWorkload, verifyKernelReview};

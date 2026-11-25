@@ -13,6 +13,20 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def inspect_header_file(path, value):
+    if path.is_symlink():
+        raise ValueError(f'Unreviewed kernel package symlink: {value}')
+    if not path.is_file():
+        return None
+    allowed = (value.startswith('/usr/include/') and path.suffix == '.h') or value.startswith('/usr/share/doc/linux-libc-dev/')
+    mode = path.stat().st_mode & 0o777
+    with path.open('rb') as stream:
+        magic = stream.read(4)
+    if not allowed or mode & 0o111 or magic == b'\x7fELF' or '.ko' in path.suffixes:
+        raise ValueError(f'Unreviewed kernel package executable: {value}')
+    return {'path': value, 'mode': mode, 'sha256': digest(path)}
+
+
 def inventory():
     release = dict(line.split('=', 1) for line in Path('/etc/os-release').read_text().splitlines() if '=' in line)
     packages = {}
@@ -23,17 +37,9 @@ def inventory():
     paths = subprocess.check_output(['dpkg-query', '-L', 'linux-libc-dev'], text=True).splitlines()
     for value in paths:
         path = Path(value)
-        if path.is_symlink():
-            raise ValueError(f'Unreviewed kernel package symlink: {value}')
-        if not path.is_file():
-            continue
-        allowed = (value.startswith('/usr/include/') and path.suffix == '.h') or value.startswith('/usr/share/doc/linux-libc-dev/')
-        mode = path.stat().st_mode & 0o777
-        with path.open('rb') as stream:
-            magic = stream.read(4)
-        if not allowed or mode & 0o111 or magic == b'\x7fELF' or '.ko' in path.suffixes:
-            raise ValueError(f'Unreviewed kernel package executable: {value}')
-        files.append({'path': value, 'mode': mode, 'sha256': digest(path)})
+        entry = inspect_header_file(path, value)
+        if entry is not None:
+            files.append(entry)
     if not files:
         raise ValueError('Missing kernel header inventory')
     if any(Path('/boot').glob('vmlinuz*')) or any(Path('/lib/modules').rglob('*.ko*')):

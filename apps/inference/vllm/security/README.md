@@ -126,3 +126,25 @@ fresh file and runtime verification before updating the assessment.
 
 The inspection results and actual GPU checks are tracked in
 [the verification record](../../../../docs/verification/upstream-vllm-inspection.json).
+
+## 2026-11-26 exact kernel implementation review
+
+`kernel-20261126-review.json` retains 75 complete primary Linux CNA records at
+CVEProject commit `7e4de3c1bcb5d5a1818ac5b96c2cf5370cad98b8`, their individual
+SHA-256 hashes, affected source paths and the exact 990-file native inventory.
+The new group requires the exact CVE, image, package version, normalized PURL
+and scanner locations. Original Grype PURLs including `upstream=linux` are
+retained separately from the normalized compatibility representation.
+Every listed affected path is kernel implementation or an internal header,
+absent from this user-space package; internal `include/net/mptcp.h` is distinct
+from exported `/usr/include/linux/mptcp.h`. There is no wildcard kernel-CVE rule.
+Changes to the evidence, contents, paths, modes, commands or security contexts
+invalidate acceptance. The native collector rejects symlinks, executable files,
+ELF and modules; the evaluator verifies the complete hashed inventory.
+
+The review retains the existing owner, expiry and serving restrictions. It is
+neither a patched-image claim nor a host-kernel assessment. The 22 new FFmpeg
+image/overlay findings remain blocking and are reviewed independently. A retained
+same-image artifact can test this evaluator; final acceptance still requires a
+fresh native probe and full unsuppressed scan of the immutable serving image
+and audio overlay with all ten rendered workload configurations checked.

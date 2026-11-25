@@ -40,7 +40,7 @@
     "urllib3": "2.8.0"
   },
   "audioLockSha256": "4bd306454e793d6e2dcb67a94db771e703e9b5c2f7202ae98d8b53b4d27b4f7e",
-  "inventoryProbeSourceSha256": "67cbbc9c2dd2cf5ec225b073a24696e847e240f6337c3e3553c7fb8d9b0e7eb3",
+  "inventoryProbeSourceSha256": "fdd5c5887e4c081d276037be1070681da462b6b041a286e919d80a5a88434371",
   "nativeInventoryReferenceSha256": "3b57e02547c502a23b65758fec05a903fd2d342478656de9b047263e8620747e",
   "allowedArgs": [
     [
@@ -1511,6 +1511,98 @@
         "charts/videoq-inference/templates/_helpers.tpl",
         ".github/scripts/check-vllm-runtime.py"
       ]
+    },
+    {
+      "type": "ubuntu",
+      "origin": "kernel-headers-exact-files",
+      "status": "not_affected",
+      "impactStatement": "These75 pinned Linux CNA records identify kernel implementation/internal-header code absent from the verified990-file non-executable UAPI package; not a host-kernel or fixed-image claim. Exact per-CVE source/hash/path/location evidence and native/workload validation are mandatory.",
+      "references": [
+        "apps/inference/vllm/security/kernel-20261126-review.json"
+      ],
+      "vulnerabilities": [
+        "CVE-2026-99312",
+        "CVE-2026-99313",
+        "CVE-2026-99317",
+        "CVE-2026-99320",
+        "CVE-2026-99343",
+        "CVE-2026-99344",
+        "CVE-2026-99345",
+        "CVE-2026-99350",
+        "CVE-2026-99352",
+        "CVE-2026-99355",
+        "CVE-2026-99356",
+        "CVE-2026-99357",
+        "CVE-2026-99361",
+        "CVE-2026-99362",
+        "CVE-2026-99366",
+        "CVE-2026-99369",
+        "CVE-2026-99377",
+        "CVE-2026-99380",
+        "CVE-2026-99383",
+        "CVE-2026-99384",
+        "CVE-2026-99386",
+        "CVE-2026-99388",
+        "CVE-2026-99389",
+        "CVE-2026-99395",
+        "CVE-2026-99396",
+        "CVE-2026-99400",
+        "CVE-2026-99422",
+        "CVE-2026-99423",
+        "CVE-2026-99424",
+        "CVE-2026-99425",
+        "CVE-2026-99429",
+        "CVE-2026-99432",
+        "CVE-2026-99435",
+        "CVE-2026-99441",
+        "CVE-2026-99448",
+        "CVE-2026-99451",
+        "CVE-2026-99454",
+        "CVE-2026-99460",
+        "CVE-2026-99468",
+        "CVE-2026-99471",
+        "CVE-2026-99473",
+        "CVE-2026-99477",
+        "CVE-2026-99484",
+        "CVE-2026-99489",
+        "CVE-2026-99506",
+        "CVE-2026-99507",
+        "CVE-2026-99510",
+        "CVE-2026-99522",
+        "CVE-2026-99526",
+        "CVE-2026-99528",
+        "CVE-2026-99531",
+        "CVE-2026-99532",
+        "CVE-2026-99535",
+        "CVE-2026-99539",
+        "CVE-2026-99540",
+        "CVE-2026-99542",
+        "CVE-2026-99544",
+        "CVE-2026-99546",
+        "CVE-2026-99549",
+        "CVE-2026-99554",
+        "CVE-2026-99556",
+        "CVE-2026-99565",
+        "CVE-2026-99573",
+        "CVE-2026-99574",
+        "CVE-2026-99575",
+        "CVE-2026-99577",
+        "CVE-2026-99578",
+        "CVE-2026-99582",
+        "CVE-2026-99583",
+        "CVE-2026-99586",
+        "CVE-2026-99590",
+        "CVE-2026-99591",
+        "CVE-2026-99599",
+        "CVE-2026-99601",
+        "CVE-2026-99602"
+      ],
+      "packages": {
+        "linux-libc-dev": {
+          "version": "6.8.0-147.147",
+          "purl": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        }
+      }
     }
   ],
   "runtimeEnv": {
@@ -2209,5 +2301,10 @@
         "apps/inference/vllm/security/native-codec-cve-review.json"
       ]
     }
-  ]
+  ],
+  "kernelAffectedFileReview": {
+    "file": "kernel-20261126-review.json",
+    "sha256": "e19a60bc7743855cd1ff9eb2e7713af8611ad28d57769b291ac7103184029e0c",
+    "count": 75
+  }
 }

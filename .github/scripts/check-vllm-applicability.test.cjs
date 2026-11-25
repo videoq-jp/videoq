@@ -117,3 +117,41 @@ test('native findings require exact empty read-only masks and actual runtime pro
   const copy = structuredClone(f); copy.report.Results[1].Vulnerabilities[0].VulnerabilityID = 'GO-new';
   assert.equal(evaluate(copy).blocking.length, 1);
 });
+
+test('75 new kernel CVEs require exact primary records, package locations and native files', () => {
+  const policy = require('../../apps/inference/vllm/security/runtime-assessment.json');
+  const evidence = require('../../apps/inference/vllm/security/kernel-20261126-review.json');
+  const make = () => {
+    const f = fixture();
+    f.policy.image = evidence.image;
+    f.report.Metadata.RepoDigests = [evidence.image];
+    for (const documents of f.profiles) documents[1].spec.template.spec.containers[0].image = evidence.image;
+    Object.assign(f.policy, {kernelAffectedFileReview: structuredClone(policy.kernelAffectedFileReview),
+      kernelHeaderInventorySha256: evidence.inventorySha256, kernelHeaderCount: 990});
+    f.policy.osPackages['linux-libc-dev'] = '6.8.0-147.147';
+    f.native.inventory.kernelHeaders = {files: structuredClone(evidence.inventoryFiles), count: 990, inventorySha256: evidence.inventorySha256, kernelBinariesOrModules: false};
+    f.policy.groups = [structuredClone(policy.groups.find(group => group.origin === 'kernel-headers-exact-files'))];
+    f.report.Results[0].Vulnerabilities = evidence.rows.map(row => ({Severity: 'HIGH', VulnerabilityID: row.cve, PkgName: row.package,
+      InstalledVersion: row.version, PkgIdentifier: {PURL: row.normalizedPurl}, Locations: row.locations}));
+    return f;
+  };
+  assert.equal(run(make()).accepted.length, 75);
+  for (const mutate of [
+    f => f.report.Results[0].Vulnerabilities[0].VulnerabilityID = 'CVE-unreviewed',
+    f => f.report.Results[0].Vulnerabilities[0].InstalledVersion = '6.8.0-149.149',
+    f => f.report.Results[0].Vulnerabilities[0].PkgIdentifier.PURL += '&upstream=other',
+  ]) { const f = make(); mutate(f); assert.equal(run(f).blocking.length, 1); }
+  for (const mutate of [
+    f => f.report.Results[0].Vulnerabilities[0].Locations = ['/tmp/injected.so'],
+    f => { const v = f.report.Results[0].Vulnerabilities[0]; v.Aliases = [v.VulnerabilityID]; v.VulnerabilityID = 'forged-alias'; },
+    f => f.native.inventory.kernelHeaders.files[0].sha256 = '0'.repeat(64),
+    f => f.native.inventory.kernelHeaders.files[0].mode = 0o755,
+    f => f.native.inventory.kernelHeaders.files[0].path = '/tmp/header.h',
+    f => f.native.inventory.kernelHeaders.kernelBinariesOrModules = true,
+    f => f.policy.kernelAffectedFileReview.sha256 = '0'.repeat(64),
+    f => f.policy.kernelAffectedFileReview.file = '../runtime-assessment.json',
+    f => f.profiles[0][1].spec.template.spec.securityContext.runAsUser = 0,
+    f => f.profiles[0][1].spec.template.spec.securityContext.seccompProfile.type = 'Unconfined',
+    f => f.profiles[0][1].spec.template.spec.containers[0].securityContext.capabilities.drop = [],
+  ]) { const f = make(); mutate(f); assert.throws(() => run(f)); }
+});

@@ -36,3 +36,30 @@ def test_runtime_probe_rejects_unpatched_or_misdirected_dns(monkeypatch, version
     else:
         with pytest.raises(ValueError):
             probe.inspect_patched_dns(Path('/opt/videoq-audio'))
+
+
+def test_header_probe_reads_actual_file_and_rejects_symlink_elf_and_mode(tmp_path):
+    location = Path(__file__).parents[4] / '.github/scripts/check-vllm-inventory.py'
+    spec = importlib.util.spec_from_file_location('header_inventory_probe', location)
+    inventory_probe = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(inventory_probe)
+    header = tmp_path / 'example.h'
+    header.write_text('/* exported constant */\n')
+    header.chmod(0o644)
+    entry = inventory_probe.inspect_header_file(header, '/usr/include/linux/example.h')
+    assert entry['mode'] == 0o644
+    assert entry['sha256'] == inventory_probe.digest(header)
+    link = tmp_path / 'link.h'
+    link.symlink_to(header)
+    with pytest.raises(ValueError, match='symlink'):
+        inventory_probe.inspect_header_file(link, '/usr/include/linux/link.h')
+    header.chmod(0o755)
+    with pytest.raises(ValueError, match='executable'):
+        inventory_probe.inspect_header_file(header, '/usr/include/linux/example.h')
+    header.chmod(0o644)
+    header.write_bytes(b'\x7fELFfake binary')
+    with pytest.raises(ValueError, match='executable'):
+        inventory_probe.inspect_header_file(header, '/usr/include/linux/example.h')
+    header.write_text('not a header path')
+    with pytest.raises(ValueError):
+        inventory_probe.inspect_header_file(header, '/tmp/example.h')
