@@ -68,6 +68,56 @@ def embedding_contract(objects):
     return hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()
 
 
+def embedding_runtime_identity(objects, profile):
+    deployments=[o for o in objects if o['kind']=='Deployment' and o['metadata']['name'].endswith('-embedding')]
+    if len(deployments)!=1:
+        raise ValueError('Expected exactly one rendered embedding deployment')
+    pod=deployments[0]['spec']['template']['spec']
+    provisioners=[c for c in pod.get('initContainers',[]) if c['name']=='provision-model']
+    if len(provisioners)!=1 or len(pod['containers'])!=1:
+        raise ValueError('Expected one immutable embedding model provisioner/server')
+    entries=provisioners[0].get('env',[])
+    names=[entry['name'] for entry in entries]
+    if len(names)!=len(set(names)):
+        raise ValueError('Ambiguous provisioned embedding metadata')
+    env={entry['name']:entry.get('value') for entry in entries}
+    if any(not isinstance(env.get(key),str) for key in ['MODEL_REPO','MODEL_REVISION','MODEL_FILE','MODEL_SHA256']):
+        raise ValueError('Missing explicit provisioned embedding metadata')
+    revision=env.get('MODEL_REVISION',''); repo=env.get('MODEL_REPO','')
+    if not re.fullmatch(r'[0-9a-f]{40}',revision) or not repo or any(c.isspace() for c in repo):
+        raise ValueError('Embedding model requires immutable repository revision')
+    contracts={'second-state/gte-Qwen2-1.5B-instruct-GGUF':('openai',1536),
+               'Qwen/Qwen3-Embedding-4B':('openai',1536),
+               'google/embeddinggemma-2':('embeddinggemma2',768)}
+    if repo not in contracts or contracts[repo][0]!=profile:
+        raise ValueError('Unsupported or mismatched embedding model/profile/dimension contract')
+    if repo=='second-state/gte-Qwen2-1.5B-instruct-GGUF' and not env['MODEL_FILE']:
+        raise ValueError('GGUF embedding requires actual served model file')
+    identity=repo+'@'+revision
+    if env.get('MODEL_FILE'):
+        checksum=env.get('MODEL_SHA256','')
+        if not re.fullmatch(r'[0-9a-f]{64}',checksum):
+            raise ValueError('GGUF embedding identity requires actual model checksum')
+        identity+=':sha256:'+checksum
+    args=pod['containers'][0].get('args',[])
+    if repo=='Qwen/Qwen3-Embedding-4B':
+        if args.count('--hf-overrides')!=1:
+            raise ValueError('Qwen embedding requires explicit 1536 dimensional contract')
+        try: dimensions=json.loads(args[args.index('--hf-overrides')+1]).get('matryoshka_dimensions')
+        except (IndexError,ValueError,AttributeError) as error: raise ValueError('Malformed embedding dimensions') from error
+        if dimensions!=[1536]:raise ValueError('Mismatched embedding dimensions')
+    positions=[i for i,arg in enumerate(args) if arg in ['--alias','--served-model-name']]
+    if len(positions)!=1 or positions[0]+1>=len(args) or not str(args[positions[0]+1]).strip():
+        raise ValueError('Expected exactly one served embedding alias')
+    return {'embeddingModel':args[positions[0]+1],'embeddingRevision':identity,'embeddingPreprocessing':'raw-text-v1','embeddingProfile':profile}
+
+
+def validate_embedding_overrides(values, identity):
+    for key,value in values.get('ai',{}).items():
+        if key in identity and value and value!=identity[key]:
+            raise ValueError('Application override disagrees with served embedding identity: '+key)
+
+
 class LocalAI:
     def prepare_inference(self):
         if self.ai == 'openai':
@@ -94,7 +144,11 @@ class LocalAI:
         contract = embedding_contract(self.ai_plan)
         if self.state.get('ai_embedding_contract', contract) != contract:
             raise ValueError('埋め込みモデルの版・量子化・設定が変わります。自動更新せず、バックアップと再索引を計画してください')
+        self.ai_identity_overlay = folder / 'embedding-identity.json'
+        identity=embedding_runtime_identity(self.ai_plan, 'openai')
         app_values = self.desired_application_values()
+        validate_embedding_overrides(app_values, identity)
+        private_json(self.ai_identity_overlay, {'ai':identity})
         if getattr(self.args, 'command', 'install') == 'update':
             live = json.loads(self.kube('get', 'deployments', '-o', 'json', capture=True))['items']
             recorded = self.state.get('pending_update', {}).get('runtime', {}).get('deployments', {})
@@ -106,7 +160,7 @@ class LocalAI:
         app_site = folder / 'application-site.json'
         private_json(app_site, app_values)
         app_raw = self.run('helm', 'template', 'videoq', str(self.chart), '-n', 'videoq', '-f', str(app_site),
-                           '-f', str(self.ai_app_overlay), '-f', str(self.images), capture=True)
+                           '-f', str(self.ai_app_overlay), '-f', str(self.images), '-f', str(self.ai_identity_overlay), capture=True)
         self.ai_app_plan = json_documents(self.kube('create', '--dry-run=client', '--validate=false', '-f', '-', '-o', 'json', data=app_raw, capture=True))
         base = Path(__file__).resolve().parents[2] / 'charts/videoq/examples/single-node/infrastructure.yaml'
         self.ai_infra_plan = json_documents(self.kube('create', '--dry-run=client', '--validate=false', '-f', str(base), '-o', 'json', capture=True))
@@ -159,4 +213,4 @@ class LocalAI:
             return []
         if not hasattr(self, 'ai_app_overlay'):
             self.prepare_inference()
-        return ['-f', str(self.ai_app_overlay)]
+        return ['-f', str(self.ai_app_overlay), '-f', str(self.ai_identity_overlay)]
