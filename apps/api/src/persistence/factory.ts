@@ -102,7 +102,9 @@ export async function createMaintenanceRepository(env: Bindings): Promise<import
       import("./d1/maintenance-repository"), import("../features/lti/config"), import("../lib/embedding-contract"),
     ]);
     const dimensions = embedding.embeddingDimensions(embedding.resolveEmbeddingConfig(env)) as 768 | 1536;
-    return createD1MaintenanceRepository(env.DB, ltiMaterialsEnabled(env), dimensions);
+    const repository = createD1MaintenanceRepository(env.DB, ltiMaterialsEnabled(env), dimensions);
+    const { policyMaintenanceWakeup } = await import("./d1/policy-wakeup");
+    return { getNextWakeup: async windows => policyMaintenanceWakeup(env, await repository.getNextWakeup(windows)) };
   }
   const { createPostgresMaintenanceRepository } = await import("./postgres/maintenance-repository");
   return createPostgresMaintenanceRepository(env);
