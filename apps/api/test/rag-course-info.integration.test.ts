@@ -1,3 +1,4 @@
+import { seedPostgresSceneIndex } from "./helpers/postgres-scene-index";
 import { embedQuery } from '../src/lib/embeddings';
 import { nativeCourseAuthorityFixture } from './helpers/native-course-authority-fixture';
 import pg from "pg";
@@ -73,14 +74,13 @@ describeWithPostgres("course metadata and scene selection on PostgreSQL", () => 
         (1, 3, 60, 10, '2026-09-14'), (2, 3, 61, 10, '2026-09-14'),
         (3, 4, 99, 0, '2026-09-14');
       INSERT INTO video_course_memberships VALUES (3, 'member');
-      INSERT INTO scene_embeddings VALUES
-        ('00000000-0000-4000-8000-000000000060', 'allowed scene', '${JSON.stringify(testEmbedding(1, 0))}', 'owner', 60,
-         '{"video_title":"Lecture 7","start_time":"00:00:00","end_time":"00:00:10"}'),
-        ('00000000-0000-4000-8000-000000000061', 'selected scene', '${JSON.stringify(testEmbedding(0.9, 0.1))}', 'owner', 61,
-         '{"video_title":"Lecture 8","start_time":"00:00:10","end_time":"00:00:20"}'),
-        ('00000000-0000-4000-8000-000000000062', 'same owner other course', '${JSON.stringify(testEmbedding(1, 0))}', 'owner', 62, '{}'),
-        ('00000000-0000-4000-8000-000000000099', 'foreign owner', '${JSON.stringify(testEmbedding(1, 0))}', 'outsider', 60, '{}');
     `);
+    await seedPostgresSceneIndex(scopedUrl.toString(), 60, [{ text: "allowed scene", vector: testEmbedding(1, 0) }]);
+    await seedPostgresSceneIndex(scopedUrl.toString(), 61, [{ text: "selected scene", vector: testEmbedding(0.9, 0.1), startTime: "00:00:10", endTime: "00:00:20" }]);
+    await seedPostgresSceneIndex(scopedUrl.toString(), 62, [{ text: "same owner other course", vector: testEmbedding(1, 0) }]);
+    // Deliberately malformed foreign-owner data must remain excluded by authorization.
+    await databaseClient.query(`INSERT INTO scene_embeddings VALUES
+      ('00000000-0000-4000-8000-000000000099', 'foreign owner', $1, 'outsider', 60, '{}')`, [JSON.stringify(testEmbedding(1, 0))]);
     env = { HYPERDRIVE: { connectionString: scopedUrl.toString() } } as Bindings;
   });
 
