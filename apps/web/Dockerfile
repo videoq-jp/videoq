@@ -1,4 +1,34 @@
-FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS build
+# BEGIN shared OpenSSL security
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS openssl-security-base
+ARG OPENSSL_SECURITY_REFRESH=2026-11-25
+# Bump this epoch for a trusted repository refresh on a reused local builder.
+# CI discards the entire runner-local builder after the job; scans always run.
+# The pinned base predates the Alpine zlib security update.
+RUN test -n "$OPENSSL_SECURITY_REFRESH" && apk upgrade --no-cache zlib
+# Alpine stable still ships OpenSSL 3.5.9-r0. The official r1 backports fix
+# CVE-2026-88823, CVE-2026-95691, CVE-2026-95692 and CVE-2026-107496.
+RUN apk add --no-cache --upgrade \
+    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
+    'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
+
+FROM openssl-security-base AS openssl-security
+# Compile checksum-pinned upstream fixes until Alpine publishes these backports.
+RUN apk add --no-cache abuild build-base perl linux-headers
+COPY apps/security/openssl /build/openssl
+WORKDIR /build/openssl
+RUN abuild-keygen -a -n \
+    && cp /root/.abuild/*.pub /etc/apk/keys/ \
+    && MAKEFLAGS=-j4 abuild -F -d -r \
+    && mkdir /security-packages \
+    && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+    && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+    && cp /root/.abuild/*.pub /security-packages/ \
+    && test -f /security-packages/libssl3-3.5.9-r100.apk \
+    && test -f /security-packages/libcrypto3-3.5.9-r100.apk
+
+# END shared OpenSSL security
+
+FROM openssl-security-base AS build
 
 # BEGIN managed npm
 ARG NPM_VERSION=12.2.3
@@ -51,21 +81,6 @@ RUN npm run build --workspace @videoq/web
 RUN if [ "$VITE_DEPLOYMENT_EDITION" = onprem ]; then node apps/web/scripts/check-onprem-build.mjs apps/web/dist; fi
 RUN node apps/web/scripts/nginx-headers.mjs /tmp/security-headers.inc.template
 
-
-FROM build AS openssl-security
-# Compile checksum-pinned upstream fixes until Alpine publishes these backports.
-RUN apk add --no-cache abuild build-base perl linux-headers
-COPY apps/security/openssl /build/openssl
-WORKDIR /build/openssl
-RUN abuild-keygen -a -n \
-    && cp /root/.abuild/*.pub /etc/apk/keys/ \
-    && MAKEFLAGS=-j4 abuild -F -d -r \
-    && mkdir /security-packages \
-    && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
-    && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
-    && cp /root/.abuild/*.pub /security-packages/ \
-    && test -f /security-packages/libssl3-3.5.9-r100.apk \
-    && test -f /security-packages/libcrypto3-3.5.9-r100.apk
 
 FROM nginx:alpine@sha256:fb4658584bd9a916ffb6f6e365f97c25cfdb2923801f551ea08356e695f14ff7 AS runtime
 

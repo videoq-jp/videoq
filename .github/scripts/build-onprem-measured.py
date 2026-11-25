@@ -7,6 +7,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -46,19 +47,46 @@ def verify_cache(output, builder=None):
 
 
 
-def inspect_builder_limits(container, cpus, memory_bytes):
-    """Fail before timing if the paired experiment's effective caps differ."""
+CONTROLLED_BUILDKIT_IMAGE = 'moby/buildkit@sha256:7583a0667093d941826bcd1d2878d6a360dfd08a82c93e6d6a6f6cce78801e12'
+
+
+def inspect_builder_limits(builder, cpus, memory_bytes):
+    """Bind the inspected container to the selected single local BuildKit node."""
+    rows = subprocess.check_output(['docker', 'buildx', 'ls', '--format=json'], text=True)
+    builders = [json.loads(line) for line in rows.splitlines() if line.strip()]
+    selected = [item for item in builders if item.get('Name') == builder]
+    if len(selected) != 1 or selected[0].get('Driver') != 'docker-container' or selected[0].get('Err'):
+        raise ValueError('Require the selected docker-container builder')
+    nodes = selected[0].get('Nodes', [])
+    if len(nodes) != 1 or nodes[0].get('Status') != 'running' or nodes[0].get('Err'):
+        raise ValueError('Require exactly one running BuildKit node')
+    node = nodes[0]
+    context = json.loads(subprocess.check_output(['docker', 'context', 'inspect'], text=True))[0]
+    endpoint = context['Endpoints']['docker']['Host']
+    if not endpoint.startswith('unix://') or node.get('Endpoint') not in [endpoint, context['Name']]:
+        raise ValueError('BuildKit node is not bound to this local Docker daemon')
+    if os.environ.get('DOCKER_HOST', endpoint) != endpoint:
+        raise ValueError('Docker host override differs from the inspected endpoint')
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', node.get('Name', '')):
+        raise ValueError('Invalid BuildKit node name')
+    # docker/buildx v0.39.1 driver.BuilderName(node.Name), not a caller-supplied container.
+    container = 'buildx_buildkit_' + node['Name']
     info = json.loads(subprocess.check_output(
         ['docker', 'container', 'inspect', container], text=True))[0]
+    if info.get('Name') != '/' + container or info.get('Config', {}).get('Image') != CONTROLLED_BUILDKIT_IMAGE:
+        raise ValueError('Selected BuildKit container/image identity mismatch')
     config = info['HostConfig']
     period, quota = config.get('CpuPeriod', 0), config.get('CpuQuota', 0)
     if not info.get('State', {}).get('Running') or period <= 0 or quota != period * cpus:
         raise ValueError('BuildKit CPU limit is missing or differs from the protocol')
     if config.get('Memory') != memory_bytes or config.get('MemorySwap') != memory_bytes:
         raise ValueError('BuildKit memory/swap limits differ from the protocol')
-    return {'container': container, 'cpus': cpus, 'memoryBytes': memory_bytes,
-            'cpuPeriod': period, 'cpuQuota': quota, 'memorySwapBytes': config['MemorySwap'],
-            'cpusetCpus': config.get('CpusetCpus', ''), 'verifiedBeforeBuild': True}
+    return {'builder': builder, 'driver': selected[0]['Driver'], 'node': node['Name'],
+            'endpoint': endpoint, 'container': container, 'containerId': info['Id'],
+            'buildkitImage': info['Config']['Image'], 'buildkitVersion': node.get('Version'),
+            'cpus': cpus, 'memoryBytes': memory_bytes, 'cpuPeriod': period, 'cpuQuota': quota,
+            'memorySwapBytes': config['MemorySwap'], 'cpusetCpus': config.get('CpusetCpus', ''),
+            'verifiedBeforeBuild': True}
 
 
 def resources():
@@ -71,8 +99,10 @@ def resources():
             'diskFreeBytes': shutil.disk_usage('.').free}
 
 
-def build(component, output, builder=None):
+def build(component, output, builder=None, dockerfile_variant="candidate"):
     dockerfile, context = COMPONENTS[component]
+    if dockerfile_variant == "baseline" and component in ("api", "web"):
+        dockerfile = f".github/fixtures/onprem-build-baseline/{component}.Dockerfile"
     command = ['docker', 'buildx', 'build', '--load', '--progress=plain', '--platform', 'linux/amd64']
     if builder:
         command += ['--builder', builder]
@@ -92,25 +122,25 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--parallelism', type=int, choices=[1, 2], default=1)
     parser.add_argument('--output', type=Path, default=Path('artifacts/onprem-build'))
+    parser.add_argument('--dockerfile-variant', choices=['baseline', 'candidate'], default='candidate')
     parser.add_argument('--builder')
-    parser.add_argument('--builder-container')
     parser.add_argument('--required-builder-cpus', type=int)
     parser.add_argument('--required-builder-memory', type=int)
     parser.add_argument('--repetitions', type=int, choices=[1, 2, 3], default=1)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     report = {'source': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
-        'parallelism': args.parallelism, 'before': resources(),
+        'parallelism': args.parallelism, 'dockerfileVariant': args.dockerfile_variant, 'before': resources(),
         'cachePolicy': 'runner-local only; no external cache imported or published',
         'platform': 'linux/amd64', 'startedAt': time.time(), 'components': []}
-    controls = [args.builder_container, args.required_builder_cpus, args.required_builder_memory]
+    controls = [args.required_builder_cpus, args.required_builder_memory]
     if any(value is not None for value in controls):
         if not all(value is not None for value in controls) or not args.builder:
-            parser.error('Paired resource controls require builder, container, CPU and memory limits')
+            parser.error('Paired resource controls require builder, CPU and memory limits')
         if args.required_builder_cpus <= 0 or args.required_builder_memory <= 0:
             parser.error('Builder resource limits must be positive')
         report['buildkitLimits'] = inspect_builder_limits(
-            args.builder_container, args.required_builder_cpus, args.required_builder_memory)
+            args.builder, args.required_builder_cpus, args.required_builder_memory)
         report['runnerImage'] = {'os': os.environ.get('ImageOS'), 'version': os.environ.get('ImageVersion')}
         if Path('/proc/cpuinfo').exists():
             report['cpuModelNames'] = sorted(set(line.split(':', 1)[1].strip()
@@ -134,7 +164,7 @@ def main():
             output.mkdir(exist_ok=True)
             run_started = time.monotonic()
             with ThreadPoolExecutor(max_workers=args.parallelism) as pool:
-                components = list(pool.map(lambda component: build(component, output, args.builder), COMPONENTS))
+                components = list(pool.map(lambda component: build(component, output, args.builder, args.dockerfile_variant), COMPONENTS))
             report['runs'].append({'index': index + 1, 'seconds': round(time.monotonic() - run_started, 3), 'components': components})
             report['components'].extend(components)
             if any(row['exitCode'] != 0 for row in components):
@@ -142,6 +172,10 @@ def main():
     finally:
         stop.set()
         sampler.join()
+    if 'buildkitLimits' in report:
+        report['buildkitLimitsAfter'] = inspect_builder_limits(args.builder, args.required_builder_cpus, args.required_builder_memory)
+        if report['buildkitLimitsAfter'] != report['buildkitLimits']:
+            raise ValueError('BuildKit identity or effective limits changed during timing')
     report['resourceSamples'] = samples
     report.update(seconds=round(time.monotonic() - started, 3), after=resources())
     report['failedBuilds'] = sum(row['exitCode'] != 0 for row in report['components'])
