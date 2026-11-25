@@ -12,7 +12,7 @@ export function adminHandlers(
   const actorId = () => requireUserId(authenticatedUserId);
   return {
     'admin.inspectSearchRecovery': async ({job}) => inspectSearchWorkflowRecovery(c.env,job,new URL(c.req.url).origin),
-    'admin.restartSearchWorkflow': async ({job,inspection}) => recoverSearchWorkflow(c.env,job,inspection,new URL(c.req.url).origin),
+    'admin.restartSearchWorkflow': async ({job,inspection}) => recoverSearchWorkflow(c.env,job,inspection,new URL(c.req.url).origin,actorId()),
     "admin.createUser": async (input) => provisionOnpremUser(c.env, input, c.req.raw.headers),
     "admin.resetAccess": async ({ id }) => resetOnpremUserAccess(c.env, id),
     "admin.listUsers": async ({ q, limit, offset }) => {

@@ -1,3 +1,4 @@
+import { SafeJobError } from '../src/application/job-failure';
 import { describe, expect, it, vi } from 'vitest';
 import { canonicalBackgroundJob, executeBackgroundJob, parseBackgroundJob } from '../src/application/background-job';
 import type { JobClaim } from '../src/application/job-execution-port';
@@ -40,6 +41,10 @@ describe('TypeScript job identity and replay safety',()=>{
 });
 
 it.each([
+  [new Error('D1_ERROR: Network connection lost.'),'DATABASE_UNAVAILABLE'],
+  [new SafeJobError('INDEX_SOURCE_CHANGED',true,'private source'),'INDEX_SOURCE_CHANGED'],
+  [new SafeJobError('INVALID_TRANSCRIPT',false,'private transcript'),'INVALID_TRANSCRIPT'],
+  [new Error('private SQL',{cause:Object.assign(new Error('private connection'),{code:'08006'})}),'DATABASE_UNAVAILABLE'],
   [Object.assign(new Error('secret'),{status:429}),'PROVIDER_RATE_LIMITED'],
   [Object.assign(new Error('secret'),{code:'08006'}),'DATABASE_UNAVAILABLE'],
   [Object.assign(new Error('secret'),{name:'TimeoutError'}),'DEADLINE_EXCEEDED'],

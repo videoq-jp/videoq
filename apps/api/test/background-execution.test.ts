@@ -13,6 +13,6 @@ describe('Node background worker cancellation',()=>{
     step.mockImplementationOnce(async()=>{controller.abort(reason);return{status:'progress'};});
     await expect(runBackgroundJob({} as Bindings,{type:'delete_account_data',job_id:'delete',payload:{user_id:'owner'}},controller.signal)).rejects.toBe(reason);
     expect(step).toHaveBeenCalledOnce();expect(repository.complete).not.toHaveBeenCalled();
-    expect(repository.fail).toHaveBeenCalledWith('delete','lease','WORKER_EXECUTION_FAILED');
+    expect(repository.fail).toHaveBeenCalledWith('delete','lease','EXECUTION_ABORTED');
   });
 });

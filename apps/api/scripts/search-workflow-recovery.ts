@@ -9,7 +9,7 @@ export async function recoveryRequest(api:string, cookie:string, input:unknown, 
   if(!restart)url.searchParams.set('input',JSON.stringify(input));
   const response=await request(url,{method:restart?'POST':'GET',redirect:'error',headers:{cookie,'content-type':'application/json'},...(restart?{body:JSON.stringify(input)}:{})});
   if(!response.ok){await response.body?.cancel();throw new Error('RECOVERY_REQUEST_FAILED');}
-  const data=await response.json() as {result?:{data?:unknown}};
+  const data=await response.json<{result?:{data?:unknown}}>();
   if(!data.result || !('data' in data.result)) throw new Error('RECOVERY_INVALID_RESPONSE');
   return data.result.data;
 }

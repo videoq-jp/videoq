@@ -1,3 +1,4 @@
+import { SAFE_JOB_FAILURE, type Failure } from '../application/job-failure';
 import { workersAiFetch, WORKERS_AI_LLM_MODEL } from "./workers-ai-transport";
 import type { Bindings } from "../types/bindings";
 
@@ -13,7 +14,11 @@ export class LlmConfigurationError extends Error {
 }
 
 export class LlmProviderError extends Error {
+  readonly [SAFE_JOB_FAILURE] = true;
   readonly name = "LlmProviderError";
+  readonly code?: Failure["error_code"];
+  readonly retryable?: boolean;
+  constructor(message:string, failure?:Failure) { super(message); this.code=failure?.error_code; this.retryable=failure?.retryable; }
 }
 
 export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";

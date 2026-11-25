@@ -14,7 +14,8 @@ export function receiveAttempts(value: unknown): number | undefined {
 }
 
 interface Observation {
-  event: 'background_job_retry' | 'background_queue_retry' | 'background_visibility_change_failed';
+  event: 'background_job_retry' | 'background_queue_retry' | 'background_visibility_change_failed' | 'background_workflow_failed';
+  workflow_id?: string;
   original_error_code?: string;
   stage: JobStage;
   group?: 'account' | 'search';

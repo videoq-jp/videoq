@@ -1,3 +1,4 @@
+import { safeJobRepository } from '../job-failure';
 import { safeJobFailureCode } from '../../application/job-failure';
 import { and, eq, ne, or, isNull, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
@@ -18,7 +19,7 @@ const owns = (jobId: string, token: string) =>
     eq(jobs.leaseToken, token),
   );
 export function createPostgresJobRepository(env: Bindings): JobRepository {
-  return {
+  return safeJobRepository({
     async claim(input) {
       validateJobIdentity(input);
       const leaseToken = crypto.randomUUID();
@@ -123,5 +124,5 @@ export function createPostgresJobRepository(env: Bindings): JobRepository {
               .returning({ id: jobs.jobId })
           ).length > 0,
       ),
-  };
+  });
 }

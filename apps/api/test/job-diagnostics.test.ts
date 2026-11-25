@@ -35,3 +35,7 @@ it('does not let an unreadable exception suppress transport retry', () => {
   const error = Object.defineProperty(new Error(), 'status', { get() { throw new Error('private'); } });
   expect(jobFailure(error, 'execute')).toEqual({ error_code: 'WORKER_EXECUTION_FAILED', retryable: true });
 });
+
+it.each(['SafeJobError_PROVIDER_RATE_LIMITED: private token','SafeJobError_UNKNOWN_CODE: private token'])('does not trust arbitrary exception text markers: %s',message=>{
+ expect(jobFailure(new Error(message),'execute')).toEqual({error_code:'WORKER_EXECUTION_FAILED',retryable:true});
+});

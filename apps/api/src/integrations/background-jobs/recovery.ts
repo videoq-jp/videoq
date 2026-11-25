@@ -1,3 +1,4 @@
+import { embeddingFingerprint, resolveEmbeddingConfig } from '../../lib/embedding-contract';
 import { canonicalBackgroundJob, parseBackgroundJob, type BackgroundJob } from '../../application/background-job';
 import type { SceneIndexSource } from '../../application/scene-index-policy';
 import { createJobRepository, createWorkerScenePersistence } from '../../persistence/factory';
@@ -13,6 +14,7 @@ function requireSearch(input: unknown): BackgroundJob {
 }
 async function inspect(env: Bindings, job: BackgroundJob, reserved = false, target = 'local') {
   if (!env.DB || !env.VIDEO_BUCKET || !env.SEARCH_INDEX_WORKFLOW) throw new Error('RECOVERY_BINDINGS_REQUIRED');
+  const fingerprint = await embeddingFingerprint(resolveEmbeddingConfig(env));
   const payloadHash = await hash(canonicalBackgroundJob(job));
   const workflowId = await hash(`${job.job_id}\n${canonicalBackgroundJob(job)}`);
   const status = (await (await env.SEARCH_INDEX_WORKFLOW.get(workflowId)).status()).status;
@@ -42,13 +44,21 @@ async function inspect(env: Bindings, job: BackgroundJob, reserved = false, targ
     sourceHash = await hash(JSON.stringify(source));
     const saved = await env.VIDEO_BUCKET.get(`${prefix}source.json`);
     if (saved) {
-      let snapshot: SceneIndexSource;
-      try { snapshot = await saved.json<SceneIndexSource>(); } catch { throw new Error('RECOVERY_INVALID_ARTIFACT'); }
+      let envelope: {fingerprint:string;source:SceneIndexSource};
+      try { envelope = await saved.json<{fingerprint:string;source:SceneIndexSource}>(); } catch { throw new Error('RECOVERY_INVALID_ARTIFACT'); }
+      if (envelope.fingerprint !== fingerprint || !envelope.source) throw new Error('RECOVERY_ARTIFACT_IDENTITY_MISMATCH');
+      const snapshot = envelope.source;
       if (snapshot.videoId !== source.videoId || snapshot.userId !== source.userId || snapshot.sourceRevision !== source.sourceRevision ||
           snapshot.fileKey !== source.fileKey || snapshot.transcript !== source.transcript) throw new Error('RECOVERY_SOURCE_CHANGED');
     }
   }
-  const evidence = { target, workflowId, status, payloadHash, sourceHash, artifacts };
+  const prepared = await env.VIDEO_BUCKET.get(`${prefix}prepared.json`);
+  if (prepared) {
+    let manifest: {fingerprint?:string};
+    try { manifest = await prepared.json(); } catch { throw new Error('RECOVERY_INVALID_ARTIFACT'); }
+    if (manifest?.fingerprint !== fingerprint) throw new Error('RECOVERY_ARTIFACT_IDENTITY_MISMATCH');
+  }
+  const evidence = { target, fingerprint, workflowId, status, payloadHash, sourceHash, artifacts };
   return { evidence, ledger, digest: await hash(JSON.stringify({ evidence, ledger })) };
 }
 /** Read-only, content-free report. Retain this digest for the explicit restart. */
@@ -58,7 +68,7 @@ export async function inspectSearchWorkflowRecovery(env: Bindings, input: unknow
 }
 /** Restart clears durable steps. Old R2 artifacts remain for audit; new run IDs
  * and source/publication fences prevent their reuse as a different execution. */
-export async function recoverSearchWorkflow(env: Bindings, input: unknown, expectedInspection: string, target = 'local') {
+export async function recoverSearchWorkflow(env: Bindings, input: unknown, expectedInspection: string, target = 'local', actorId = 'local') {
   const job = requireSearch(input);
   const before = await inspect(env, job, false, target);
   if (!/^[a-f0-9]{64}$/.test(expectedInspection) || before.digest !== expectedInspection) throw new Error('RECOVERY_INSPECTION_CHANGED');
@@ -76,7 +86,7 @@ export async function recoverSearchWorkflow(env: Bindings, input: unknown, expec
     const instance = await env.SEARCH_INDEX_WORKFLOW!.get(before.evidence.workflowId);
     const current = (await instance.status()).status;
     if (current !== before.evidence.status || !await repository.heartbeat(job.job_id,claim.leaseToken)) throw new Error('RECOVERY_STATE_CHANGED');
-    const audit = { auditId, inspection:before.digest, evidence:before.evidence, ledger:before.ledger, requestedAt:new Date().toISOString() };
+    const audit = { auditId, actorHash:await hash(actorId), inspection:before.digest, evidence:before.evidence, ledger:before.ledger, requestedAt:new Date().toISOString() };
     await env.VIDEO_BUCKET!.put(auditKey,JSON.stringify({ ...audit, outcome:'restart_requested' }));
     await instance.restart();
     await env.VIDEO_BUCKET!.put(auditKey,JSON.stringify({ ...audit, outcome:'restart_accepted', acceptedAt:new Date().toISOString() }));
@@ -84,9 +94,8 @@ export async function recoverSearchWorkflow(env: Bindings, input: unknown, expec
   } finally {
     // The restarted Workflow retries a busy claim until this fenced reservation
     // is released; a killed administrator process expires after the normal lease.
-    try {
-      if (!await repository.fail(job.job_id,claim.leaseToken,'RECOVERY_RESTART_REQUESTED')) throw new Error('RECOVERY_RELEASE_LOST');
-    } catch {
+    const released = await repository.fail(job.job_id,claim.leaseToken,'RECOVERY_RESTART_REQUESTED').catch(()=>false);
+    if (!released) {
       console.error(JSON.stringify({event:'background_recovery_lease_release_failed',auditId,error_code:'RECOVERY_LEASE_RELEASE_FAILED'}));
       await env.VIDEO_BUCKET!.put(`${auditKey}.release.json`,JSON.stringify({auditId,error_code:'RECOVERY_LEASE_RELEASE_FAILED'})).catch(()=>undefined);
     }
