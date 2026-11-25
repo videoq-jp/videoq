@@ -22,6 +22,9 @@ CREATE TABLE `policy_readiness` (
 	`source_revision` text NOT NULL,
 	`transcript_accepted_at` text NOT NULL,
 	`ready_at` text,
+	`ready_fingerprint` text,
+	`ready_dimensions` integer,
+	`ready_run_id` text,
 	FOREIGN KEY (`video_id`) REFERENCES `videos`(`id`) ON UPDATE no action ON DELETE cascade
 );
 
@@ -32,7 +35,7 @@ BEGIN
  DELETE FROM policy_readiness WHERE video_id=NEW.video_id AND EXISTS(SELECT 1 FROM videos WHERE id=NEW.video_id AND trim(coalesce(transcript,''),char(9)||char(10)||char(13)||' ')='');
  INSERT INTO policy_readiness(video_id,source_revision,transcript_accepted_at)
  SELECT NEW.video_id,NEW.revision,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM videos WHERE id=NEW.video_id AND trim(coalesce(transcript,''),char(9)||char(10)||char(13)||' ')<>''
- ON CONFLICT(video_id) DO UPDATE SET source_revision=excluded.source_revision,transcript_accepted_at=excluded.transcript_accepted_at,ready_at=NULL;
+ ON CONFLICT(video_id) DO UPDATE SET source_revision=excluded.source_revision,transcript_accepted_at=excluded.transcript_accepted_at,ready_at=NULL,ready_fingerprint=NULL,ready_dimensions=NULL,ready_run_id=NULL;
 END;
 --> statement-breakpoint
 CREATE TRIGGER policy_source_accepted_update AFTER UPDATE OF revision ON video_index_versions
@@ -41,15 +44,37 @@ BEGIN
  DELETE FROM policy_readiness WHERE video_id=NEW.video_id AND EXISTS(SELECT 1 FROM videos WHERE id=NEW.video_id AND trim(coalesce(transcript,''),char(9)||char(10)||char(13)||' ')='');
  INSERT INTO policy_readiness(video_id,source_revision,transcript_accepted_at)
  SELECT NEW.video_id,NEW.revision,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM videos WHERE id=NEW.video_id AND trim(coalesce(transcript,''),char(9)||char(10)||char(13)||' ')<>''
- ON CONFLICT(video_id) DO UPDATE SET source_revision=excluded.source_revision,transcript_accepted_at=excluded.transcript_accepted_at,ready_at=NULL;
+ ON CONFLICT(video_id) DO UPDATE SET source_revision=excluded.source_revision,transcript_accepted_at=excluded.transcript_accepted_at,ready_at=NULL,ready_fingerprint=NULL,ready_dimensions=NULL,ready_run_id=NULL;
 END;
 --> statement-breakpoint
-CREATE TRIGGER policy_source_ready AFTER UPDATE OF status ON videos
-WHEN NEW.status='completed' AND OLD.status='indexing'
+CREATE TRIGGER policy_source_ready AFTER UPDATE OF status ON scene_index_runs
+WHEN NEW.status='published'
 BEGIN
- UPDATE policy_readiness SET ready_at=COALESCE(ready_at,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
- WHERE video_id=NEW.id AND source_revision=(SELECT revision FROM video_index_versions WHERE video_id=NEW.id)
- AND EXISTS(SELECT 1 FROM video_index_heads h JOIN scene_index_runs r ON h.run_id=r.id WHERE h.video_id=NEW.id AND r.source_revision=policy_readiness.source_revision AND r.status='published');
+ UPDATE policy_readiness SET
+ ready_at=CASE WHEN ready_run_id=(SELECT r.id FROM video_index_heads h JOIN scene_index_runs r ON h.run_id=r.id WHERE h.video_id=policy_readiness.video_id AND h.dimensions=NEW.dimensions) THEN coalesce(ready_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ELSE strftime('%Y-%m-%dT%H:%M:%fZ','now') END,
+ ready_fingerprint=(SELECT r.embedding_fingerprint FROM video_index_heads h JOIN scene_index_runs r ON h.run_id=r.id WHERE h.video_id=policy_readiness.video_id AND h.dimensions=NEW.dimensions),
+ ready_dimensions=NEW.dimensions,
+ ready_run_id=(SELECT run_id FROM video_index_heads WHERE video_id=policy_readiness.video_id AND dimensions=NEW.dimensions)
+ WHERE video_id=NEW.video_id AND EXISTS(SELECT r.id FROM video_index_heads h JOIN scene_index_runs r ON r.id=h.run_id JOIN video_index_versions v ON v.video_id=h.video_id
+ WHERE h.video_id=policy_readiness.video_id AND r.source_revision=policy_readiness.source_revision AND v.revision=policy_readiness.source_revision
+ AND r.status='published' AND r.embedding_fingerprint IS NOT NULL AND r.embedding_identity IS NOT NULL
+ AND NOT EXISTS(SELECT 1 FROM scenes s LEFT JOIN scene_index_tasks t ON t.id='u:'||s.dimensions||':'||s.vector_id
+  WHERE s.video_id=h.video_id AND s.dimensions=h.dimensions AND (s.revision<>r.id OR t.id IS NULL OR t.accepted_at IS NULL OR t.completed_at IS NULL)) AND h.dimensions=NEW.dimensions);
+END;
+--> statement-breakpoint
+CREATE TRIGGER policy_vector_ready AFTER UPDATE OF completed_at ON scene_index_tasks
+WHEN NEW.operation='upsert' AND NEW.accepted_at IS NOT NULL AND NEW.completed_at IS NOT NULL
+BEGIN
+ UPDATE policy_readiness SET
+ ready_at=CASE WHEN ready_run_id=(SELECT r.id FROM video_index_heads h JOIN scene_index_runs r ON h.run_id=r.id WHERE h.video_id=policy_readiness.video_id AND h.dimensions=NEW.dimensions) THEN coalesce(ready_at,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ELSE strftime('%Y-%m-%dT%H:%M:%fZ','now') END,
+ ready_fingerprint=(SELECT r.embedding_fingerprint FROM video_index_heads h JOIN scene_index_runs r ON h.run_id=r.id WHERE h.video_id=policy_readiness.video_id AND h.dimensions=NEW.dimensions),
+ ready_dimensions=NEW.dimensions,
+ ready_run_id=(SELECT run_id FROM video_index_heads WHERE video_id=policy_readiness.video_id AND dimensions=NEW.dimensions)
+ WHERE video_id=NEW.video_id AND EXISTS(SELECT r.id FROM video_index_heads h JOIN scene_index_runs r ON r.id=h.run_id JOIN video_index_versions v ON v.video_id=h.video_id
+ WHERE h.video_id=policy_readiness.video_id AND r.source_revision=policy_readiness.source_revision AND v.revision=policy_readiness.source_revision
+ AND r.status='published' AND r.embedding_fingerprint IS NOT NULL AND r.embedding_identity IS NOT NULL
+ AND NOT EXISTS(SELECT 1 FROM scenes s LEFT JOIN scene_index_tasks t ON t.id='u:'||s.dimensions||':'||s.vector_id
+  WHERE s.video_id=h.video_id AND s.dimensions=h.dimensions AND (s.revision<>r.id OR t.id IS NULL OR t.accepted_at IS NULL OR t.completed_at IS NULL)) AND h.dimensions=NEW.dimensions);
 END;
 --> statement-breakpoint
 CREATE TRIGGER policy_deleted BEFORE DELETE ON videos

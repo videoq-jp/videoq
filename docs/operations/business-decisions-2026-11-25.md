@@ -51,3 +51,5 @@ An empty successful worker transcript has the same monitoring treatment. A
 nonempty accepted transcript, including malformed input that fails indexing,
 keeps its current clock and remains observable as failure/overdue; this does not
 promise that invalid content becomes searchable.
+
+Readiness evidence binds the current accepted revision to its published physical run, configured dimensions and embedding fingerprint. Publication alone is insufficient: each current scene must have an accepted, ANN-verified completed upsert. A completed-status manual reindex uses the same observation path; superseded source clocks do not schedule maintenance. No historical acceptance or readiness is backfilled.

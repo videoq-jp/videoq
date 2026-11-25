@@ -1,3 +1,4 @@
+import {embeddingFingerprint,embeddingDimensions,resolveEmbeddingConfig} from '../../lib/embedding-contract';
 import { createD1OperationalPolicyRepository } from '../../persistence/d1/operational-policy';
 import { evaluateOperationalPolicy } from '../../application/operational-policy';
 import { deliverPolicyNotification } from './notifications';
@@ -7,7 +8,8 @@ export async function observeOperationalPolicy(env:Bindings,now:Date,send:typeof
   if(persistenceBackend(env)!=='d1') return {status:'unsupported_onprem_source_facts',delivered:0};
   if(!env.DB) throw Error('Policy observation requires D1');
   if(!env.OPERATIONAL_POLICY_WEBHOOK_URL||!env.OPERATIONAL_POLICY_WEBHOOK_TOKEN) return {status:'notification_sink_unconfigured',delivered:0};
-  const repository=createD1OperationalPolicyRepository(env.DB);
+  const config=resolveEmbeddingConfig(env);
+  const repository=createD1OperationalPolicyRepository(env.DB,{fingerprint:await embeddingFingerprint(config),dimensions:embeddingDimensions(config)});
   const snapshot=await repository.read(now.toISOString());
   const {events}=evaluateOperationalPolicy(snapshot);
   let delivered=0,failed=0;

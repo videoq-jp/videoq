@@ -5,6 +5,7 @@ import { videos } from './modern';
 export const policyReadiness = sqliteTable('policy_readiness', {
   videoId: integer('video_id').primaryKey().references(()=>videos.id,{onDelete:'cascade'}),
   sourceRevision: text('source_revision').notNull(), transcriptAcceptedAt: text('transcript_accepted_at').notNull(), readyAt: text('ready_at'),
+  readyFingerprint:text('ready_fingerprint'),readyDimensions:integer('ready_dimensions'),readyRunId:text('ready_run_id'),
 });
 export const policyCleanup = sqliteTable('policy_cleanup', {
   id: text('id').primaryKey().notNull(), scope: text('scope').notNull(), taskId:text('task_id').notNull(),

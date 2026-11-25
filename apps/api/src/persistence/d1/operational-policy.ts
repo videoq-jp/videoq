@@ -1,14 +1,15 @@
+import {CURRENT_POLICY_READINESS} from './policy-readiness';
 import type {CleanupObservation,ReadinessObservation} from '../../application/operational-policy';
 import type {OperationalPolicyRepository} from '../contracts/operational-policy';
 /** All observations/leases stay in the same D1 authority as the lifecycle facts. */
-export function createD1OperationalPolicyRepository(database:D1Database):OperationalPolicyRepository {
+export function createD1OperationalPolicyRepository(database:D1Database,identity?:{fingerprint:string;dimensions:number}):OperationalPolicyRepository {
  return {
  async read(observedAt) {
-  const readiness=(await database.prepare(`SELECT CAST(p.video_id AS text)||':'||p.source_revision AS id,p.source_revision AS currentRevision,p.transcript_accepted_at AS transcriptAcceptedAt,p.source_revision AS readyRevision,p.ready_at AS readyAt
-    FROM policy_readiness p JOIN video_index_versions v ON p.video_id=v.video_id AND p.source_revision=v.revision
-    WHERE ((julianday(coalesce(p.ready_at,?))-julianday(p.transcript_accepted_at))*86400000)>900000
+  const readiness=(await database.prepare(`WITH current_readiness AS (${CURRENT_POLICY_READINESS}) SELECT CAST(p.video_id AS text)||':'||p.source_revision AS id,p.source_revision AS currentRevision,p.transcript_accepted_at AS transcriptAcceptedAt,p.source_revision AS readyRevision,p.observed_ready_at AS readyAt
+    FROM current_readiness p
+    WHERE ((julianday(coalesce(p.observed_ready_at,?))-julianday(p.transcript_accepted_at))*86400000)>900000
     AND NOT EXISTS(SELECT 1 FROM policy_notifications n WHERE n.id='readiness:'||p.video_id||':'||p.source_revision AND (n.state='delivered' OR julianday(n.lease_until)>julianday('now')))
-    ORDER BY p.transcript_accepted_at,p.video_id LIMIT 100`).bind(observedAt).all<ReadinessObservation>()).results;
+    ORDER BY p.transcript_accepted_at,p.video_id LIMIT 100`).bind(identity?.fingerprint??null,identity?.fingerprint??null,identity?.dimensions??null,identity?.dimensions??null,observedAt).all<ReadinessObservation>()).results;
   const cleanup=(await database.prepare(`WITH eligible AS (
     SELECT p.*, (julianday(coalesce(p.completed_at,?))-julianday(p.logical_deleted_at))*86400000 AS age FROM policy_cleanup p
    ) SELECT id,scope,logical_deleted_at AS logicalDeletedAt,completed_at AS completedAt FROM eligible p
