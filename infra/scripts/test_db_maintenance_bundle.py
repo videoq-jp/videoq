@@ -9,6 +9,7 @@ import unittest
 import zipfile
 import subprocess
 import json
+import os
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location("bundle", Path(__file__).resolve().parents[1] / "db-maintenance/build_bundle.py")
@@ -28,6 +29,7 @@ class BundleTest(unittest.TestCase):
                 self.assertIn('.github/scripts/backup-archive.mjs', names)
                 self.assertIn('.github/scripts/backup-download.mjs', names)
                 self.assertIn('.github/scripts/backup-d1-export.mts', names)
+                self.assertIn('.github/scripts/embedding-release-preflight.cjs', names)
                 self.assertNotIn('.github/scripts/isolated-smoke-target.cjs', names)
                 self.assertNotIn('.github/scripts/isolated-smoke-manifest.cjs', names)
                 self.assertIn('apps/api/scripts/migrations/d1/export.ts', names)
@@ -48,6 +50,28 @@ class BundleTest(unittest.TestCase):
                                           "Runtime asset referenced by " + script + " is absent")
                 image = archive.read(".github/operations-tools/Dockerfile").decode().strip()
                 self.assertRegex(image, r"^FROM pgvector/pgvector:pg17@sha256:[a-f0-9]{64}$")
+
+    def test_resume_preflight_imports_from_actual_zip_without_npm_credentials_or_network(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'operator.zip'
+            bundle.archive(path, bundle.operator_files())
+            with zipfile.ZipFile(path) as archive:
+                # Use the real allowlisted graph, without linking installed npm
+                # dependencies or inheriting any production credentials.
+                self.assertFalse(any('node_modules' in Path(name).parts for name in archive.namelist()))
+                archive.extractall(directory)
+            script = """global.fetch=()=>{throw Error('IMPORT_MUST_NOT_ACCESS_NETWORK')};
+const assert=require('node:assert/strict');
+const traffic=require('./.github/scripts/cutover-api-traffic.cjs');
+const auth=require('./.github/scripts/cutover-internal-auth.cjs');
+const preflight=require('./.github/scripts/embedding-release-preflight.cjs');
+assert.equal(typeof traffic.createCloudflareTrafficTransport,'function');
+assert.equal(typeof auth.provisionInternalAuth,'function');
+assert.equal(typeof preflight.preflightSettings,'function');
+console.log('BUILTIN_RESUME_PREFLIGHT_IMPORT_VERIFIED');"""
+            result = subprocess.check_output(['node', '--input-type=commonjs', '-e', script],
+                cwd=directory, env={'PATH': os.environ['PATH']}, text=True, timeout=30)
+            self.assertEqual(result.strip(), 'BUILTIN_RESUME_PREFLIGHT_IMPORT_VERIFIED')
 
     def test_every_operator_input_triggers_its_runtime_fixture_ci(self):
         workflow = (bundle.ROOT / '.github/workflows/ci.yml').read_text()

@@ -15,7 +15,7 @@ function relevant(path) {
   if (['.github/scripts/aws-canonical-migration.cjs','.github/scripts/owned-d1-migration.cjs','.github/scripts/migration-backend.cjs','.github/scripts/protect-api-deployment.cjs',
     '.github/scripts/background-migration-fence.cjs','.github/scripts/background-queue-admission.cjs','.github/scripts/background-workflow-admission.cjs','.github/scripts/background-maintenance.cjs',
     '.github/scripts/background-maintenance-store.cjs','.github/scripts/background-maintenance-transport.cjs','.github/scripts/canonical-background-maintenance.cjs'].includes(path)) return true;
-  if (['.github/scripts/cutover-api-traffic.cjs','.github/scripts/cutover-owned-api-traffic.cjs'].includes(path)) return true;
+  if (['.github/scripts/cutover-api-traffic.cjs','.github/scripts/cutover-owned-api-traffic.cjs', '.github/scripts/embedding-release-preflight.cjs'].includes(path)) return true;
   if (path === '.github/scripts/cutover-consumer-control.cjs') return true;
   if (path === '.github/scripts/cutover-consumer-prepare.cjs') return true;
   if (path === '.github/scripts/cutover-sqs-consumers.cjs') return true;

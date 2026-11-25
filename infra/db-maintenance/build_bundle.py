@@ -13,6 +13,7 @@ SCRIPTS = [
     "cutover-postgres-activity.mjs", "cutover-postgres-fence.mjs",
     "cutover-owned-api-traffic.cjs",
     "cutover-api-traffic.cjs",
+    "embedding-release-preflight.cjs",
     "cutover-deployment-freeze.cjs", "cutover-owned-deployment-freeze.cjs",
     "cutover-consumer-control.cjs",
     "cutover-consumer-prepare.cjs",
