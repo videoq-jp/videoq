@@ -21,5 +21,6 @@
     "audio-candidate/provenance.json": "c81978f9d029a7dae465e69f2328c26cd06bfd2848fa88c44fe301216220cd57",
     "audio-candidate/source-lock.json": "3d5fe1dad0cf48e578c9d92a1a1f77be1b991846d285fde58f9ee2029f44c29c",
     "audio-candidate/build-smoke.json": "e9e7bd70c6344132ff6f2016e807bfad2cef7ace25aa22f88e3bfe8e53512415"
-  }
+  },
+  "publishedTagCommit": "14634eb281a90f3e575b8cf469412adc57b807dc"
 }

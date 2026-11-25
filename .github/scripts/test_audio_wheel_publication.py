@@ -20,7 +20,7 @@ class AudioPublicationTest(unittest.TestCase):
     def fixture(self):
         policy = json.loads(MODULE.POLICY.read_text())
         policy.update(status='reviewed-corrected-native-proof', run=123, attempt=1, artifact=456,
-                      head='a' * 40, source='b' * 40, archiveSha256='c' * 64,
+                      head='a' * 40, source='b' * 40, publishedTagCommit='a' * 40, archiveSha256='c' * 64,
                       wheelSha256=MODULE.sha(b'exact tested wheel'), wheelSize=len(b'exact tested wheel'),
                       evidenceHashes={name: 'd' * 64 for name in MODULE.EVIDENCE})
         run = {'id': 123, 'head_sha': policy['head'], 'run_attempt': 1, 'status': 'completed',
@@ -96,6 +96,9 @@ class AudioPublicationTest(unittest.TestCase):
         policy, *_ = self.fixture()
         revision = 'a' * 40
         with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            with patch.object(MODULE.subprocess, 'run') as run, self.assertRaisesRegex(ValueError, 'Historical'):
+                MODULE.publish_release(policy, b'exact tested wheel', 'f' * 40)
+            run.assert_not_called()
             collision = subprocess.CalledProcessError(1, ['gh', 'api'], stderr='HTTP 422 Reference already exists')
             with patch.object(MODULE.subprocess, 'run', side_effect=collision) as run, self.assertRaises(subprocess.CalledProcessError):
                 MODULE.publish_release(policy, b'exact tested wheel', revision)
@@ -116,6 +119,7 @@ class AudioPublicationTest(unittest.TestCase):
             self.assertIn('POST', create_ref.args[0])
             self.assertIn('--verify-tag', release.args[0])
             self.assertIn('--latest=false', release.args[0])
+            self.assertIn('--prerelease', release.args[0])
             self.assertEqual(Path(MODULE.ASSET).read_bytes(), b'exact tested wheel')
 
     def test_anonymous_readback_rejects_ref_release_asset_and_byte_drift(self):
@@ -123,11 +127,11 @@ class AudioPublicationTest(unittest.TestCase):
         revision = 'a' * 40
         url = f'https://github.com/{MODULE.REPOSITORY}/releases/download/{MODULE.RELEASE_TAG}/{MODULE.ASSET}'
         release = {'id': 12, 'tag_name': MODULE.RELEASE_TAG, 'target_commitish': revision,
-                   'draft': False, 'prerelease': False,
+                   'draft': False, 'prerelease': True,
                    'html_url': f'https://github.com/{MODULE.REPOSITORY}/releases/tag/{MODULE.RELEASE_TAG}',
                    'assets': [{'id': 34, 'name': MODULE.ASSET, 'state': 'uploaded', 'size': policy['wheelSize'],
                                'browser_download_url': url, 'digest': 'sha256:' + policy['wheelSha256']}]}
-        for control in ['valid', 'wrong-tag', 'extra-asset', 'ref-drift', 'asset-drift', 'wrong-bytes']:
+        for control in ['valid', 'stable-release', 'wrong-tag', 'extra-asset', 'ref-drift', 'asset-drift', 'wrong-bytes']:
             calls = {'ref': 0, 'release': 0}
 
             def api(path):
@@ -136,7 +140,9 @@ class AudioPublicationTest(unittest.TestCase):
                     return self.ref(MODULE.RELEASE_TAG, 'b' * 40 if control == 'ref-drift' and calls['ref'] == 2 else revision)
                 calls['release'] += 1
                 value = copy.deepcopy(release)
-                if control == 'wrong-tag':
+                if control == 'stable-release':
+                    value['prerelease'] = False
+                elif control == 'wrong-tag':
                     value['tag_name'] = 'other'
                 elif control == 'extra-asset':
                     value['assets'].append(copy.deepcopy(value['assets'][0]))
@@ -151,8 +157,10 @@ class AudioPublicationTest(unittest.TestCase):
                 download.return_value.__enter__.return_value.read.return_value = (
                     b'changed wheel' if control == 'wrong-bytes' else b'exact tested wheel')
                 if control == 'valid':
-                    result = MODULE.readback_release(policy, revision)
+                    result = MODULE.readback_release(policy, 'f' * 40)
                     self.assertTrue(result['anonymous'])
+                    self.assertEqual(result['tagCommit'], revision)
+                    self.assertEqual(result['validatorCommit'], 'f' * 40)
                     download.assert_called_once_with(url, timeout=60)
                 else:
                     with self.assertRaises(ValueError):

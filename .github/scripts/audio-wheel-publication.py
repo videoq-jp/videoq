@@ -39,7 +39,7 @@ def approved(policy):
     for key in ['run', 'attempt', 'artifact', 'wheelSize']:
         if type(policy.get(key)) is not int or policy[key] <= 0:
             raise ValueError('Missing exact positive publication pin: ' + key)
-    for key, length in [('head', 40), ('source', 40), ('archiveSha256', 64), ('wheelSha256', 64)]:
+    for key, length in [('head', 40), ('source', 40), ('publishedTagCommit', 40), ('archiveSha256', 64), ('wheelSha256', 64)]:
         if not re.fullmatch('[a-f0-9]{' + str(length) + '}', str(policy.get(key))):
             raise ValueError('Invalid immutable publication pin: ' + key)
     if set(policy.get('evidenceHashes', {})) != EVIDENCE or any(
@@ -193,6 +193,8 @@ def verify_ref(name, revision):
 
 
 def publish_release(policy, wheel, revision):
+    if revision != policy['publishedTagCommit']:
+        raise ValueError('Historical publisher commit is immutable; never republish from a new tool revision')
     # POST creates a new ref atomically. A raced ref is a hard 422 failure;
     # never update, force, delete or reuse it, even if its current SHA matches.
     subprocess.run(['gh', 'api', '--method', 'POST', f'repos/{REPOSITORY}/git/refs', '--input', '-'],
@@ -203,7 +205,7 @@ def publish_release(policy, wheel, revision):
     with path.open('xb') as output:
         output.write(wheel)
     subprocess.run(['gh', 'release', 'create', RELEASE_TAG, str(path), '--repo', REPOSITORY,
-                    '--verify-tag', '--latest=false', '--target', revision,
+                    '--verify-tag', '--latest=false', '--prerelease', '--target', revision,
                     '--title', 'Reviewed native audio wheel',
                     '--notes', 'Exact independently verified FFmpeg 9.1 / PyAV 19.0.2 wheel; no rebuild.'], check=True)
 
@@ -212,7 +214,7 @@ def release_identity(release, policy, revision):
     if (type(release.get('id')) is not int or release['id'] <= 0 or
             (release.get('tag_name'), release.get('target_commitish'), release.get('draft'),
              release.get('prerelease'), release.get('html_url')) != (
-                 RELEASE_TAG, revision, False, False,
+                 RELEASE_TAG, revision, False, True,
                  f'https://github.com/{REPOSITORY}/releases/tag/{RELEASE_TAG}')):
         raise ValueError('Fixed release identity mismatch')
     assets = release.get('assets', [])
@@ -230,18 +232,19 @@ def release_identity(release, policy, revision):
 
 
 def readback_release(policy, revision):
-    verify_ref(RELEASE_TAG, revision)
-    before = release_identity(gh_api('releases/tags/' + RELEASE_TAG), policy, revision)
+    published = policy['publishedTagCommit']
+    verify_ref(RELEASE_TAG, published)
+    before = release_identity(gh_api('releases/tags/' + RELEASE_TAG), policy, published)
     # urllib sends no GitHub token: this proves anonymous consumer access.
     with urllib.request.urlopen(before['url'], timeout=60) as response:
         wheel = response.read(policy['wheelSize'] + 1)
     if len(wheel) != policy['wheelSize'] or sha(wheel) != policy['wheelSha256']:
         raise ValueError('Anonymous released bytes mismatch')
     # Detect a changed ref or release asset set across the anonymous download.
-    verify_ref(RELEASE_TAG, revision)
-    if release_identity(gh_api('releases/tags/' + RELEASE_TAG), policy, revision) != before:
+    verify_ref(RELEASE_TAG, published)
+    if release_identity(gh_api('releases/tags/' + RELEASE_TAG), policy, published) != before:
         raise ValueError('Release identity drifted during readback')
-    return {**before, 'sha256': sha(wheel), 'size': len(wheel), 'anonymous': True, 'tagCommit': revision}
+    return {**before, 'sha256': sha(wheel), 'size': len(wheel), 'anonymous': True, 'tagCommit': published, 'validatorCommit': revision}
 
 
 def main():
@@ -260,7 +263,7 @@ def main():
     # Read-only prospective validation works before any tag exists. Every write
     # still requires the uniquely reviewed immutable publisher tag.
     if args.mode != 'validate':
-        verify_ref(PUBLISHER_TAG, args.revision)
+        verify_ref(PUBLISHER_TAG, policy['publishedTagCommit'])
     if args.mode == 'readback':
         print(json.dumps(readback_release(policy, args.revision)))
         return
