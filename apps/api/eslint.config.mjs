@@ -3,7 +3,7 @@ import { workspaceConfig } from '../../eslint.shared.mjs'
 const databaseImports = [
   'drizzle-orm', 'drizzle-orm/**', '@better-auth/drizzle-adapter', '@better-auth/drizzle-adapter/**', 'pg', 'pg/**', '@neondatabase/**',
   '@langchain/cloudflare', '@langchain/cloudflare/**', '@cloudflare/**',
-  '@yukiharada1228/langchain-postgres', '@yukiharada1228/langchain-postgres/**', 'pgvector', 'pgvector/**',
+  '@videoq-jp/langchainjs-postgres', '@videoq-jp/langchainjs-postgres/**', 'pgvector', 'pgvector/**',
   '**/db/**', '**/persistence/d1/**', '**/persistence/postgres/**',
 ]
 // The pure shared upload module has no router, schema or platform dependencies.
@@ -41,7 +41,7 @@ export default [
         patterns: [{ group: databaseImports, message: databaseImportMessage }],
       }],
       'no-restricted-syntax': ['error', {
-        selector: 'ImportExpression[source.value=/^(drizzle-orm($|\\/)|@better-auth\\/drizzle-adapter($|\\/)|pg($|\\/)|@neondatabase\\/|@langchain\\/cloudflare($|\\/)|@yukiharada1228\\/langchain-postgres($|\\/)|pgvector($|\\/)|@cloudflare\\/)|\\/(db|persistence\\/(d1|postgres))\\//]',
+        selector: 'ImportExpression[source.value=/^(drizzle-orm($|\\/)|@better-auth\\/drizzle-adapter($|\\/)|pg($|\\/)|@neondatabase\\/|@langchain\\/cloudflare($|\\/)|@videoq-jp\\/langchainjs-postgres($|\\/)|pgvector($|\\/)|@cloudflare\\/)|\\/(db|persistence\\/(d1|postgres))\\//]',
         message: databaseImportMessage,
       }],
     },

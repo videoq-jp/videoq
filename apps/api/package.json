@@ -70,7 +70,7 @@
     "@trpc/server": "^11.28.3",
     "@videoq-jp/langchainjs-optchat": "^0.3.0",
     "@videoq/trpc": "0.1.0",
-    "@yukiharada1228/langchain-postgres": "^0.2.5",
+    "@videoq-jp/langchainjs-postgres": "^0.3.0",
     "aws4fetch": "^1.0.20",
     "better-auth": "^1.7.7",
     "drizzle-orm": "^0.45.4",

@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { PGEngine, PGVectorStore } from '@yukiharada1228/langchain-postgres';
+import { PGEngine, PGVectorStore } from '@videoq-jp/langchainjs-postgres';
 import type { SearchScene } from '../../application/search-scene-splitting';
 
 export interface PostgresTranscriptSnapshot {

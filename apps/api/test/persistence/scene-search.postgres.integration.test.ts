@@ -1,5 +1,5 @@
 import {beforeAll,afterAll,describe,it,expect} from 'vitest';
-import {PGEngine,PGVectorStore} from '@yukiharada1228/langchain-postgres';
+import {PGEngine,PGVectorStore} from '@videoq-jp/langchainjs-postgres';
 import {isolatedPostgres} from './isolated-postgres';
 import {createPostgresSceneSearchRepository} from '../../src/persistence/postgres/scene-search';
 import {createD1Fixture} from './d1-fixture';
