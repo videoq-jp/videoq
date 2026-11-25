@@ -196,8 +196,83 @@
     "updateSource": "https://docs.github.com/en/rest/releases/releases#update-a-release",
     "finding": "Official REST documentation excludes prereleases and drafts from the latest full-release endpoint, and supports updating prerelease metadata. Marking this artifact-only release prerelease is a concrete supported exclusion mechanism.",
     "implementationOwner": "coordinator and delivery worker",
-    "status": "pending; no metadata mutation or after-state readback performed by this reviewer",
-    "afterState": null,
+    "status": "coordinator correction independently verified after confirmation",
+    "afterState": {
+      "observedAtUTC": "2026-11-25T21:43:16.987304+00:00",
+      "beforeAnonymousDownload": {
+        "refs": {
+          "videoq-audio-wheel-20261126-v1": {
+            "ref": "refs/tags/videoq-audio-wheel-20261126-v1",
+            "sha": "14634eb281a90f3e575b8cf469412adc57b807dc",
+            "type": "commit"
+          },
+          "videoq-audio-wheel-publisher-20261126-v1": {
+            "ref": "refs/tags/videoq-audio-wheel-publisher-20261126-v1",
+            "sha": "14634eb281a90f3e575b8cf469412adc57b807dc",
+            "type": "commit"
+          }
+        },
+        "releaseId": 458679721,
+        "tag": "videoq-audio-wheel-20261126-v1",
+        "targetCommit": "14634eb281a90f3e575b8cf469412adc57b807dc",
+        "draft": false,
+        "prerelease": true,
+        "assetCount": 1,
+        "asset": {
+          "id": 793244875,
+          "name": "av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl",
+          "size": 3283767,
+          "digest": "sha256:75fd08d21f054bd7e1ca800f32799131926b43857e8fa2ffe43f8bc755043ffa",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/videoq-jp/videoq/releases/download/videoq-audio-wheel-20261126-v1/av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl"
+        }
+      },
+      "afterAnonymousDownload": {
+        "refs": {
+          "videoq-audio-wheel-20261126-v1": {
+            "ref": "refs/tags/videoq-audio-wheel-20261126-v1",
+            "sha": "14634eb281a90f3e575b8cf469412adc57b807dc",
+            "type": "commit"
+          },
+          "videoq-audio-wheel-publisher-20261126-v1": {
+            "ref": "refs/tags/videoq-audio-wheel-publisher-20261126-v1",
+            "sha": "14634eb281a90f3e575b8cf469412adc57b807dc",
+            "type": "commit"
+          }
+        },
+        "releaseId": 458679721,
+        "tag": "videoq-audio-wheel-20261126-v1",
+        "targetCommit": "14634eb281a90f3e575b8cf469412adc57b807dc",
+        "draft": false,
+        "prerelease": true,
+        "assetCount": 1,
+        "asset": {
+          "id": 793244875,
+          "name": "av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl",
+          "size": 3283767,
+          "digest": "sha256:75fd08d21f054bd7e1ca800f32799131926b43857e8fa2ffe43f8bc755043ffa",
+          "state": "uploaded",
+          "browser_download_url": "https://github.com/videoq-jp/videoq/releases/download/videoq-audio-wheel-20261126-v1/av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl"
+        }
+      },
+      "stableAcrossDownload": true,
+      "anonymousReadback": {
+        "authenticated": false,
+        "httpStatus": 200,
+        "size": 3283767,
+        "sha256": "75fd08d21f054bd7e1ca800f32799131926b43857e8fa2ffe43f8bc755043ffa"
+      },
+      "latestRelease": {
+        "id": 457768108,
+        "tag": "onprem-f3e075bbce0d18d428e635dc6dba6dde70cd7fba-45558527133-1",
+        "draft": false,
+        "prerelease": false,
+        "publishedAt": "2026-11-25T07:16:41Z",
+        "isAudioWheelRelease": false
+      },
+      "comparison": "Observed before-state had prerelease=false and audio wheel at Latest. Observed after-state has prerelease=true, excludes audio wheel from Latest, and retains both original14634refs, releaseID and exactsoleassetID/name/size/digest/URL/bytes. No claim about unobserved prepublication Latest baseline.",
+      "historicalContract": "Publisher14634 originally expected prerelease=false; that historical source contract is intentionally superseded for this artifact-only prerelease metadata. Current publisher/source contract correction is separately owned; this receipt does not silently rewrite historical proof."
+    },
     "historyRule": "Retain observed prerelease=false/current-latest-wheel before-state; append an actual after-state only after coordinator confirms correction, never fabricate prepublication Latest or claim restoration to an unobserved baseline."
   }
 }
