@@ -39,7 +39,7 @@
     "setuptools": "80.10.2",
     "urllib3": "2.8.0"
   },
-  "audioLockSha256": "763ca50418e35b0198b715ec72512cda6d9777369455f32329c63d9ca6d323bc",
+  "audioLockSha256": "d3cac735065eacc6822abfd3bd6ced9f86d280017beb81bdedd1d7b888fbccc0",
   "inventoryProbeSourceSha256": "fdd5c5887e4c081d276037be1070681da462b6b041a286e919d80a5a88434371",
   "nativeInventoryReferenceSha256": "3b57e02547c502a23b65758fec05a903fd2d342478656de9b047263e8620747e",
   "allowedArgs": [
