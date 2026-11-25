@@ -135,6 +135,12 @@
         },
         "preserveToolReasoning": {
           "type": "boolean"
+        },
+        "embeddingRevision": {
+          "type": "string"
+        },
+        "embeddingPreprocessing": {
+          "type": "string"
         }
       },
       "additionalProperties": false

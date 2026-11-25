@@ -361,3 +361,5 @@ existing project name, volumes and credentials. Add the two dedicated queues to
 its persistent ElasticMQ configuration. The updater rejects the old single-worker
 file until this migration is complete; it never upgrades to a release that leaves
 search/account deliveries without a consumer.
+
+Private embedding endpoints require explicit `ai.embeddingRevision` and `ai.embeddingPreprocessing`. Supply the immutable revision and checksum of the weights actually served (not the model alias); for unchanged raw-text input use `raw-text-v1`. Local-AI examples intentionally omit a fabricated identity and fail rendering until these values are provided. All application index writers share the rendered ConfigMap. Changing identity requires paused rebuild/readiness verification. The isolated real-model acceptance derives its identity directly from the supplied inference chart model lock and verifies the mounted GGUF checksum.

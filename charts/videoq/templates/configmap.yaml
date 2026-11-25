@@ -1,3 +1,9 @@
+{{- $privateEmbedding := or (ne .Values.ai.embeddingBaseUrl "") (and (ne .Values.ai.openaiBaseUrl "") (ne .Values.ai.openaiBaseUrl "https://api.openai.com/v1")) -}}
+{{- if $privateEmbedding -}}
+{{- if or (eq (trim .Values.ai.embeddingRevision) "") (eq (trim .Values.ai.embeddingPreprocessing) "") (eq (trim .Values.ai.embeddingRevision) "provider-managed") -}}
+{{- fail "Private embedding endpoints require ai.embeddingRevision (immutable served weights identity) and ai.embeddingPreprocessing" -}}
+{{- end -}}
+{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -40,6 +46,8 @@ data:
   LLM_STREAM_TIMEOUT_MS: {{ .Values.ai.streamTimeoutMs | quote }}
   EMBEDDING_BASE_URL: {{ .Values.ai.embeddingBaseUrl | quote }}
   EMBEDDING_MODEL: {{ .Values.ai.embeddingModel | quote }}
+  EMBEDDING_REVISION: {{ .Values.ai.embeddingRevision | quote }}
+  EMBEDDING_PREPROCESSING: {{ .Values.ai.embeddingPreprocessing | quote }}
   EMBEDDING_PROFILE: {{ .Values.ai.embeddingProfile | quote }}
   WHISPER_CHUNK_SECONDS: {{ .Values.ai.whisperChunkSeconds | quote }}
   WHISPER_BACKEND: {{ .Values.ai.whisperBackend | quote }}

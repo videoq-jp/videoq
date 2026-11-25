@@ -1,3 +1,5 @@
+# Set ai.embeddingRevision to the actual served weights revision plus checksum,
+# and ai.embeddingPreprocessing to the actual contract. No identity is inferred from aliases.
 # Pair with videoq-inference/examples/gpt-oss-embeddinggemma.yaml,
 # or rtx4090-gpt-oss-embeddinggemma.yaml for three CUDA engines on one GPU.
 # Endpoints assume namespace=videoq and inference fullname=videoq-inference.
