@@ -632,7 +632,7 @@
     "README.md": "3052e09bf74eaf61d049915f13e09db619a2d9ae74a4d1c9abd30f87012c07e1",
     "actual-invalidation-log-proof.json": "3aab9b4bb49fbed09e929cc6521a9dee483f42eae1baa7169c5504fe225aa0ea",
     "actual-invalidation.json": "f3fbf56b9645032dddf654fa5cd3705f8a53c2507231006aefd402276f33777c",
-    "actual-patch-integrity.log": "784517374588f6f33ac4a58b1854544e7b9a2bdfc5827c55b4b0b66a21c2ca8d",
+    "actual-patch-integrity.txt": "784517374588f6f33ac4a58b1854544e7b9a2bdfc5827c55b4b0b66a21c2ca8d",
     "original-jobs.json": "3e8cf35d53bc968cabd581f2032c0b90cc1314a3b940c52ae85e8fbe237676f3",
     "pair-1/api-matched-package-versions.json": "aaca7903ed10a46d45fa21a3c80ad91993a94003785518f69cadb66ef077d593",
     "pair-1/baseline/build/result.json": "883d3733e5e112632893c1541e17605224cadd727820a7db331cb70542362d32",

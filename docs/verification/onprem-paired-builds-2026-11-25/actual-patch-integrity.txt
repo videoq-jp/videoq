@@ -1,0 +1,100 @@
+#0 building with "paired-1-candidate" instance using docker-container driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.68kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 233B done
+#3 DONE 0.0s
+
+#4 [openssl-security-base 1/3] FROM docker.io/library/node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
+#4 resolve docker.io/library/node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 122.98kB 0.2s done
+#5 DONE 0.2s
+
+#6 [openssl-security-base 2/3] RUN test -n "2026-11-25" && apk upgrade --no-cache zlib
+#6 CACHED
+
+#7 [openssl-security-base 3/3] RUN apk add --no-cache --upgrade     --repository https://dl-cdn.alpinelinux.org/alpine/edge/main     'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
+#7 CACHED
+
+#8 [openssl-security 1/4] RUN apk add --no-cache abuild build-base perl linux-headers
+#8 CACHED
+
+#9 [openssl-security 2/4] COPY apps/security/openssl /build/openssl
+#9 DONE 0.0s
+
+#10 [openssl-security 3/4] WORKDIR /build/openssl
+#10 DONE 0.0s
+
+#11 [openssl-security 4/4] RUN abuild-keygen -a -n     && cp /root/.abuild/*.pub /etc/apk/keys/     && MAKEFLAGS=-j4 abuild -F -d -r     && mkdir /security-packages     && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \;     && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \;     && cp /root/.abuild/*.pub /security-packages/     && test -f /security-packages/libssl3-3.5.9-r100.apk     && test -f /security-packages/libcrypto3-3.5.9-r100.apk
+#11 0.200 writing RSA key
+#11 0.201 >>> 
+#11 0.201 >>> You'll need to install /root/.abuild/-6b06670b.rsa.pub into 
+#11 0.201 >>> /etc/apk/keys to be able to install packages and repositories signed with
+#11 0.201 >>> /root/.abuild/-6b06670b.rsa
+#11 0.201 >>> 
+#11 0.201 >>> Please remember to make a safe backup of your private key:
+#11 0.201 >>> /root/.abuild/-6b06670b.rsa
+#11 0.201 >>> 
+#11 0.219 >>> openssl: Building build/openssl 3.5.9-r100 (using abuild 3.17.0-r0) started Wed, 25 Nov 2026 04:41:48 +0000
+#11 0.222 >>> openssl: Validating /build/openssl/APKBUILD...
+#11 0.238 >>> WARNING: openssl: README.md is not in $source/$install/$triggers
+#11 0.238 >>> WARNING: openssl: backports.openvex.json is not in $source/$install/$triggers
+#11 0.238 >>> WARNING: openssl: upstream-fixes.json is not in $source/$install/$triggers
+#11 0.244 >>> openssl: Cleaning up srcdir
+#11 0.245 >>> openssl: Cleaning up pkgdir
+#11 0.245 >>> openssl: Cleaning up tmpdir
+#11 0.247 >>> openssl: Fetching https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz
+#11 0.264 Connecting to github.com (140.82.114.3:443)
+#11 0.428 Connecting to release-assets.githubusercontent.com (185.199.109.133:443)
+#11 0.532 saving to '/var/cache/distfiles/openssl-3.5.9.tar.gz.part'
+#11 0.825 openssl-3.5.9.tar.gz 100% |********************************| 50.8M  0:00:00 ETA
+#11 0.825 '/var/cache/distfiles/openssl-3.5.9.tar.gz.part' saved
+#11 0.936 /var/cache/distfiles/openssl-3.5.9.tar.gz: OK
+#11 0.937 /build/openssl/auxv.patch: OK
+#11 0.938 /build/openssl/CVE-2026-88822.patch: OK
+#11 0.939 /build/openssl/CVE-2026-88823.patch: OK
+#11 0.941 /build/openssl/CVE-2026-95691.patch: OK
+#11 0.942 /build/openssl/CVE-2026-95692.patch: OK
+#11 0.943 /build/openssl/CVE-2026-107496.patch: OK
+#11 0.944 /build/openssl/CVE-2026-124709.patch: OK
+#11 0.945 sha512sum: WARNING: 1 of 1 computed checksums did NOT match
+#11 0.945 /build/openssl/CVE-2026-107493.patch: FAILED
+#11 0.945 >>> ERROR: openssl: Use 'abuild checksum' to generate/update the checksum(s)
+#11 ERROR: process "/bin/sh -c abuild-keygen -a -n     && cp /root/.abuild/*.pub /etc/apk/keys/     && MAKEFLAGS=-j4 abuild -F -d -r     && mkdir /security-packages     && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \\;     && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \\;     && cp /root/.abuild/*.pub /security-packages/     && test -f /security-packages/libssl3-3.5.9-r100.apk     && test -f /security-packages/libcrypto3-3.5.9-r100.apk" did not complete successfully: exit code: 1
+------
+ > [openssl-security 4/4] RUN abuild-keygen -a -n     && cp /root/.abuild/*.pub /etc/apk/keys/     && MAKEFLAGS=-j4 abuild -F -d -r     && mkdir /security-packages     && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \;     && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \;     && cp /root/.abuild/*.pub /security-packages/     && test -f /security-packages/libssl3-3.5.9-r100.apk     && test -f /security-packages/libcrypto3-3.5.9-r100.apk:
+0.937 /build/openssl/auxv.patch: OK
+0.938 /build/openssl/CVE-2026-88822.patch: OK
+0.939 /build/openssl/CVE-2026-88823.patch: OK
+0.941 /build/openssl/CVE-2026-95691.patch: OK
+0.942 /build/openssl/CVE-2026-95692.patch: OK
+0.943 /build/openssl/CVE-2026-107496.patch: OK
+0.944 /build/openssl/CVE-2026-124709.patch: OK
+0.945 sha512sum: WARNING: 1 of 1 computed checksums did NOT match
+0.945 /build/openssl/CVE-2026-107493.patch: FAILED
+0.945 >>> ERROR: openssl: Use 'abuild checksum' to generate/update the checksum(s)
+------
+Dockerfile:20
+--------------------
+  19 |     WORKDIR /build/openssl
+  20 | >>> RUN abuild-keygen -a -n \
+  21 | >>>     && cp /root/.abuild/*.pub /etc/apk/keys/ \
+  22 | >>>     && MAKEFLAGS=-j4 abuild -F -d -r \
+  23 | >>>     && mkdir /security-packages \
+  24 | >>>     && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+  25 | >>>     && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+  26 | >>>     && cp /root/.abuild/*.pub /security-packages/ \
+  27 | >>>     && test -f /security-packages/libssl3-3.5.9-r100.apk \
+  28 | >>>     && test -f /security-packages/libcrypto3-3.5.9-r100.apk
+  29 |     
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c abuild-keygen -a -n     && cp /root/.abuild/*.pub /etc/apk/keys/     && MAKEFLAGS=-j4 abuild -F -d -r     && mkdir /security-packages     && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \\;     && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \\;     && cp /root/.abuild/*.pub /security-packages/     && test -f /security-packages/libssl3-3.5.9-r100.apk     && test -f /security-packages/libcrypto3-3.5.9-r100.apk" did not complete successfully: exit code: 1
