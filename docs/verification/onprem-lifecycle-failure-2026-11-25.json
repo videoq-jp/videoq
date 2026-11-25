@@ -1,0 +1,39 @@
+{
+  "runId": 45542894484,
+  "jobId": 138965618031,
+  "jobConclusion": "failure",
+  "headSource": "fb075224813219bd59500dd761c949af43d3febb",
+  "testedMerge": "af8129274aa77fff749f2b33b43f26f02ad16909",
+  "retainedOriginalLogSha256": "63e55d804449a3cc07e67b1f8dd8ac331b2a49a59c20e1bc9fd1cfd04ce32bf4",
+  "failedSteps": [
+    {
+      "name": "Validate single-server video, registry updates and failed migration recovery",
+      "observed": "docker compose up --wait rejected unhealthy API before administrator/media operations",
+      "cause": "Generated private embedding configuration omitted explicit revision/preprocessing required by unchanged startup admission before database access. Original fixture destroyed containers without retaining startup logs; source-level guard reproduction confirms this contract failure, not an observed original startup log."
+    },
+    {
+      "name": "Retain real CPU source-build evidence",
+      "observed": "No expected files after real CPU acceptance step was skipped",
+      "cause": "Uploader condition selected inputs instead of actual step admission."
+    }
+  ],
+  "corrections": {
+    "installerCommit": "b04a38775f6e1ebe8a48572715ea767df7784f4b",
+    "chartLabCommit": "920cff964b732f3fe095b9279dde686e23ec2967",
+    "preserved": "Strict runtime admission, all scans, no production mutations",
+    "diagnostics": "Allowlisted container state/health/exit code and admission error codes before cleanup; never environment, arbitrary logs or health output",
+    "realCpuUpload": "Requires actual started output; no synthetic success result"
+  },
+  "verification": {
+    "installerPython314": {
+      "tests": 87,
+      "skippedOptIn": 5,
+      "failures": 0
+    },
+    "actualHelmRenderedTests": 12,
+    "focusedLabIdentityTests": 1,
+    "focusedNodeSecurityTests": 11,
+    "actionlint": "pass"
+  },
+  "remaining": "Hosted opt-in lifecycle and real CPU acceptance required; local tests and source reproduction do not establish those passes."
+}
