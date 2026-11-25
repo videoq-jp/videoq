@@ -282,6 +282,7 @@ jobs:
             ${{ runner.temp }}/cpu-preflight/real-ai-result.json
             ${{ runner.temp }}/cpu-preflight/playback.json
             ${{ runner.temp }}/cpu-preflight/diagnostics.json
+            ${{ runner.temp }}/cpu-preflight/request-stages.json
           if-no-files-found: error
           retention-days: 30
 
