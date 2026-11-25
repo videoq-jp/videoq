@@ -1,0 +1,282 @@
+{
+  "run": 45531656614,
+  "runUrl": "https://github.com/videoq-jp/videoq/actions/runs/45531656614",
+  "source": "c3cd6b1220df9d5ecea1ccabb56e0f990311d68a",
+  "prHead": "debc7cb959c6d019ca1dd7bfec01add5d97cd5b0",
+  "scope": "Same frozen candidate; strategy baseline sequential versus bounded two builds; two independent hosted runners each strategy, cold then runner-local warm repeat; application smoke and full unchanged security checks",
+  "platform": "linux/amd64",
+  "samples": [
+    {
+      "parallelism": 1,
+      "runnerRepeat": 1,
+      "jobId": 138928185826,
+      "jobConclusion": "success",
+      "jobUrl": "https://github.com/videoq-jp/videoq/actions/runs/45531656614/job/138928185826",
+      "fullJobSeconds": 2074.0,
+      "timingArtifactId": 14986413311,
+      "rawReport": "parallelism-1-runner-1.json",
+      "rawReportSha256": "d8fec20e1a70a708705922446580cda78319419288d626a4683977eabb8b9b85",
+      "coldSeconds": 1858.669,
+      "warmSeconds": 0.651,
+      "measuredBuildRunnerSeconds": 1859.321,
+      "failedBuilds": 0,
+      "memoryTotal": "16078424 kB",
+      "cpus": 4,
+      "minimumAvailableMemoryBytes": 14108426240,
+      "minimumFreeDiskBytes": 100082401280,
+      "maximumOneMinuteLoad": 6.05224609375,
+      "cacheControl": {
+        "sameInputReused": true,
+        "changedInputInvalidated": true,
+        "imageIds": [
+          "sha256:10186d426beb1cb3f873dbf410228bd14b2a5d0557352b262cc88eda3c9956af",
+          "sha256:10186d426beb1cb3f873dbf410228bd14b2a5d0557352b262cc88eda3c9956af",
+          "sha256:92eece128bbc848c771c77bfdd31a9f290e6bc3e637ded6d32073715865830e8"
+        ]
+      },
+      "scannedFinalArtifacts": [
+        {
+          "component": "api",
+          "finalMeasuredImageId": "sha256:d766236c9fc9bfcb22eadf75f0fa2379d13e02043f1a3eddc5cfc861d4aa4629",
+          "scannedImageId": "sha256:d766236c9fc9bfcb22eadf75f0fa2379d13e02043f1a3eddc5cfc861d4aa4629",
+          "matches": true,
+          "syftSha256": "43a999d0d6af4b1a94ac7ab7023bee355d96f6e1eb1b27254f4d10ca5922d50c",
+          "grypeSha256": "212406cbffbd593e8faebac1db2ee0400d0263cc994327a63e391522baa4368a"
+        },
+        {
+          "component": "worker",
+          "finalMeasuredImageId": "sha256:6d10af9bd65f33b25dcfc67b005d4d61f94bc083f1165dff9832d9fc34a281a7",
+          "scannedImageId": "sha256:6d10af9bd65f33b25dcfc67b005d4d61f94bc083f1165dff9832d9fc34a281a7",
+          "matches": true,
+          "syftSha256": "d0392f594ff510fa58daa8918b11841db1c7d95c8178084ee190d788b6da015f",
+          "grypeSha256": "e5fab49dcd2d1a80efc70a9d7d6d114a8cb36b0e084c543b4521cd3ea39e667e"
+        },
+        {
+          "component": "web",
+          "finalMeasuredImageId": "sha256:36aa73feee78fd0d6bdc79284ed8a3e9a4d0a5b7e50a71ce68681791eae61791",
+          "scannedImageId": "sha256:36aa73feee78fd0d6bdc79284ed8a3e9a4d0a5b7e50a71ce68681791eae61791",
+          "matches": true,
+          "syftSha256": "40775869bf0a627df415aa153c68238ef569efd13ea0b32962253e4dd231bafa",
+          "grypeSha256": "c8876b3bad491db33ac74472aedc9a54fe6f35daa6dc09a239da5016e1c1d97d"
+        }
+      ],
+      "securityArtifactId": 14987416410
+    },
+    {
+      "parallelism": 1,
+      "runnerRepeat": 2,
+      "jobId": 138928185990,
+      "jobConclusion": "success",
+      "jobUrl": "https://github.com/videoq-jp/videoq/actions/runs/45531656614/job/138928185990",
+      "fullJobSeconds": 2120.0,
+      "timingArtifactId": 14986009324,
+      "rawReport": "parallelism-1-runner-2.json",
+      "rawReportSha256": "d3537b902c7dc6651ba74d4ab0aae408289a8755d4de36a228dbc7dc383232f0",
+      "coldSeconds": 1845.679,
+      "warmSeconds": 0.658,
+      "measuredBuildRunnerSeconds": 1846.338,
+      "failedBuilds": 0,
+      "memoryTotal": "16078424 kB",
+      "cpus": 4,
+      "minimumAvailableMemoryBytes": 13855313920,
+      "minimumFreeDiskBytes": 100088680448,
+      "maximumOneMinuteLoad": 5.95068359375,
+      "cacheControl": {
+        "sameInputReused": true,
+        "changedInputInvalidated": true,
+        "imageIds": [
+          "sha256:b2d93bb0c9c4e88edba9c54dc0a659ffc58ed8c85be5d4128db98a3b6f007145",
+          "sha256:b2d93bb0c9c4e88edba9c54dc0a659ffc58ed8c85be5d4128db98a3b6f007145",
+          "sha256:d6558337e81a04791ab250a60eabb39952046cdc9f09e355d041f56e6c89436e"
+        ]
+      },
+      "scannedFinalArtifacts": [
+        {
+          "component": "api",
+          "finalMeasuredImageId": "sha256:dafeaeb4fd9c15ca426666b599ba39e091071b726021a2805b1399693ccd5783",
+          "scannedImageId": "sha256:dafeaeb4fd9c15ca426666b599ba39e091071b726021a2805b1399693ccd5783",
+          "matches": true,
+          "syftSha256": "8e5bc2e92001349ffe96ab95d04a05899b64b7573ef682c447b98a9fd93f9789",
+          "grypeSha256": "6560e8e0a7daca9609b937872bc834e338b5e4d0646d652a8bc36ac1adf12a38"
+        },
+        {
+          "component": "worker",
+          "finalMeasuredImageId": "sha256:17c36c4f396f13a381750e0fa41ec0adfce6209d559f43db1f194b241ab3fcb1",
+          "scannedImageId": "sha256:17c36c4f396f13a381750e0fa41ec0adfce6209d559f43db1f194b241ab3fcb1",
+          "matches": true,
+          "syftSha256": "44b6124e185059e8f361c056ad939cb9eb4da65efd7af1088659a5469bba8902",
+          "grypeSha256": "07d79b8c4e6956fe00943c0f18975ee272c3901da95a8dad2c72b9fb36f91a80"
+        },
+        {
+          "component": "web",
+          "finalMeasuredImageId": "sha256:e97c5f198714b8de1badb52a17444a90cc50f09e35609ed665d235036109e820",
+          "scannedImageId": "sha256:e97c5f198714b8de1badb52a17444a90cc50f09e35609ed665d235036109e820",
+          "matches": true,
+          "syftSha256": "69a0bc454cc96ef7494c69f197a6b2036a52b784efa571e28c1012f0fdd369ab",
+          "grypeSha256": "7fa6086beebcae1bc764cdabca3ff784c43b1cad5cd1fbd080f30466eed44ca5"
+        }
+      ],
+      "securityArtifactId": 14986409066
+    },
+    {
+      "parallelism": 2,
+      "runnerRepeat": 1,
+      "jobId": 138928185467,
+      "jobConclusion": "success",
+      "jobUrl": "https://github.com/videoq-jp/videoq/actions/runs/45531656614/job/138928185467",
+      "fullJobSeconds": 2303.0,
+      "timingArtifactId": 14986708447,
+      "rawReport": "parallelism-2-runner-1.json",
+      "rawReportSha256": "a79440a5b59fd766eb59112e779563f66fad3dd40ddbe0aa7a41b001929958b1",
+      "coldSeconds": 2061.648,
+      "warmSeconds": 0.818,
+      "measuredBuildRunnerSeconds": 2062.467,
+      "failedBuilds": 0,
+      "memoryTotal": "16367524 kB",
+      "cpus": 4,
+      "minimumAvailableMemoryBytes": 14295732224,
+      "minimumFreeDiskBytes": 94471782400,
+      "maximumOneMinuteLoad": 7.638671875,
+      "cacheControl": {
+        "sameInputReused": true,
+        "changedInputInvalidated": true,
+        "imageIds": [
+          "sha256:d90da9c30bdfb680d98e861076a10460615263b2fa214e3b2f7c090af89888c0",
+          "sha256:d90da9c30bdfb680d98e861076a10460615263b2fa214e3b2f7c090af89888c0",
+          "sha256:38342ef7c4ac68fb24751ed1cf03398687ad0efe31ffe83f4b912f8c30394373"
+        ]
+      },
+      "scannedFinalArtifacts": [
+        {
+          "component": "api",
+          "finalMeasuredImageId": "sha256:b61d4fe7ebf0752c9487164fd49569115d7d33abce925618242eefc802c994b1",
+          "scannedImageId": "sha256:b61d4fe7ebf0752c9487164fd49569115d7d33abce925618242eefc802c994b1",
+          "matches": true,
+          "syftSha256": "e0a7475579dbf239ec0ea5ff11e2d939fd09f1df50bcde9634ae8eb2ca5c51c6",
+          "grypeSha256": "fb5460ee5898d58d3ab3c6f71b945d3f3bbe55e058ac5412405b367c1b7a42d4"
+        },
+        {
+          "component": "worker",
+          "finalMeasuredImageId": "sha256:da990965c1d06e7cb73b075025bb40f4978a6376751848c878df611f0d198f0e",
+          "scannedImageId": "sha256:da990965c1d06e7cb73b075025bb40f4978a6376751848c878df611f0d198f0e",
+          "matches": true,
+          "syftSha256": "4ecfef39f9c3f933cd71ca679ab2a09dc0a938e32dc355cc99cba42b6b1570ee",
+          "grypeSha256": "60081465ac1dfcbb65d9c97ed8807a1cb8aa7b5b2da0fca7dedfd128b6ad0d6c"
+        },
+        {
+          "component": "web",
+          "finalMeasuredImageId": "sha256:ef7d9e1c65180346e805d91b4a0480e04b33481ff447f7a62be1990a0d508ee0",
+          "scannedImageId": "sha256:ef7d9e1c65180346e805d91b4a0480e04b33481ff447f7a62be1990a0d508ee0",
+          "matches": true,
+          "syftSha256": "d77ec6aa0b0bd5a437ab2f6472cbb5500242f7226c87e9dd72393c6ae3014404",
+          "grypeSha256": "eaf457a3b43dfc66248be477f4ab06574e1c3f108d1d6ae4c385d3e22985c39f"
+        }
+      ],
+      "securityArtifactId": 14987475809
+    },
+    {
+      "parallelism": 2,
+      "runnerRepeat": 2,
+      "jobId": 138928185807,
+      "jobConclusion": "success",
+      "jobUrl": "https://github.com/videoq-jp/videoq/actions/runs/45531656614/job/138928185807",
+      "fullJobSeconds": 1996.0,
+      "timingArtifactId": 14987242103,
+      "rawReport": "parallelism-2-runner-2.json",
+      "rawReportSha256": "b7aa9ea7b865e4a6d01dbddce057078e3ddeb8c78266be3b3ac465eee4035ff2",
+      "coldSeconds": 1622.402,
+      "warmSeconds": 1.502,
+      "measuredBuildRunnerSeconds": 1623.905,
+      "failedBuilds": 0,
+      "memoryTotal": "16367528 kB",
+      "cpus": 4,
+      "minimumAvailableMemoryBytes": 14172299264,
+      "minimumFreeDiskBytes": 94477787136,
+      "maximumOneMinuteLoad": 7.91552734375,
+      "cacheControl": {
+        "sameInputReused": true,
+        "changedInputInvalidated": true,
+        "imageIds": [
+          "sha256:25add750cd24d002ae50b6914af48d53045bb808bd776c84cc88e233e51feb03",
+          "sha256:25add750cd24d002ae50b6914af48d53045bb808bd776c84cc88e233e51feb03",
+          "sha256:c10d73b6bd4ef055aab59792711c28cb276335f365d4bb2a2d8825b8ba664226"
+        ]
+      },
+      "scannedFinalArtifacts": [
+        {
+          "component": "api",
+          "finalMeasuredImageId": "sha256:81b04e2ad585c9f8a6936017cfcc70e52035948f732a1c59f6bd849f527911bd",
+          "scannedImageId": "sha256:81b04e2ad585c9f8a6936017cfcc70e52035948f732a1c59f6bd849f527911bd",
+          "matches": true,
+          "syftSha256": "128d4804e7d8d7ab434ed777fc6c7d8a9a0a3cc38b2bef493023bdcb02458c01",
+          "grypeSha256": "54d30690460518dfae5e9aa348210854ed719f3e43ba93a2d0b4ee284cabec05"
+        },
+        {
+          "component": "worker",
+          "finalMeasuredImageId": "sha256:f2fa962b4ea715ebc4b2194eb1a494ce89f6880314a43d169adb821f0f197e31",
+          "scannedImageId": "sha256:f2fa962b4ea715ebc4b2194eb1a494ce89f6880314a43d169adb821f0f197e31",
+          "matches": true,
+          "syftSha256": "c4ca2735da47d5b2223762ce3a6363e37c17bbb2bcd3750881cb92dd12a64fe0",
+          "grypeSha256": "1192ae3bffdf53849f0f1d1a73ebee6fd4214b676d97d3dbe30d5010e1692022"
+        },
+        {
+          "component": "web",
+          "finalMeasuredImageId": "sha256:4e168d6f51b05205b797f21c1b1fc71e16d0f564bece3d435202a3943f180ddb",
+          "scannedImageId": "sha256:4e168d6f51b05205b797f21c1b1fc71e16d0f564bece3d435202a3943f180ddb",
+          "matches": true,
+          "syftSha256": "707163f9a321c208754655b4044925c5889cc424b56a5713b6ef43d690ed0067",
+          "grypeSha256": "ebea6db5986af8bf7d05da7ab8f6ac61f07968b143aac4e300057f5edbdd27e8"
+        }
+      ],
+      "securityArtifactId": 14987027563
+    }
+  ],
+  "strategyTotals": {
+    "1": {
+      "coldMeanSeconds": 1852.174,
+      "coldRangeSeconds": 12.990000000000009,
+      "warmMeanSeconds": 0.6545000000000001,
+      "measuredBuildRunnerSeconds": 3705.6589999999997,
+      "fullJobRunnerSeconds": 4194.0,
+      "buildFailureCount": 0,
+      "fullJobFailureCount": 0
+    },
+    "2": {
+      "coldMeanSeconds": 1842.025,
+      "coldRangeSeconds": 439.2460000000001,
+      "warmMeanSeconds": 1.16,
+      "measuredBuildRunnerSeconds": 3686.3720000000003,
+      "fullJobRunnerSeconds": 4299.0,
+      "buildFailureCount": 0,
+      "fullJobFailureCount": 0
+    }
+  },
+  "strictComparison": {
+    "accepted": false,
+    "reason": "Runner platform, CPU and memory must be comparable",
+    "command": "python3 .github/scripts/summarize-onprem-builds.py <downloaded timing artifacts> <output>",
+    "exitCode": 1,
+    "memoryTotalKB": [
+      16078424,
+      16367524,
+      16367528
+    ],
+    "memorySpreadPercent": 1.7980866781470621
+  },
+  "exploratoryNominalRunnerComparison": {
+    "notExactHardwareControl": true,
+    "constraints": "Same Ubuntu24.04 workflow/4CPU/platform/source, but total memory differs1.798% and host CPU model not captured",
+    "coldCandidateToBaselineRatio": 0.9945204932150004,
+    "warmCandidateToBaselineRatio": 1.772345301757066,
+    "notEvidenceOfMaterialSpeedup": "Candidate mean advantage about10seconds is far smaller than439second candidate range; warm candidate is slower"
+  },
+  "decision": {
+    "defaultParallelism": 1,
+    "adoptParallelismTwo": false,
+    "reason": "No demonstrated material latency/cost benefit; retain sequential strategy and full gates. Bounded parallelism remains explicit experimental input.",
+    "externalCache": "No external cache imported or published; no untrusted cross-runner cache. Same-input/changed-input BuildKit controls all pass.",
+    "cost": "Measured build and full-job runner seconds retained; no monetary rate or invoice claim. Experiment uses4disposable4CPU jobs; production default unchanged.",
+    "historicalBaseline": "45523578420 build29m57s is one historical sequential observation, not a controlled comparable repeat.",
+    "failures": "All24component builds and4full image-security jobs pass; upstream image and Kubernetes lifecycle validation were outside this application-build experiment and remain enabled in normal CI."
+  }
+}
