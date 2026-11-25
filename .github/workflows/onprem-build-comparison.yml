@@ -1,0 +1,47 @@
+name: On-prem build comparison
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, labeled]
+    paths:
+      - '.github/scripts/build-onprem-measured.py'
+      - '.github/workflows/onprem-build-comparison.yml'
+      - '.github/workflows/onprem-validation.yml'
+permissions:
+  contents: read
+jobs:
+  comparable-builds:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.title, '[delivery-benchmark]')
+    strategy:
+      fail-fast: false
+      matrix:
+        parallelism: [1, 2]
+        repetition: [1, 2]
+    # Each identical hosted runner starts cold, then repeats once warm. Every
+    # variant runs the existing complete smoke, migration and security gates.
+    uses: ./.github/workflows/onprem-validation.yml
+    with:
+      build_parallelism: ${{ matrix.parallelism }}
+      build_repetitions: 2
+      build_evidence_suffix: comparison-${{ matrix.repetition }}
+      scan_upstream_images: false
+  comparison:
+    needs: comparable-builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: onprem-build-*-comparison-*
+          path: comparison-input
+      - name: Require comparable successful repeated measurements
+        run: python3 .github/scripts/summarize-onprem-builds.py comparison-input comparison.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: onprem-build-comparison-${{ github.sha }}
+          path: comparison.json
+          if-no-files-found: error
+          retention-days: 30

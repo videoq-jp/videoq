@@ -154,6 +154,14 @@ workflow; no browser protection override is needed. Both pages must finish, and
 the JSON must show `complete: true` and `allPassed: true`. Use
 `CORS_ACCEPTANCE_PYTHON` to select another Python with boto3 installed.
 
+For continuous regression, install the API/web locked npm dependencies and
+Playwright Chromium, then run `CORS_ACCEPTANCE_PYTHON=<locked-worker-python>
+node apps/api/scripts/cors-regression.mjs` from the repository root. This creates
+and removes its own isolated Garage container and automatically runs both pages;
+it accepts no production storage endpoint. CI requires the same 15 browser
+checks and server assertions and retains anonymized results even on failure.
+See [delivery regression gates](../../docs/verification/delivery-regression.md).
+
 The ten allowed-origin checks cover cookie omission/inclusion, JSON preflight,
 API 500 readability, signed PUT and readable ETag, signature error readability,
 two multipart parts and completion with assembled-byte SHA-256 verification, and
