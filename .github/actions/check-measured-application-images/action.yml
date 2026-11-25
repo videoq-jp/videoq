@@ -1,0 +1,63 @@
+name: Check exact measured application images
+description: Preserve production HTTP, migration, import, header and unsuppressed security checks for each paired variant
+inputs:
+  evidence-directory:
+    required: true
+    description: Per-variant scan and smoke identity evidence
+  build-report:
+    required: true
+    description: Original measured result.json for this variant
+runs:
+  using: composite
+  steps:
+    - name: Record exact loaded smoke target identities
+      id: identities
+      shell: bash
+      env:
+        EVIDENCE: ${{ inputs.evidence-directory }}
+      run: |
+        mkdir -p "$EVIDENCE"
+        docker image inspect videoq-api:onprem-ci videoq-worker:onprem-ci videoq-web:onprem-ci > "$EVIDENCE/smoke-image-ids.json"
+    - name: Exercise the measured migration command before HTTP checks
+      shell: bash
+      run: docker run --rm --network host --env DATABASE_URL videoq-api:onprem-ci sh scripts/db-migrate.sh
+    - name: Exercise the measured production API image over HTTP
+      shell: bash
+      working-directory: apps/api
+      run: node scripts/smoke-node.mjs videoq-api:onprem-ci
+    - name: Verify measured web image security headers and storage CSP
+      shell: bash
+      run: |
+        node --test apps/web/scripts/test-nginx-headers.mjs
+        node apps/web/scripts/test-nginx.mjs videoq-web:onprem-ci
+    - name: Exercise measured migration command and worker imports
+      shell: bash
+      run: |
+        docker run --rm --entrypoint python videoq-worker:onprem-ci -c 'import os; assert os.environ["DEPLOYMENT_EDITION"] == "onprem"; import worker_python.lambda_handler; import runpy; runpy.run_path("scripts/run_worker.py", run_name="import_check")'
+    - name: Scan the exact measured API image including unfixed vulnerabilities
+      if: ${{ !cancelled() && steps.identities.outcome == 'success' }}
+      uses: ./.github/actions/scan-image
+      with:
+        source: docker:videoq-api:onprem-ci
+        output: ${{ inputs.evidence-directory }}/api-security.json
+        security-config: apps/api/security/grype.json
+    - name: Scan the exact measured worker image including unfixed vulnerabilities
+      if: ${{ !cancelled() && steps.identities.outcome == 'success' }}
+      uses: ./.github/actions/scan-image
+      with:
+        source: docker:videoq-worker:onprem-ci
+        output: ${{ inputs.evidence-directory }}/worker-security.json
+        security-config: apps/worker/security/grype.json
+    - name: Scan the exact measured web image including unfixed vulnerabilities
+      if: ${{ !cancelled() && steps.identities.outcome == 'success' }}
+      uses: ./.github/actions/scan-image
+      with:
+        source: docker:videoq-web:onprem-ci
+        output: ${{ inputs.evidence-directory }}/web-security.json
+        security-config: apps/web/security/grype.json
+    - name: Bind smoke and scan identities to the final measured artifacts
+      shell: bash
+      env:
+        EVIDENCE: ${{ inputs.evidence-directory }}
+        BUILD_REPORT: ${{ inputs.build-report }}
+      run: python3 .github/scripts/verify-measured-image-scans.py "$BUILD_REPORT" "$EVIDENCE" > "$EVIDENCE/identity-verification.json"
