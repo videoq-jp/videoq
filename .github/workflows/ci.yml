@@ -605,8 +605,17 @@ jobs:
           npm run test:unit --workspace @videoq/api -- --maxWorkers=2
           npm run test:workers --workspace @videoq/api
           npm run build:node --workspace @videoq/api
+          EMBEDDING_RECEIPT_PATH="$RUNNER_TEMP/embedding-lifecycle.json" node apps/api/test/helpers/embedding-lifecycle-probe.mjs
           BACKGROUND_WORKER_E2E=1 SQS_TEST_ENDPOINT=http://127.0.0.1:9324/ npm run test:unit --workspace @videoq/api -- --maxWorkers=1 test/background-worker.e2e.test.ts test/sqs-background-consumer.integration.test.ts
           bash .github/scripts/verify-prebuilt-deployment.sh api
+      - name: Retain isolated embedding admission and rebuild evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: embedding-lifecycle-${{ github.sha }}
+          path: ${{ runner.temp }}/embedding-lifecycle.json
+          if-no-files-found: warn
+          retention-days: 30
 
   worker-test:
     name: Worker Python
