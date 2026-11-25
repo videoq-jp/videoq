@@ -1,6 +1,7 @@
 """Publish only reviewed tested bytes to one fixed release; never execute artifact code."""
 import argparse
 import hashlib
+import io
 import json
 from pathlib import Path
 import re
@@ -119,7 +120,56 @@ def artifact_bytes(policy, archive):
         if len(wheel) != policy['wheelSize'] or sha(wheel) != policy['wheelSha256'] or (
                 provenance['wheel']['sha256'], provenance['wheel']['filename']) != (policy['wheelSha256'], ASSET):
             raise ValueError('Wheel does not equal tested reviewed bytes')
+        validate_members_and_native(wheel, provenance, native,
+                                    json.loads(bundle.read('audio-evidence/identity.json')))
         return wheel
+
+
+def validate_members_and_native(wheel, provenance, native, identity):
+    members = provenance['wheel']['members']
+    with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
+        all_entries = archive.infolist()
+        entries = [entry for entry in all_entries if not entry.is_dir()]
+        if len(all_entries) > 30000 or len(entries) != len(members) or len(
+                {entry.filename for entry in all_entries}) != len(all_entries):
+            raise ValueError('Wheel member identity differs from reviewed provenance')
+        for entry in all_entries:
+            path = Path(entry.filename)
+            if path.is_absolute() or '..' in path.parts or '\\' in entry.filename or (
+                    entry.external_attr >> 16) & 0o170000 == 0o120000:
+                raise ValueError('Unsafe wheel member')
+        if sum(entry.file_size for entry in entries) > 512 * 1024**2:
+            raise ValueError('Oversized wheel members')
+        for entry in entries:
+            if sha(archive.read(entry)) != members.get(entry.filename):
+                raise ValueError('Wheel member digest mismatch')
+    installed = {name: digest for name, digest in members.items() if name.startswith(('av/', 'av.libs/'))}
+    if not installed or any(identity['overlayFiles'].get(name) != digest for name, digest in installed.items()):
+        raise ValueError('Scanned installed member identity differs from exact wheel')
+    exact = {'installedMemberCount': len(installed),
+             'compiledFilters': ['abuffer', 'abuffersink', 'aformat', 'aresample', 'buffer', 'buffersink'],
+             'compiledDecoders': ['flac', 'mp3', 'mp3float', 'pcm_s16le'],
+             'compiledEncoders': [], 'nativeMuxers': [],
+             'nativeProtocols': {'0': ['file', 'pipe'], '1': ['file', 'pipe']}}
+    if any(native.get(key) != value for key, value in exact.items()):
+        raise ValueError('Native capability identity mismatch')
+    loaded = sorted('/opt/videoq-audio/' + name for name in installed
+                    if name.startswith('av.libs/') and '.so' in name)
+    if not loaded or native.get('loadedCandidateElfs') != loaded:
+        raise ValueError('Exact loaded native ELF closure mismatch')
+    fixtures = ['pcm16-16k-mono', 'pcm16-48k-stereo', 'extra_overread.mp3', 'luckynight.flac']
+    for key, count in [('decodeResample', 'samples16kMono'), ('whisperPreprocessing', 'samples')]:
+        rows = native.get(key, [])
+        if [row.get('fixture') for row in rows] != fixtures or any(
+                type(row.get(count)) is not int or row[count] <= 0 for row in rows):
+            raise ValueError('Missing bounded actual decode/serving fixture evidence')
+    for row in native['whisperPreprocessing']:
+        if not isinstance(row.get('duration'), (int, float)) or not 0 < row['duration'] <= 180:
+            raise ValueError('Invalid actual serving duration')
+        if row['fixture'].startswith('pcm16-') and (row['samples'], row['duration']) != (1600, 0.1):
+            raise ValueError('PCM full-duration automatic serving fallback was not preserved')
+    # MP3 PyAV and serving decoders apply different trimming: compare each to its
+    # reviewed receipt, never assume 160079 decoded == 159887 serving samples.
 
 
 def require_absent(path):
@@ -144,10 +194,16 @@ def main():
     approved(policy)
     if not re.fullmatch('[a-f0-9]{40}', args.revision):
         raise ValueError('Exact reviewed publisher revision required')
-    tag = gh_api('git/ref/tags/' + PUBLISHER_TAG)
-    if tag.get('object') != {'sha': args.revision, 'type': 'commit',
-                              'url': f'https://api.github.com/repos/{REPOSITORY}/git/commits/{args.revision}'}:
-        raise ValueError('Reviewed immutable publisher tag mismatch')
+    actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    if actual != args.revision:
+        raise ValueError('Local publisher checkout differs from exact reviewed revision')
+    # Read-only prospective validation works before any tag exists. Every write
+    # still requires the uniquely reviewed immutable publisher tag.
+    if args.mode != 'validate':
+        tag = gh_api('git/ref/tags/' + PUBLISHER_TAG)
+        if tag.get('object') != {'sha': args.revision, 'type': 'commit',
+                                  'url': f'https://api.github.com/repos/{REPOSITORY}/git/commits/{args.revision}'}:
+            raise ValueError('Reviewed immutable publisher tag mismatch')
     if args.mode == 'readback':
         url = f'https://github.com/{REPOSITORY}/releases/download/{RELEASE_TAG}/{ASSET}'
         # urllib sends no GitHub token: this proves anonymous consumer access.
