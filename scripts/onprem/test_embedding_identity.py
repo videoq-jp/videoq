@@ -10,7 +10,7 @@ from local_ai import embedding_runtime_identity, validate_embedding_overrides, L
 class RenderedIdentity(unittest.TestCase):
     def test_actual_native_charts_bind_weights_alias_profile_and_deploy_override(self):
         root=Path(__file__).resolve().parents[2]
-        helm=os.environ.get('HELM_BIN','/opt/homebrew/bin/helm')
+        helm=os.environ.get('HELM_BIN','helm')
         if not Path(helm).exists() and not __import__('shutil').which(helm):self.skipTest('Helm not installed')
         # Parse actual Helm JSON using the existing Node YAML dependency, no cluster.
         for overlay,profile in [('llamacpp-cpu.yaml','openai'),('vllm-nvidia.yaml','openai'),('rtx4090-gpt-oss-embeddinggemma.yaml','embeddinggemma2')]:
@@ -45,7 +45,7 @@ class RenderedIdentity(unittest.TestCase):
 
     def test_actual_prepare_and_deploy_values_share_derived_identity_before_mutation(self):
         root=Path(__file__).resolve().parents[2]
-        helm=os.environ.get('HELM_BIN','/opt/homebrew/bin/helm')
+        helm=os.environ.get('HELM_BIN','helm')
         if not Path(helm).exists() and not __import__('shutil').which(helm):self.skipTest('Helm not installed')
         parse="import {parseAllDocuments} from 'yaml';let s='';for await(const c of process.stdin)s+=c;console.log(JSON.stringify({kind:'List',items:parseAllDocuments(s).filter(d=>d.contents).map(d=>d.toJSON())}))"
         with tempfile.TemporaryDirectory() as temporary:

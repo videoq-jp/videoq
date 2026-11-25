@@ -89,6 +89,8 @@ jobs:
       - name: Install checksum-pinned uv
         run: bash .github/scripts/install-uv.sh
       - name: Validate public downloads, signature policy and shared lifecycle helpers
+        env:
+          HELM_BIN: ${{ runner.temp }}/helm/helm
         run: |
           uv run --no-project --with-requirements scripts/onprem/requirements-verify.txt python -m unittest discover -s scripts/onprem -p 'test_*.py' -v
           uv run --no-project --with-requirements scripts/onprem/requirements-verify.txt python -m unittest discover -s .github/scripts -p test_onprem_public.py -v
