@@ -1,0 +1,316 @@
+{
+  "runId": 45550358482,
+  "jobId": 138989878191,
+  "jobConclusion": "success",
+  "workflowConclusion": "failure",
+  "workflowFailureScope": "Known GitOps caller identity failure and dependent CI Success aggregator; no whole-workflow pass claim",
+  "headSource": "9fdd869001d356cc2463611bd24ccfe3d85f2d86",
+  "testedMerge": "d4812309a1259494ccf3f69a856a1d0875410eba",
+  "artifacts": {
+    "realCpu": {
+      "id": 14995174599,
+      "sha256": "29bd0dcba69717b270a8eca7d081724b72e1d0dd14de1133a940dffbf901ae44"
+    },
+    "sanitizedInstallerDiagnostics": {
+      "id": 14995316391,
+      "sha256": "feb75850f4d73a9cefcdf22054927b40b48d603640762c5da4e663d2ba156e63"
+    },
+    "normalMeasuredBuild": {
+      "id": 14994628891,
+      "sha256": "bf80cee085e4d677a5f600ce3ff7c88e6f02f0e458cdc8ed4a35985dba0b0ff8"
+    }
+  },
+  "measuredAndActualCpuImageIdsMatched": {
+    "api": "sha256:885563f63c8e777918dbd296f4da29db9aefab8a92be430f0f974a364c3fbf6c",
+    "worker": "sha256:57d7a1cede857031c3b6338e92549fb6bf35f420319410ef8a21fdbf6fee12bb",
+    "web": "sha256:686bd1bc11d0f05bfc8ec81f1e0571329d20f91e8eee8cf31bc4665d49f4c71f"
+  },
+  "actualJobSteps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:01:51Z",
+      "completedAt": "2026-11-25T05:01:52Z"
+    },
+    {
+      "name": "Initialize containers",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:01:52Z",
+      "completedAt": "2026-11-25T05:02:10Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:02:10Z",
+      "completedAt": "2026-11-25T05:02:14Z"
+    },
+    {
+      "name": "Configure DNS on this disposable CI runner",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:02:14Z",
+      "completedAt": "2026-11-25T05:02:14Z"
+    },
+    {
+      "name": "Reserve disk for on-prem images and Kubernetes caches",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:02:14Z",
+      "completedAt": "2026-11-25T05:03:41Z"
+    },
+    {
+      "name": "Run actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:03:41Z",
+      "completedAt": "2026-11-25T05:03:47Z"
+    },
+    {
+      "name": "Run ./.github/actions/setup-package-manager",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:03:47Z",
+      "completedAt": "2026-11-25T05:03:48Z"
+    },
+    {
+      "name": "Run npm ci --ignore-scripts --workspace @videoq/api",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:03:48Z",
+      "completedAt": "2026-11-25T05:04:02Z"
+    },
+    {
+      "name": "Validate RTX 4090 host and allocation refusal gates (no GPU fixture)",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:02Z",
+      "completedAt": "2026-11-25T05:04:02Z"
+    },
+    {
+      "name": "Validate the lab HTTP transport and cancellation",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:02Z",
+      "completedAt": "2026-11-25T05:04:02Z"
+    },
+    {
+      "name": "Install pinned Helm",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:02Z",
+      "completedAt": "2026-11-25T05:04:03Z"
+    },
+    {
+      "name": "Validate runtime, shared state and chart variants",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:03Z",
+      "completedAt": "2026-11-25T05:04:20Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:20Z",
+      "completedAt": "2026-11-25T05:04:26Z"
+    },
+    {
+      "name": "Install checksum-pinned uv",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:26Z",
+      "completedAt": "2026-11-25T05:04:27Z"
+    },
+    {
+      "name": "Validate public downloads, signature policy and shared lifecycle helpers",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:27Z",
+      "completedAt": "2026-11-25T05:04:32Z"
+    },
+    {
+      "name": "Validate single-server installer safety",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:32Z",
+      "completedAt": "2026-11-25T05:04:32Z"
+    },
+    {
+      "name": "Validate the private Whisper API with locked dependencies",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:04:32Z",
+      "completedAt": "2026-11-25T05:10:25Z"
+    },
+    {
+      "name": "Build production on-prem images",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:10:25Z",
+      "completedAt": "2026-11-25T05:28:24Z"
+    },
+    {
+      "name": "Retain comparable image-build timing and identities",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:28:24Z",
+      "completedAt": "2026-11-25T05:28:25Z"
+    },
+    {
+      "name": "Install pinned K3s operator tools",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:28:25Z",
+      "completedAt": "2026-11-25T05:28:34Z"
+    },
+    {
+      "name": "Validate K3s backups, failed update recovery and uninstall",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:28:34Z",
+      "completedAt": "2026-11-25T05:30:16Z"
+    },
+    {
+      "name": "Validate single-server restart and backup restore",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:30:16Z",
+      "completedAt": "2026-11-25T05:32:25Z"
+    },
+    {
+      "name": "Install Chromium for single-server citation playback",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:32:25Z",
+      "completedAt": "2026-11-25T05:32:49Z"
+    },
+    {
+      "name": "Validate single-server video, registry updates and failed migration recovery",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:32:49Z",
+      "completedAt": "2026-11-25T05:36:15Z"
+    },
+    {
+      "name": "Retain sanitized installer lifecycle diagnostics",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:36:15Z",
+      "completedAt": "2026-11-25T05:36:17Z"
+    },
+    {
+      "name": "Exercise production API image over HTTP",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:36:17Z",
+      "completedAt": "2026-11-25T05:36:23Z"
+    },
+    {
+      "name": "Verify web image security headers and storage CSP",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:36:23Z",
+      "completedAt": "2026-11-25T05:36:25Z"
+    },
+    {
+      "name": "Exercise migration command and worker imports in production images",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:36:25Z",
+      "completedAt": "2026-11-25T05:36:26Z"
+    },
+    {
+      "name": "Scan the API image including unfixed vulnerabilities",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:36:26Z",
+      "completedAt": "2026-11-25T05:37:12Z"
+    },
+    {
+      "name": "Scan the worker image including unfixed vulnerabilities",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:37:12Z",
+      "completedAt": "2026-11-25T05:37:19Z"
+    },
+    {
+      "name": "Scan the web image including unfixed vulnerabilities",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:37:19Z",
+      "completedAt": "2026-11-25T05:37:25Z"
+    },
+    {
+      "name": "Scan the local Whisper image including unfixed vulnerabilities",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:37:25Z",
+      "completedAt": "2026-11-25T05:37:44Z"
+    },
+    {
+      "name": "Record package inventories for incident response",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:37:44Z",
+      "completedAt": "2026-11-25T05:37:45Z"
+    },
+    {
+      "name": "Retain the image inventories",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:37:45Z",
+      "completedAt": "2026-11-25T05:37:47Z"
+    },
+    {
+      "name": "Install checksum-pinned kind",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:37:47Z",
+      "completedAt": "2026-11-25T05:37:47Z"
+    },
+    {
+      "name": "Exercise Kubernetes install, processing, restore, upgrade and rollback",
+      "conclusion": "skipped",
+      "startedAt": "2026-11-25T05:37:47Z",
+      "completedAt": "2026-11-25T05:37:47Z"
+    },
+    {
+      "name": "Retain Kubernetes validation evidence",
+      "conclusion": "skipped",
+      "startedAt": "2026-11-25T05:37:47Z",
+      "completedAt": "2026-11-25T05:37:47Z"
+    },
+    {
+      "name": "Remove the disposable Kubernetes cluster",
+      "conclusion": "skipped",
+      "startedAt": "2026-11-25T05:37:47Z",
+      "completedAt": "2026-11-25T05:37:47Z"
+    },
+    {
+      "name": "Install the real CPU acceptance browser",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:37:47Z",
+      "completedAt": "2026-11-25T05:38:08Z"
+    },
+    {
+      "name": "Exercise source builds with real CPU models and blocked public egress",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:38:08Z",
+      "completedAt": "2026-11-25T05:51:53Z"
+    },
+    {
+      "name": "Retain real CPU source-build evidence",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:51:53Z",
+      "completedAt": "2026-11-25T05:51:55Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:51:55Z",
+      "completedAt": "2026-11-25T05:51:55Z"
+    },
+    {
+      "name": "Post Run actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:51:55Z",
+      "completedAt": "2026-11-25T05:51:55Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:51:55Z",
+      "completedAt": "2026-11-25T05:51:56Z"
+    },
+    {
+      "name": "Stop containers",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:51:56Z",
+      "completedAt": "2026-11-25T05:51:56Z"
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success",
+      "startedAt": "2026-11-25T05:51:56Z",
+      "completedAt": "2026-11-25T05:51:56Z"
+    }
+  ],
+  "scope": "Disposable hosted native amd64 CPU inference with public Japanese fixture and blocked public egress; not production/customer installation or broad model-quality acceptance",
+  "remaining": "Final integrated source contains reviewed GitOps/native caller/forwarding and expanded25x58 matrix changes; final required hosted CI still necessary. Frozen build experiment remains separate04dc source. No further experiment or production mutation claimed.",
+  "retainedFileSha256": {
+    "installer-recovered.json": "ead67e48d9e038710e619c1749506f36d35ab3deb2653a9990f0ff9efc40af18",
+    "result.json": "26bd9c97f208e6b8762e76bf565f2e42207e9b57f163903f2fe4c8edfc177dcb",
+    "playback.json": "ddeed92d45b7ea0a58385a5e6fb9478c1cae4d97d5c9d73dbd339a759d37a82f",
+    "installer-server.json": "4d3d9ec112d38458a2cf5ad884ee519e8e4fba61d54033af59312ce86a7fe612",
+    "installer-fresh.json": "6c989987269892cf10be2c77323ecba3527c18932fc9c6b5a6fafe2991c340a5",
+    "real-ai-result.json": "10f5036048ad56d598c6f868028336d5d1cac6990126c6b00c1373374b12395a"
+  }
+}
