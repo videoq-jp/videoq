@@ -63,6 +63,7 @@ export const GettingStartedNewUser: Story = {
   async play({ canvas }) {
     const guide = await findGuide(canvas);
     await expect(guide).toHaveTextContent(i18n.t('home.gettingStarted.steps.upload.action'));
+    await expect(canvas.queryByText(i18n.t('home.gettingStarted.steps.ask.description'))).not.toBeInTheDocument();
     await expect(canvas.queryByText(i18n.t('home.stats.summaryTitle'))).not.toBeInTheDocument();
   },
 };

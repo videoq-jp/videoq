@@ -1,3 +1,4 @@
+import { InstallSkillButton } from '@/components/video/InstallSkillDialog';
 import { features } from "@/lib/deployment";
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -290,6 +291,7 @@ export function VideoDetailView({
 
           <div data-video-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
             <ViewerHeader title={video.title} backHref="/videos">
+              {video.transcript?.trim() ? <InstallSkillButton kind="video" resourceId={video.id} /> : null}
               <ViewerActionsMenu label={t('videos.detail.manage')}>
                 <MenuList>
                   <MenuListItem>

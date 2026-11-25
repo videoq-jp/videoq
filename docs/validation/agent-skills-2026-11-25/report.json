@@ -1,0 +1,49 @@
+{
+  "syntheticSource": true,
+  "generationTransport": "Codex CLI using production prompt/schema/validation",
+  "providerIntegration": "mocked quota and persistence; production provider credentials were unavailable",
+  "stages": [
+    {
+      "stage": "extract",
+      "passed": true
+    },
+    {
+      "stage": "synthesize",
+      "passed": true
+    },
+    {
+      "stage": "audit",
+      "passed": true
+    }
+  ],
+  "skillName": "videoq-lab-rate-limited-api-client-1f885199",
+  "results": {
+    "codex": {
+      "passed": true,
+      "checks": [
+        "429 defers using Retry-After after one request",
+        "401 never retries",
+        "POST without idempotency never retries",
+        "at most two in-flight requests",
+        "six queued requests complete"
+      ],
+      "maxConcurrency": 2,
+      "readInstalledSkill": true,
+      "reportedSkillName": true
+    },
+    "claude": {
+      "passed": true,
+      "checks": [
+        "429 defers using Retry-After after one request",
+        "401 never retries",
+        "POST without idempotency never retries",
+        "at most two in-flight requests",
+        "six queued requests complete"
+      ],
+      "maxConcurrency": 2,
+      "reportedSkillName": true
+    }
+  },
+  "date": "2026-11-25",
+  "scope": "Synthetic subtitles only; production model credentials, live course data and deployed infrastructure were not exercised."
+}

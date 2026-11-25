@@ -94,7 +94,7 @@ describe('HomePage - authenticated', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('home.actions.upload.title').length).toBeGreaterThan(0)
-      expect(screen.getByText('home.actions.upload.descriptionLong')).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: 'home.actions.upload.title' })[0]).toBeEnabled()
     })
   })
 
@@ -379,7 +379,7 @@ describe('HomePage - Data Loading', () => {
     await waitFor(() => expect(screen.getByText('home.stats.courses').parentElement).toHaveTextContent('2'))
     expect(screen.getByText('home.recentVideos.title')).toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    expect(screen.getByText('home.actions.upload.descriptionLong')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'home.actions.upload.title' })[0]).toBeEnabled()
   })
 
   it('should handle API errors gracefully', async () => {

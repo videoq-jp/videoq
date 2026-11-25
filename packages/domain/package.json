@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./agent-skills": { "types": "./src/agent-skills.ts", "default": "./src/agent-skills.ts" },
     "./video-upload": {
       "types": "./src/video-upload.ts",
       "default": "./src/video-upload.ts"

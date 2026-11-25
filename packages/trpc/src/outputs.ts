@@ -1,3 +1,4 @@
+import { skillOutputSchemas } from './skills';
 import { qaOutputSchemas } from './qa';
 import { z } from "zod";
 import type { inputSchemas } from "./inputs";
@@ -12,6 +13,7 @@ const addedItemsSchema = messageSchema.extend({ added_count: z.number(), skipped
 
 /** Runtime output validation and handler output types share this definition. */
 export const outputSchemas = {
+  ...skillOutputSchemas,
   ...qaOutputSchemas,
   "account.me": models.userSchema,
   "account.integrationApiKeys": z.array(z.object({

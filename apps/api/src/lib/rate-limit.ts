@@ -6,6 +6,8 @@ import type { AppEnv, Bindings } from "../types/bindings";
  * VideoQ API のスコープ別レート制限。
  */
 export const THROTTLE_RATES = {
+  skill_start_user: { limit: 10, periodSec: 86400 },
+  skill_step_user: { limit: 180, periodSec: 3600 },
   moodle_pairing_ip: { limit: 30, periodSec: 600 },
   moodle_pairing_user: { limit: 20, periodSec: 3600 },
   // Hundreds of learners can share one school/NAT address. The sustained

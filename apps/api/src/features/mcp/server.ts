@@ -1,3 +1,4 @@
+import { createSkillTools } from '../../tools/agent-skills';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createManagementTools, ToolError, type ToolActorContext } from "../../tools/management";
 import type { ToolDefinition, ToolExecution, ToolValue } from "../../tools/definition";
@@ -53,7 +54,7 @@ async function runTool(
 /** Assemble the request-scoped catalog. Definitions enforce the actor’s authority at execution. */
 export function createVideoqMcpServer(ctx: ToolActorContext): McpServer {
   const server = new McpServer({ name: "videoq-api", version: "0.3.0" });
-  const management = createManagementTools(ctx).map(definition => ({
+  const management = [...createManagementTools(ctx), ...createSkillTools(ctx)].map(definition => ({
     ...definition,
     invoke: (input: unknown, execution: ToolExecution) => runTool(definition, input, execution, ctx),
   }));

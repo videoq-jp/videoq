@@ -300,10 +300,6 @@ export function IntegrationApiKeysSection() {
             </DialogHeader>
 
             <DialogBody>
-              <p className="mb-4 text-std-17N-170 text-solid-gray-700">
-                {t('settings.integrationApiKeys.createDialogDescription')}
-              </p>
-
               <div className="space-y-6">
                 {apiKeyDialogError && <ErrorMessage message={apiKeyDialogError} />}
 
@@ -324,7 +320,6 @@ export function IntegrationApiKeysSection() {
                     <p className="text-std-17B-170 text-solid-gray-800">
                       {t('settings.integrationApiKeys.permissionsLabel')}
                     </p>
-                    <SupportText>{t('settings.integrationApiKeys.permissionsHelp')}</SupportText>
                   </div>
                   <div className="space-y-3">
                     {accessLevelOptions.map((option) => {

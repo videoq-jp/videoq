@@ -297,6 +297,7 @@ describe("MCP JSON-RPC", () => {
         "search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "get_course_info",
         "list_videos",
         "get_video",
+        "get_skill",
         "request_video_upload",
         "confirm_video_upload",
         "create_youtube_video",
@@ -341,7 +342,7 @@ describe("MCP JSON-RPC", () => {
         (tool) =>
           (tool.annotations as { readOnlyHint?: boolean }).readOnlyHint === true,
       ),
-    ).toHaveLength(14);
+    ).toHaveLength(15);
     expect(
       tools.filter(
         (tool) =>

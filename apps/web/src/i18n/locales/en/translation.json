@@ -99,14 +99,14 @@
     "welcome": {
       "badge": "Home",
       "greeting": "{{username}}",
-      "dailyMotivation": "Registered videos are transcribed automatically. Group them into a course to ask questions about their content."
+      "dailyMotivation": "Organize videos into courses and ask AI questions."
     },
     "gettingStarted": {
       "title": "Getting started",
       "dismiss": "Hide guide",
       "stepLabel": "Step",
       "completed": "Completed",
-      "processing": "Transcription is in progress. You can continue to the next step here once it finishes.",
+      "processing": "Transcribing…",
       "steps": {
         "upload": {
           "title": "Register a video",
@@ -115,18 +115,18 @@
         },
         "transcribe": {
           "title": "Wait for transcription",
-          "description": "Transcription starts automatically after registration. How long it takes depends on the video length.",
+          "description": "Transcription runs automatically.",
           "action": "Check the library"
         },
         "course": {
           "title": "Create a course",
-          "description": "Create a course and add videos from your library. Questions are asked within a course.",
+          "description": "Add videos from your library.",
           "action": "Create a course",
           "addVideosAction": "Add videos to the course"
         },
         "ask": {
           "title": "Ask in the course",
-          "description": "Open the course and type your question in the chat. Select a timestamp in the answer to play from that point.",
+          "description": "Select an answer’s timestamp to play the source.",
           "action": "Open the course"
         }
       }
@@ -134,16 +134,15 @@
     "actions": {
       "sectionTitle": "Menus",
       "upload": {
-        "title": "Register a video",
-        "descriptionLong": "Register a lecture or training video and start automatic transcription."
+        "title": "Register a video"
       },
       "library": {
         "title": "Library",
-        "descriptionLong": "Review, edit, and share your {{count}} registered videos."
+        "descriptionLong": "{{count}} videos"
       },
       "courses": {
         "title": "Course management",
-        "descriptionLong": "Manage {{count}} learning courses."
+        "descriptionLong": "{{count}} courses"
       }
     },
     "stats": {
@@ -390,10 +389,10 @@
       "manageTags": "Manage tags",
       "managingCount": "Managing {{count}} videos",
       "noVideos": "No videos yet",
-      "noVideosHint": "Use \"Upload video\" to add videos to the library. To put them in a course, choose them from the library on the course page.",
+      "noVideosHint": "Upload a video, then add it to a course.",
       "loadingMore": "Loading...",
       "emptyTitle": "No videos yet",
-      "emptyDescription": "Registered videos are transcribed automatically. Group them into a course to ask questions about their content.",
+      "emptyDescription": "Videos are transcribed automatically after upload.",
       "emptyFormats": "Supported formats: MP4, MOV, WebM, and others",
       "noMatch": "No videos match these conditions",
       "noMatchHint": "Change the search term or filters.",
@@ -486,7 +485,7 @@
     "courses": {
       "title": "Courses",
       "subtitle": "Group library videos into a course to manage and share them",
-      "emptyDescription": "A course is a set of videos selected from your library. With a course, you can:",
+      "emptyDescription": "Create a course to ask questions and share videos.",
       "optional": "(optional)",
       "create": "Create course",
       "createTitle": "Create course",
@@ -505,15 +504,7 @@
       "retryLoad": "Retry loading courses",
       "loadingMore": "Loading...",
       "videoCount_one": "{{count}} video",
-      "videoCount_other": "{{count}} videos",
-      "emptyBenefits": {
-        "bullets": [
-          "Ask questions across several videos",
-          "Share it with learners by link or invitation",
-          "Review learners’ questions and feedback"
-        ]
-      },
-      "emptyNeedsVideos": "Videos for a course are selected from those registered in your library."
+      "videoCount_other": "{{count}} videos"
     },
     "courseDetail": {
       "pickFromLibrary": "Choose from library",
@@ -713,9 +704,9 @@
     "checkEmail": {
       "badge": "Account registration",
       "title": "Check your email",
-      "description": "We sent a confirmation email to your inbox. Please open the link to complete your registration.",
+      "description": "Check your email and open the verification link to finish signing up.",
       "alert": "Please open the confirmation link before it expires.",
-      "help": "If the email does not arrive, wait a moment and try again. Contact support if the problem persists.",
+      "help": "Check your spam folder if it hasn’t arrived.",
       "backToLogin": "Back to sign-in"
     },
     "forgotPassword": {
@@ -723,7 +714,7 @@
       "noAccount": "Don't have an account?",
       "signUp": "Sign up",
       "title": "Forgot your password?",
-      "description": "Enter the email associated with your account and we'll send a password reset link.",
+      "description": "We’ll send a reset link to your registered email.",
       "success": "We sent a password reset email. If you don't see it within a few minutes, please check your spam folder.",
       "submit": "Send reset link",
       "submitting": "Sending...",
@@ -1147,7 +1138,7 @@
     "usernameChange": {
       "title": "Username",
       "newUsernameLabel": "New username",
-      "help": "Use 3–150 characters: letters, numbers, underscores, and periods. Uppercase is stored as lowercase. Your username is also used to sign in.",
+      "help": "Use 3–150 letters, numbers, _ or . Uppercase is saved as lowercase. This is also your login name.",
       "submit": "Change username",
       "submitting": "Saving...",
       "success": "Username updated",
@@ -1162,50 +1153,48 @@
     "emailChange": {
       "title": "Email address",
       "newEmailLabel": "New email address",
-      "help": "We first send an approval link to your current address. After approval, open the verification link sent to your new address.",
+      "help": "Approve from your current email, then verify your new email.",
       "submit": "Send confirmation email",
       "submitting": "Sending...",
-      "success": "Confirmation email sent. Approve the change from your current address, then verify your new address.",
+      "success": "Approval link sent to your current email.",
       "errorEmpty": "Please enter a new email address",
       "errorSubmitting": "Failed to request email change",
       "edit": "Edit email address"
     },
     "integrationApiKeys": {
       "title": "Developer API keys",
-      "description": "Manage keys for accessing VideoQ from your own apps and systems.",
+      "description": "Connect external apps to VideoQ.",
       "nameLabel": "Key name",
-      "nameHelp": "This name is only shown here, so use something that makes the integration easy to identify later.",
+      "nameHelp": "e.g. Claude Code",
       "create": "Create API key",
       "createDialogTitle": "Create a new secret key",
-      "createDialogDescription": "Give your key a name and choose the permissions it should start with.",
       "createDialogCta": "Create secret key",
       "creating": "Creating...",
       "generatedTitle": "Save this key now. It will only be shown once.",
       "generatedDialogTitle": "Save your key",
-      "generatedDialogDescription": "You will not be able to view this secret key again. Keep it secure, because anyone with this API key can make requests on your behalf.",
+      "generatedDialogDescription": "This key won’t be shown again. Store it securely and keep it private.",
       "generatedDoneCta": "Done",
       "copy": "Copy",
       "copyDone": "Copied",
       "empty": "No API keys have been created yet.",
       "neverUsed": "Never used",
       "permissionsLabel": "Permissions",
-      "permissionsHelp": "Choose All if the integration needs write access, or Read only if it should only read data.",
       "secretKeyLabel": "Secret key",
       "columns": {
         "permissions": "Permissions",
         "lastUsed": "Last used"
       },
       "permissions": {
-        "allTitle": "All",
-        "allDescription": "Full read and write access to all available integration endpoints.",
+        "allTitle": "Read and write",
+        "allDescription": "View, create, update, and delete data",
         "readOnlyTitle": "Read only",
-        "readOnlyDescription": "For integrations that should only call read-only endpoints and must not create, update, or delete data."
+        "readOnlyDescription": "View data only"
       },
       "revoke": "Revoke",
       "revoking": "Revoking...",
       "revokeConfirmTitle": "Revoke API key?",
       "revokeConfirmDescription": "This key will stop working immediately for any existing integrations.",
-      "revokeConfirmWarning": "This action cannot be undone. Any system using this key will start failing until you configure a new key.",
+      "revokeConfirmWarning": "This cannot be undone. Connected systems will need a new key.",
       "revokeConfirmCta": "Yes, revoke key",
       "cancel": "Cancel",
       "errorEmpty": "Please enter a key name",
@@ -1231,16 +1220,14 @@
       "successRevoked": "App disconnected",
       "revoking": "Disconnecting...",
       "confirmTitle": "Disconnect this app?",
-      "confirmDescription": "This app will lose access to VideoQ. Existing access may continue for a few minutes. To use it again, reconnect from the app."
+      "confirmDescription": "Stops this app’s access. This may take a few minutes."
     },
     "searchApiKey": {
       "title": "YouTube imports",
-      "description": "Configure TranscriptAPI to import transcripts from YouTube.",
-      "usageTitle": "TranscriptAPI charges",
-      "usageDescription": "Transcripts are fetched using your own TranscriptAPI account. TranscriptAPI usage is billed separately by TranscriptAPI and is not included in your VideoQ plan.",
+      "usageDescription": "Subtitle imports incur separate TranscriptAPI charges.",
       "apiKeyLabel": "TranscriptAPI key",
-      "hasApiKeyMessage": "A TranscriptAPI key is already configured. Enter a new key to update it.",
-      "noApiKeyMessage": "To import YouTube videos, you need to set your own TranscriptAPI key first.",
+      "hasApiKeyMessage": "Saving a new key replaces the current one.",
+      "noApiKeyMessage": "Enter your own TranscriptAPI key.",
       "getApiKeyMessage": "Get your API key from",
       "save": "Save",
       "saving": "Saving...",
@@ -1292,7 +1279,7 @@
     "dateRange": "Period: {{first}} – {{last}}",
     "empty": {
       "title": "No data yet",
-      "description": "There are no questions in this course yet. Start chatting to see analytics."
+      "description": "Analytics will appear here as questions come in."
     },
     "timeSeries": {
       "title": "Question Trends",
@@ -1485,5 +1472,56 @@
     "empty": "No questions yet. Be the first to ask.",
     "previous": "Previous",
     "next": "Next"
+  },
+  "skills": {
+    "keepOpen": "Keep this dialog open until generation finishes.",
+    "details": "Requirements and usage",
+    "limits": "Limits: 30 videos, 180,000 subtitle characters, 12 skills.",
+    "usageDetails": "Each completed AI call uses one unit. Audit issues receive up to two automatic repairs per skill.",
+    "updateDetails": "Regenerate after changing subtitles or course contents. Installed skills are not automatically updated or overwritten.",
+    "keyPrompt": "Enter your API key when prompted.",
+    "open": "Install skills",
+    "title": "Install skills",
+    "description": "Generate Codex and Claude Code skills from this course.",
+    "agent": "Install for",
+    "global": "Use in all projects",
+    "key": "Get an API key",
+    "runProject": "Run in your project terminal",
+    "runGlobal": "Run in your terminal",
+    "invoke": "Select a skill in a new agent session after installation.",
+    "command": "Install command",
+    "copy": "Copy command",
+    "copied": "Copied",
+    "copyError": "Could not copy. Select and copy the command above.",
+    "requirements": "Requires Node.js 22+ with npm / npx.",
+    "snapshot": "Course excerpts are saved locally. Check before sharing or committing.",
+    "generationCost": "Generation uses your AI allowance.",
+    "generate": "Generate skills",
+    "generateNew": "Regenerate",
+    "resume": "Resume generation",
+    "pause": "Pause",
+    "paused": "Paused. Select Resume generation to continue.",
+    "failed": "Generation failed. Check saved progress and retry.",
+    "loading": "Loading saved skill…",
+    "preview": "View instructions",
+    "evidence": "View sources",
+    "publish": "Confirm content and enable installation",
+    "stages": {
+      "extracting": "Reading course",
+      "synthesizing": "Generating skills",
+      "auditing": "Checking sources",
+      "review": "Generated: awaiting your review",
+      "published": "Ready to install",
+      "rejected": "Generation could not be completed",
+      "planning": "Grouping by task"
+    },
+    "repairing": "Automatically repairing audit issues",
+    "memberCount": "Generated skills ({{count}})",
+    "memberStatuses": {
+      "pending": "Waiting to generate",
+      "auditing": "Checking evidence",
+      "passed": "Source checks passed",
+      "rejected": "Source checks failed"
+    }
   }
 }
