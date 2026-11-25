@@ -2,12 +2,12 @@
   "whispercpp": {
     "images": {
       "amd64": {
-        "repository": "ghcr.io/ggml-org/whisper.cpp",
-        "digest": "sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73"
+        "repository": "ghcr.io/videoq-jp/videoq-whispercpp-candidate",
+        "digest": "sha256:8a0500db924c9974e02cc1ace538743cb86101784b961a564c27c401859435f3"
       },
       "arm64": {
-        "repository": "ghcr.io/ggml-org/whisper.cpp",
-        "digest": "sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0"
+        "repository": "ghcr.io/videoq-jp/videoq-whispercpp-candidate",
+        "digest": "sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d"
       }
     }
   }

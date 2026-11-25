@@ -172,3 +172,32 @@ test('changing the assessed deployment security or invoking a startup shell inva
   const s = sample(); s.profiles.pop();
   assert.throws(() => run(s));
 });
+
+function minimalSample(architecture='amd64') {
+  const s=whisperSample(architecture);
+  s.policy=JSON.parse(readFileSync(join(__dirname,'../whisper-runtime-pins.json')));
+  const image=s.policy.images[architecture];
+  s.report.Metadata.RepoDigests=[image];s.report.Metadata.OS=s.policy.os;
+  Object.assign(s.report.Metadata.ImageConfig.config,{Entrypoint:s.policy.imageEntrypoint,User:'10001:10001',Cmd:['--help'],Labels:{'org.opencontainers.image.revision':s.policy.sourceRevision,'io.videoq.whisper.upstream.image':s.policy.upstreamImages[architecture]}});
+  s.report.Results=[{Type:'wolfi',Class:'os-pkgs',Vulnerabilities:[{Severity:'MEDIUM',PkgName:'example',VulnerabilityID:'visible-medium'}]}];
+  for(const profile of s.profiles)profile[0].spec.template.spec.containers[0].image=image;
+  s.runtime={architecture,candidateConfigDigest:s.policy.configDigests[architecture],upstreamImage:s.policy.upstreamImages[architecture],nonRootReadOnlyNoEgressServerHealth:true,syntheticWavInference:true};
+  return s;
+}
+test('minimal published whisper runtime has no vulnerability exceptions on either native architecture',()=>{
+  const {assessMinimalWhisper}=require('./onprem-upstream-security.cjs');
+  for(const arch of ['amd64','arm64']){
+    const s=minimalSample(arch);const result=assessMinimalWhisper(s.report,s.policy,arch,s.profiles,s.runtime);
+    assert.deepEqual(result.accepted,[]);assert.deepEqual(result.preAssessed,[]);assert.deepEqual(result.blocking,[]);
+    for(const severity of ['HIGH','CRITICAL','UNKNOWN']){
+      s.report.Results[0].Vulnerabilities[0].Severity=severity;
+      assert.equal(assessMinimalWhisper(s.report,s.policy,arch,s.profiles,s.runtime).blocking.length,1);
+    }
+  }
+});
+test('minimal runtime rejects suppressed, changed-source, wrong-platform or untested artifacts',()=>{
+ const {assessMinimalWhisper}=require('./onprem-upstream-security.cjs');
+ for(const mutate of [s=>s.report.Metadata.RepoDigests=['other@sha256:unknown'],s=>s.report.Metadata.ImageConfig.architecture='arm64',s=>s.report.Metadata.ImageConfig.config.Labels['org.opencontainers.image.revision']='other',s=>s.report.Results[0].ExperimentalModifiedFindings=[{}],s=>s.runtime.syntheticWavInference=false,s=>s.runtime.candidateConfigDigest='different',s=>s.report.Metadata.OS={Family:'ubuntu',Name:'22.04'},s=>s.report.Results=[]]){
+   const s=minimalSample();mutate(s);assert.throws(()=>assessMinimalWhisper(s.report,s.policy,s.architecture,s.profiles,s.runtime));
+ }
+});

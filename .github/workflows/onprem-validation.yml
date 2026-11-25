@@ -285,7 +285,7 @@ jobs:
       matrix:
         engine: [llamacpp, whispercpp]
         architecture: [amd64, arm64]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.engine == 'whispercpp' && matrix.architecture == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -316,32 +316,33 @@ jobs:
           if (!/^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$/.test(reference)) throw new Error('An exact upstream CPU image digest is required');
           appendFileSync(process.env.GITHUB_ENV, `UPSTREAM_CPU_IMAGE=${reference}\n`);
           JS
-      - name: Verify the exact whisper.cpp header-only image inventory
-        id: header_inventory
+      - name: Verify exact minimal whisper runtime provenance and native inference
+        id: minimal_runtime
         if: matrix.engine == 'whispercpp'
         env:
           ARCHITECTURE: ${{ matrix.architecture }}
         run: |
           docker pull --platform "linux/$ARCHITECTURE" "$UPSTREAM_CPU_IMAGE"
-          python3 .github/scripts/check-upstream-header-image.py "$UPSTREAM_CPU_IMAGE" "$ARCHITECTURE" \
-            --approved apps/inference/whispercpp/security/header-image-inventory.json > header-inventory.json
+          python3 apps/inference/whispercpp/verify_runtime.py --candidate "$UPSTREAM_CPU_IMAGE" \
+            --architecture "$ARCHITECTURE" --receipt minimal-runtime.json
       # Select the manifest explicitly; scanning ARM packages requires no emulation.
       # Use the registry so a cached amd64 Docker image cannot shadow arm64.
       - name: Scan upstream CPU images including unfixed vulnerabilities
-        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.minimal_runtime.outcome == 'success') }}
         timeout-minutes: 15
         uses: ./.github/actions/scan-image
         with:
           source: registry:${{ env.UPSTREAM_CPU_IMAGE }}
           output: upstream-cpu-security.json
-          gate: assess
-          security-config: ${{ matrix.engine == 'whispercpp' && 'apps/inference/whispercpp/security/grype.json' || '' }}
+          gate: ${{ matrix.engine == 'whispercpp' && 'strict' || 'assess' }}
+          # The minimal whisper runtime has no VEX or runtime exceptions.
+          security-config: ''
           platform: linux/${{ matrix.architecture }}
       - name: Install pinned Helm for the runtime assessment
-        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.minimal_runtime.outcome == 'success') }}
         run: HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
       - name: Assess the upstream inference runtime findings
-        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.minimal_runtime.outcome == 'success') }}
         env:
           HELM_BIN: ${{ runner.temp }}/helm/helm
         run: node .github/scripts/onprem-upstream-security.cjs upstream-cpu-security.json ${{ matrix.architecture }} upstream-cpu-assessed.json ${{ matrix.engine }}
@@ -372,7 +373,8 @@ jobs:
             upstream-cpu.cdx.json
             upstream-cpu-assessed.json
             apps/inference/llamacpp/security/
-            header-inventory.json
+            minimal-runtime.json
+            .github/whisper-runtime-pins.json
             apps/inference/whispercpp/security/
           retention-days: 30
           if-no-files-found: error

@@ -95,6 +95,10 @@ test('generic CI edits skip native work while upstream scan workflow edits valid
     }
     assert.equal(selected('real_cpu', event, ['.github/scripts/onprem-cpu-acceptance.py']), true);
     assert.equal(selected('upstream_images', event, ['charts/videoq-inference/values.yaml']), true);
+    for (const path of ['.github/whisper-runtime-pins.json', 'apps/inference/whispercpp/verify_runtime.py']) {
+      assert.equal(selected('upstream_images', event, [path]), true, path);
+      assert.equal(selected('onprem', event, [path]), true, path);
+    }
     assert.equal(selected('whisper_gpu', event, ['apps/inference/whisper/provision_audio.py']), true);
   }
 });
