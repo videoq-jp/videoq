@@ -2,13 +2,19 @@ import {writeFileSync, renameSync} from 'node:fs';
 // Fixed labels only: never include request bodies, credentials, URLs or error messages.
 export async function labStage(label, operation, report = value => console.error(JSON.stringify(value))) {
   const started = performance.now();
-  report({labStage: label, status: 'started'});
+  const reportSafely = value => {
+    try { report(value); } catch {
+      // Diagnostic storage failure must not replace or reclassify request results.
+      try { console.error(JSON.stringify({labStage: label, diagnosticStatus: 'failed'})); } catch {}
+    }
+  };
+  reportSafely({labStage: label, status: 'started'});
   try {
     const value = await operation();
-    report({labStage: label, status: 'passed', elapsedMilliseconds: Math.round(performance.now() - started)});
+    reportSafely({labStage: label, status: 'passed', elapsedMilliseconds: Math.round(performance.now() - started)});
     return value;
   } catch (error) {
-    report({labStage: label, status: 'failed', elapsedMilliseconds: Math.round(performance.now() - started), timeout: error?.name === 'TimeoutError'});
+    reportSafely({labStage: label, status: 'failed', elapsedMilliseconds: Math.round(performance.now() - started), timeout: error?.name === 'TimeoutError'});
     throw error;
   }
 }

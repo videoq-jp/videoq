@@ -43,3 +43,25 @@ test('actual fetch rejection retains original error and safe classification', as
  assert.equal(rows[1].status,'failed');assert.equal(rows[1].timeout,false);
  assert(!JSON.stringify(rows).includes('private-token'));
 });
+
+test('diagnostic storage failures preserve original request error at every report stage', async () => {
+ const {labStage} = await import('../onprem-lab/stage.mjs');
+ for (const failingStatus of ['started','failed']) {
+  const rows=[];const original=new DOMException('private-primary','TimeoutError');
+  await assert.rejects(labStage('chat.send', async()=>{throw original}, row=>{
+   rows.push(row);if(row.status===failingStatus)throw Object.assign(new Error('private-storage-path'),{code:'ENOSPC'});
+  }), error=>error===original);
+  assert.deepEqual(rows.map(row=>row.status),['started','failed']);
+  assert.equal(rows[1].timeout,true);
+ }
+});
+test('started and success reporter failures do not classify successful requests as failed', async () => {
+ const {labStage} = await import('../onprem-lab/stage.mjs');
+ for (const failingStatus of ['started','passed']) {
+  const rows=[];const value={result:'private-result'};
+  assert.equal(await labStage('chat.stream', async()=>value, row=>{
+   rows.push(row);if(row.status===failingStatus)throw new Error('private-rename-path');
+  }),value);
+  assert.deepEqual(rows.map(row=>row.status),['started','passed']);
+ }
+});
