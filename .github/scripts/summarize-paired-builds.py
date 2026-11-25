@@ -34,11 +34,23 @@ def summarize(root):
     for key in ['parentLimits','cpuQuotaCpus','memoryMaxBytes']:
         if ca['builderHostCgroupEnvelope'][key] != cb['builderHostCgroupEnvelope'][key]:
             raise ValueError('Unmatched actual builder ancestry: '+key)
+    inventories = {}
+    for component in ['api', 'worker', 'web']:
+        versions = {}
+        for variant in ['baseline', 'candidate']:
+            catalog = json.loads((root / variant / 'checks' / f'{component}-security.json.syft.json').read_text())
+            versions[variant] = sorted({(p['type'], p['name'], p['version']) for p in catalog['artifacts']})
+            if not versions[variant]:
+                raise ValueError('Missing measured package inventory')
+        if versions['baseline'] != versions['candidate']:
+            raise ValueError('Resolved package versions changed between controlled variants: ' + component)
+        inventories[component] = {'matchedPackageVersions': True, 'packages': len(versions['baseline'])}
     return {'source': a['source'], 'protocol': 'same runner; distinct fresh builders; effective 4 CPU/8GiB/no swap; sequential AB or BA',
         'cold': {'baselineSeconds': a['runs'][0]['seconds'], 'candidateSeconds': b['runs'][0]['seconds'],
                  'reductionPercent': (1-b['runs'][0]['seconds']/a['runs'][0]['seconds'])*100},
         'warm': {'baselineSeconds': a['runs'][1]['seconds'], 'candidateSeconds': b['runs'][1]['seconds']},
         'buildRunnerSeconds': {v: row['seconds'] for v,row in rows.items()},
+        'packageInventoryComparison': inventories,
         'hostVariation': {v: row['before'] for v,row in rows.items()},
         'decision': 'per-pair evidence only; adoption requires all three pairs, scans, smokes and actual invalidation controls'}
 

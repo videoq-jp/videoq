@@ -21,9 +21,12 @@ class PairedControls(unittest.TestCase):
                 (root/variant/'build').mkdir(parents=True);(root/variant/'checks').mkdir()
                 (root/variant/'build/result.json').write_text(json.dumps(row))
                 (root/variant/'checks/identity-verification.json').write_text(json.dumps({'source':'frozen','images':[dict(smokeMatches=True,scanMatches=True,unchangedAfterChecks=True) for _ in range(3)]}))
+            for variant in ['baseline','candidate']:
+                for component in ['api','worker','web']:
+                    (root/variant/'checks'/f'{component}-security.json.syft.json').write_text(json.dumps({'artifacts':[{'type':'apk','name':'openssl','version':'pinned'}]}))
             self.assertGreater(paired.summarize(root)['cold']['reductionPercent'],0)
             original=copy.deepcopy(rows['candidate'])
-            for mutation in ['ancestor','container','source','incomplete']:
+            for mutation in ['ancestor','container','source','incomplete','packages']:
                 row=copy.deepcopy(original)
                 if mutation=='ancestor':
                     row['buildkitLimits']['builderHostCgroupEnvelope']['parentLimits']=[{'cpuMax':'200000 100000'}]
@@ -31,5 +34,6 @@ class PairedControls(unittest.TestCase):
                 if mutation=='container':row['buildkitLimits']['containerId']='baseline';row['buildkitLimitsAfter']=copy.deepcopy(row['buildkitLimits'])
                 if mutation=='source':row['source']='different'
                 if mutation=='incomplete':row['runs']=row['runs'][:1]
+                if mutation=='packages':(root/'candidate/checks/api-security.json.syft.json').write_text(json.dumps({'artifacts':[{'type':'apk','name':'openssl','version':'drift'}]}))
                 (root/'candidate/build/result.json').write_text(json.dumps(row))
                 with self.assertRaises(ValueError):paired.summarize(root)

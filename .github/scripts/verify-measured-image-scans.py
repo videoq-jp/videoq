@@ -12,6 +12,10 @@ def verify(report, directory, current):
     results = []
     for component in report['runs'][-1]['components']:
         name, expected = component['component'], component['imageId']
+        for run in report['runs']:
+            measured = [row for row in run['components'] if row['component'] == name]
+            if len(measured) != 1 or measured[0].get('exitCode', 0) or measured[0]['imageId'] != expected:
+                raise ValueError('Cold/warm measured artifact identity changed: ' + name)
         tag = f'videoq-{name}:onprem-ci'
         matched = [image for image in smoke if tag in image.get('RepoTags', [])]
         final = [image for image in current if tag in image.get('RepoTags', [])]

@@ -17,6 +17,10 @@ class ImageBindingTest(unittest.TestCase):
             report={'source':'frozen','dockerfileVariant':'candidate','failedBuilds':0,'runs':[{'components':[{'component':name,'imageId':name} for name in ['api','worker','web']]}]}
             for name in ['api','worker','web']:(root/f'{name}-security.json.syft.json').write_text(json.dumps({'source':{'metadata':{'imageID':name}}}))
             self.assertEqual(len(binding.verify(report,root,images)['images']),3)
+            report['runs'].insert(0,{'components':[{'component':name,'imageId':name} for name in ['api','worker','web']]})
+            report['runs'][0]['components'][0]['imageId']='cold-unscanned'
+            with self.assertRaisesRegex(ValueError,'Cold/warm'):binding.verify(report,root,images)
+            report['runs'][0]['components'][0]['imageId']='api'
             (root/'api-security.json.syft.json').write_text(json.dumps({'source':{'metadata':{'imageID':'rebuild'}}}))
             with self.assertRaisesRegex(ValueError,'identity mismatch'):binding.verify(report,root,images)
             (root/'api-security.json.syft.json').write_text(json.dumps({'source':{'metadata':{'imageID':'api'}}}))
