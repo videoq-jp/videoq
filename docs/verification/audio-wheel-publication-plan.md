@@ -42,10 +42,15 @@ independently reviewed publisher commit, avoiding any merge-before-adoption cycl
 3. From the same trusted detached checkout, a minimal contents-write credential runs
    `python3 .github/scripts/audio-wheel-publication.py publish --archive /path/to/exact.zip --revision REVIEWED_SHA`.
    It freshly repeats provenance and evidence validation and checks both release/tag
-   absence before uploading the tested wheel bytes without rebuilding.
+   absence, then atomically creates the fixed release ref with POST git/refs at
+   the reviewed SHA (a raced ref returns 422 and fails closed). It rereads the
+   exact ref and uses --verify-tag --latest=false to upload tested wheel bytes
+   without rebuilding or changing repository Latest.
 4. A separate read-only invocation runs
    `python3 .github/scripts/audio-wheel-publication.py readback --revision REVIEWED_SHA`.
-   Its wheel download uses no authentication and must match the exact size/SHA256.
+   It verifies the fixed tag commit, public release identity and sole expected
+   uploaded wheel asset before and after its unauthenticated byte download;
+   size/SHA256 must match, and ref/asset drift rejects adoption.
    Only then may a reviewed production lock update use the fixed release URL/hash,
    followed by fresh native and full unsuppressed normal security gates.
 

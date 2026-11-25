@@ -184,6 +184,66 @@ def require_absent(path):
     raise ValueError('Immutable publication scope already exists; never replace it')
 
 
+def verify_ref(name, revision):
+    tag = gh_api('git/ref/tags/' + name)
+    if tag.get('ref') != 'refs/tags/' + name or tag.get('object') != {
+            'sha': revision, 'type': 'commit',
+            'url': f'https://api.github.com/repos/{REPOSITORY}/git/commits/{revision}'}:
+        raise ValueError('Reviewed immutable tag mismatch')
+
+
+def publish_release(policy, wheel, revision):
+    # POST creates a new ref atomically. A raced ref is a hard 422 failure;
+    # never update, force, delete or reuse it, even if its current SHA matches.
+    subprocess.run(['gh', 'api', '--method', 'POST', f'repos/{REPOSITORY}/git/refs', '--input', '-'],
+                   input=json.dumps({'ref': 'refs/tags/' + RELEASE_TAG, 'sha': revision}),
+                   text=True, check=True)
+    verify_ref(RELEASE_TAG, revision)
+    path = Path(ASSET)
+    with path.open('xb') as output:
+        output.write(wheel)
+    subprocess.run(['gh', 'release', 'create', RELEASE_TAG, str(path), '--repo', REPOSITORY,
+                    '--verify-tag', '--latest=false', '--target', revision,
+                    '--title', 'Reviewed native audio wheel',
+                    '--notes', 'Exact independently verified FFmpeg 9.1 / PyAV 19.0.2 wheel; no rebuild.'], check=True)
+
+
+def release_identity(release, policy, revision):
+    if (type(release.get('id')) is not int or release['id'] <= 0 or
+            (release.get('tag_name'), release.get('target_commitish'), release.get('draft'),
+             release.get('prerelease'), release.get('html_url')) != (
+                 RELEASE_TAG, revision, False, False,
+                 f'https://github.com/{REPOSITORY}/releases/tag/{RELEASE_TAG}')):
+        raise ValueError('Fixed release identity mismatch')
+    assets = release.get('assets', [])
+    url = f'https://github.com/{REPOSITORY}/releases/download/{RELEASE_TAG}/{ASSET}'
+    if len(assets) != 1 or (assets[0].get('name'), assets[0].get('state'),
+                            assets[0].get('size'), assets[0].get('browser_download_url')) != (
+            ASSET, 'uploaded', policy['wheelSize'], url):
+        raise ValueError('Release must contain only the exact expected uploaded wheel')
+    if type(assets[0].get('id')) is not int or assets[0]['id'] <= 0:
+        raise ValueError('Missing exact release asset identity')
+    digest = assets[0].get('digest')
+    if digest is not None and digest != 'sha256:' + policy['wheelSha256']:
+        raise ValueError('Release asset digest mismatch')
+    return {'releaseId': release['id'], 'assetId': assets[0]['id'], 'assetDigest': digest, 'url': url}
+
+
+def readback_release(policy, revision):
+    verify_ref(RELEASE_TAG, revision)
+    before = release_identity(gh_api('releases/tags/' + RELEASE_TAG), policy, revision)
+    # urllib sends no GitHub token: this proves anonymous consumer access.
+    with urllib.request.urlopen(before['url'], timeout=60) as response:
+        wheel = response.read(policy['wheelSize'] + 1)
+    if len(wheel) != policy['wheelSize'] or sha(wheel) != policy['wheelSha256']:
+        raise ValueError('Anonymous released bytes mismatch')
+    # Detect a changed ref or release asset set across the anonymous download.
+    verify_ref(RELEASE_TAG, revision)
+    if release_identity(gh_api('releases/tags/' + RELEASE_TAG), policy, revision) != before:
+        raise ValueError('Release identity drifted during readback')
+    return {**before, 'sha256': sha(wheel), 'size': len(wheel), 'anonymous': True, 'tagCommit': revision}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['validate', 'publish', 'readback'])
@@ -200,18 +260,9 @@ def main():
     # Read-only prospective validation works before any tag exists. Every write
     # still requires the uniquely reviewed immutable publisher tag.
     if args.mode != 'validate':
-        tag = gh_api('git/ref/tags/' + PUBLISHER_TAG)
-        if tag.get('object') != {'sha': args.revision, 'type': 'commit',
-                                  'url': f'https://api.github.com/repos/{REPOSITORY}/git/commits/{args.revision}'}:
-            raise ValueError('Reviewed immutable publisher tag mismatch')
+        verify_ref(PUBLISHER_TAG, args.revision)
     if args.mode == 'readback':
-        url = f'https://github.com/{REPOSITORY}/releases/download/{RELEASE_TAG}/{ASSET}'
-        # urllib sends no GitHub token: this proves anonymous consumer access.
-        with urllib.request.urlopen(url, timeout=60) as response:
-            wheel = response.read(policy['wheelSize'] + 1)
-        if len(wheel) != policy['wheelSize'] or sha(wheel) != policy['wheelSha256']:
-            raise ValueError('Anonymous released bytes mismatch')
-        print(json.dumps({'url': url, 'sha256': sha(wheel), 'size': len(wheel), 'anonymous': True}))
+        print(json.dumps(readback_release(policy, args.revision)))
         return
     authorize_remote(policy)
     wheel = artifact_bytes(policy, args.archive)
@@ -219,12 +270,7 @@ def main():
     require_absent('releases/tags/' + RELEASE_TAG)
     if args.mode == 'publish':
         # Only trusted source executes; artifact content is opaque upload data.
-        path = Path(ASSET)
-        with path.open('xb') as output:
-            output.write(wheel)
-        subprocess.run(['gh', 'release', 'create', RELEASE_TAG, str(path), '--repo', REPOSITORY,
-                        '--target', args.revision, '--title', 'Reviewed native audio wheel',
-                        '--notes', 'Exact independently verified FFmpeg 9.1 / PyAV 19.0.2 wheel; no rebuild.'], check=True)
+        publish_release(policy, wheel, args.revision)
     print(json.dumps({'tag': RELEASE_TAG, 'asset': ASSET, 'sha256': sha(wheel), 'size': len(wheel)}))
 
 

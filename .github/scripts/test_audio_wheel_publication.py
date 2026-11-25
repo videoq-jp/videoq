@@ -1,9 +1,11 @@
 import copy
+import contextlib
 import importlib.util
 import json
 import io
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 import urllib.error
 from unittest.mock import patch
@@ -85,6 +87,76 @@ class AudioPublicationTest(unittest.TestCase):
         self.assertIn("github.ref == 'refs/tags/" + MODULE.PUBLISHER_TAG + "'", workflow)
         self.assertEqual(workflow.count('ref: ${{ github.workflow_sha }}'), 3)
         self.assertEqual(workflow.count('contents: write'), 1)
+
+    def ref(self, name, revision):
+        return {'ref': 'refs/tags/' + name, 'object': {'sha': revision, 'type': 'commit',
+                'url': f'https://api.github.com/repos/{MODULE.REPOSITORY}/git/commits/{revision}'}}
+
+    def test_atomic_tag_collision_wrong_ref_and_latest_controls(self):
+        policy, *_ = self.fixture()
+        revision = 'a' * 40
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            collision = subprocess.CalledProcessError(1, ['gh', 'api'], stderr='HTTP 422 Reference already exists')
+            with patch.object(MODULE.subprocess, 'run', side_effect=collision) as run, self.assertRaises(subprocess.CalledProcessError):
+                MODULE.publish_release(policy, b'exact tested wheel', revision)
+            self.assertEqual(run.call_count, 1)
+            self.assertFalse(Path(MODULE.ASSET).exists())
+            with patch.object(MODULE.subprocess, 'run') as run, patch.object(
+                    MODULE, 'gh_api', return_value=self.ref(MODULE.RELEASE_TAG, 'b' * 40)), self.assertRaises(ValueError):
+                MODULE.publish_release(policy, b'exact tested wheel', revision)
+            self.assertEqual(run.call_count, 1)
+            self.assertFalse(Path(MODULE.ASSET).exists())
+            with patch.object(MODULE.subprocess, 'run') as run, patch.object(
+                    MODULE, 'gh_api', return_value=self.ref(MODULE.RELEASE_TAG, revision)):
+                MODULE.publish_release(policy, b'exact tested wheel', revision)
+            create_ref, release = run.call_args_list
+            self.assertEqual(json.loads(create_ref.kwargs['input']),
+                             {'ref': 'refs/tags/' + MODULE.RELEASE_TAG, 'sha': revision})
+            self.assertIn('--method', create_ref.args[0])
+            self.assertIn('POST', create_ref.args[0])
+            self.assertIn('--verify-tag', release.args[0])
+            self.assertIn('--latest=false', release.args[0])
+            self.assertEqual(Path(MODULE.ASSET).read_bytes(), b'exact tested wheel')
+
+    def test_anonymous_readback_rejects_ref_release_asset_and_byte_drift(self):
+        policy, *_ = self.fixture()
+        revision = 'a' * 40
+        url = f'https://github.com/{MODULE.REPOSITORY}/releases/download/{MODULE.RELEASE_TAG}/{MODULE.ASSET}'
+        release = {'id': 12, 'tag_name': MODULE.RELEASE_TAG, 'target_commitish': revision,
+                   'draft': False, 'prerelease': False,
+                   'html_url': f'https://github.com/{MODULE.REPOSITORY}/releases/tag/{MODULE.RELEASE_TAG}',
+                   'assets': [{'id': 34, 'name': MODULE.ASSET, 'state': 'uploaded', 'size': policy['wheelSize'],
+                               'browser_download_url': url, 'digest': 'sha256:' + policy['wheelSha256']}]}
+        for control in ['valid', 'wrong-tag', 'extra-asset', 'ref-drift', 'asset-drift', 'wrong-bytes']:
+            calls = {'ref': 0, 'release': 0}
+
+            def api(path):
+                if path.startswith('git/ref/'):
+                    calls['ref'] += 1
+                    return self.ref(MODULE.RELEASE_TAG, 'b' * 40 if control == 'ref-drift' and calls['ref'] == 2 else revision)
+                calls['release'] += 1
+                value = copy.deepcopy(release)
+                if control == 'wrong-tag':
+                    value['tag_name'] = 'other'
+                elif control == 'extra-asset':
+                    value['assets'].append(copy.deepcopy(value['assets'][0]))
+                elif control == 'asset-drift' and calls['release'] == 2:
+                    value['assets'][0]['id'] = 99
+                # An anonymous download legitimately increments this operational field.
+                value['assets'][0]['download_count'] = calls['release']
+                return value
+
+            with self.subTest(control=control), patch.object(MODULE, 'gh_api', side_effect=api), patch.object(
+                    MODULE.urllib.request, 'urlopen') as download:
+                download.return_value.__enter__.return_value.read.return_value = (
+                    b'changed wheel' if control == 'wrong-bytes' else b'exact tested wheel')
+                if control == 'valid':
+                    result = MODULE.readback_release(policy, revision)
+                    self.assertTrue(result['anonymous'])
+                    download.assert_called_once_with(url, timeout=60)
+                else:
+                    with self.assertRaises(ValueError):
+                        MODULE.readback_release(policy, revision)
 
     def native_fixture(self):
         content = {'av/__init__.py': b'# fixture', 'av.libs/libavcodec-test.so.63': b'ELF fixture',
