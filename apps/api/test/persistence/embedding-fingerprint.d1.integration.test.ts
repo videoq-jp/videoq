@@ -1,8 +1,10 @@
+import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import type { Vectorize } from '@cloudflare/workers-types';
 import { createD1Fixture } from './d1-fixture';
 import { createD1SceneIndexWriter } from '../../src/persistence/d1/scene-index-writer';
+import { synchronizeD1SceneIndex } from '../../src/persistence/d1/scene-index-sync';
 import { createD1SceneSearchRepository } from '../../src/persistence/d1/scene-search';
 import { embeddingFingerprint, embeddingIdentity, resolveEmbeddingConfig } from '../../src/lib/embedding-contract';
 
@@ -11,6 +13,17 @@ beforeAll(async () => { fixture = await createD1Fixture({ beforeMigration: '0020
 afterAll(async () => { await fixture?.dispose(); });
 const config = resolveEmbeddingConfig({ EMBEDDING_MODEL: 'same-model', EMBEDDING_REVISION: 'weights-1' });
 const vector = Array(1536).fill(.25);
+const { preflight } = createRequire(import.meta.url)('../../../../.github/scripts/embedding-release-preflight.cjs') as {
+  preflight(target: unknown, env: Record<string, string>, fetcher: (url: string, options: { body: string }) => Promise<Response>, options?: { resume: boolean }): Promise<{ serving: boolean }>;
+};
+const releaseTarget = { vars: { EMBEDDING_MODEL: 'same-model', EMBEDDING_REVISION: 'weights-1' }, d1_databases: [{ binding: 'DB', database_id: '11111111-2222-4333-8444-555555555555' }] };
+const releaseEnv = { CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32), CLOUDFLARE_API_TOKEN: 'synthetic-local-test' };
+const releaseCheck = (resume = false, paused = false) => preflight({ ...releaseTarget, vars: { ...releaseTarget.vars, ...(paused ? { MIGRATION_TRAFFIC_STATE: 'paused' } : {}) } }, releaseEnv,
+  async (_url, options) => {
+    const { sql, params } = JSON.parse(options.body);
+    return Response.json({ success: true, result: [await fixture.database.prepare(sql).bind(...params).all()] });
+  }, { resume });
+
 
 it('uses identical canonical identity in Python and TypeScript and detects same-dimension changes', async () => {
   const fingerprint = await embeddingFingerprint(config);
@@ -28,11 +41,15 @@ it('migrates unknown generations without adopting them, rejects reads/writes and
   await db.prepare("INSERT INTO scene_index_runs(id,video_id,user_id,source_revision,dimensions,expected_scenes,status) VALUES('legacy',1,'owner','source',1536,1,'published')").run();
   await db.prepare("INSERT INTO video_index_heads(video_id,dimensions,run_id) VALUES(1,1536,'legacy')").run();
   await db.prepare("INSERT INTO scenes(id,video_id,content,start_time,end_time,dimensions,revision,vector_id) VALUES('old',1,'old','0','1',1536,'legacy','old-vector')").run();
+  await expect(releaseCheck()).rejects.toThrow(); // Missing provenance schema blocks release too.
+  expect(await releaseCheck(false, true)).toEqual(expect.objectContaining({ serving: false }));
   // The old binary still reads its existing columns after this additive migration.
   const migration = readFileSync(new URL('../../drizzle-d1/0020_embedding_fingerprint.sql', import.meta.url), 'utf8');
   await db.batch(migration.split('--> statement-breakpoint').map(sql => db.prepare(sql)));
   expect(await db.prepare("SELECT embedding_fingerprint FROM scene_index_runs WHERE id='legacy'").first('embedding_fingerprint')).toBeNull();
   expect(await db.prepare("SELECT content FROM scenes").first('content')).toBe('old');
+  await expect(releaseCheck()).rejects.toThrow('REBUILD_REQUIRED');
+  await expect(releaseCheck(true, true)).rejects.toThrow('REBUILD_REQUIRED');
   const fingerprint = await embeddingFingerprint(config);
   const writer = createD1SceneIndexWriter(db, fingerprint, embeddingIdentity(config));
   const query = vi.fn().mockResolvedValue({ matches: [] });
@@ -50,12 +67,33 @@ it('migrates unknown generations without adopting them, rejects reads/writes and
   const different = createD1SceneIndexWriter(db, await embeddingFingerprint({ ...config, revision: 'weights-2' }));
   await expect(different.stage('new', 'owner', [])).rejects.toThrow('FINGERPRINT_MISMATCH');
   await expect(different.publish('new', 'owner')).rejects.toThrow('FINGERPRINT_MISMATCH');
+  const upsert = vi.fn().mockResolvedValue({ mutationId: 'local-test' });
+  const index = { upsert, getByIds: async () => [], queryById: async () => ({ matches: [] }) } as unknown as Vectorize;
+  const wrongFingerprint = await embeddingFingerprint({ ...config, revision: 'weights-2' });
+  expect(await synchronizeD1SceneIndex(db, { 1536: index }, 1, { fingerprint: wrongFingerprint })).toMatchObject({ failed: 1, completed: 0 });
+  expect(upsert).not.toHaveBeenCalled();
+  await db.prepare("UPDATE scene_index_tasks SET available_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE operation='upsert'").run();
+  expect(await synchronizeD1SceneIndex(db, { 1536: index }, 1, { fingerprint })).toMatchObject({ pending: 1 });
+  expect(upsert).toHaveBeenCalledOnce();
   expect(await writer.publish('new', 'owner')).toBe(true);
   expect(await db.prepare('SELECT content FROM scenes').first('content')).toBe('new');
+  expect(await releaseCheck()).toEqual(expect.objectContaining({ serving: true }));
   const vectorId = await db.prepare("SELECT vector_id FROM scenes WHERE id='new-scene'").first('vector_id');
   query.mockResolvedValue({ matches: [{ id: vectorId, score: .9, metadata: { vector_id: vectorId, scene_id: 'new-scene', revision: 'new', user_id: 'owner', video_id: 1, text: 'untrusted' } }] });
   expect(await search.search(input)).toEqual([{ content: 'new', videoId: 1, videoTitle: 'Legacy', startTime: '0', endTime: '1', evidenceType: 'transcript' }]);
   expect(query).toHaveBeenCalledOnce();
   const changedSearch = createD1SceneSearchRepository(db, { query } as unknown as Vectorize, 1536, await embeddingFingerprint({ ...config, revision: 'weights-2' }));
   await expect(changedSearch.search(input)).rejects.toThrow('FINGERPRINT_MISMATCH');
+  // An old writer still understands the additive schema, but cannot silently
+  // certify new provenance. A mixed-version producer must block strict cutover.
+  const oldWriter = createD1SceneIndexWriter(db);
+  expect(await oldWriter.start({ ...run, runId: 'old-binary', expectedScenes: 0 })).toBe(true);
+  await expect(releaseCheck()).rejects.toThrow('REBUILD_REQUIRED');
+  expect(await oldWriter.publish('old-binary', 'owner')).toBe(true);
+  await expect(releaseCheck()).rejects.toThrow('REBUILD_REQUIRED');
+  await expect(writer.publish('old-binary', 'owner')).rejects.toThrow('FINGERPRINT_MISMATCH');
+  // Retire the old writer, then rebuild from a strict identity before resume.
+  expect(await writer.start({ ...run, runId: 'final-rebuild', expectedScenes: 0, embeddingFingerprint: fingerprint })).toBe(true);
+  expect(await writer.publish('final-rebuild', 'owner')).toBe(true);
+  expect(await releaseCheck(true, true)).toEqual(expect.objectContaining({ serving: true }));
 }, 20_000);

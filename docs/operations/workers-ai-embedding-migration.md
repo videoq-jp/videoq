@@ -238,3 +238,30 @@ or point old and new workers at the same writable generation. The isolated D1
 migration test proves legacy rejection, staged preservation, compatible publish,
 and rejection after a same-model/same-dimension revision change; it is synthetic
 validation, not a production recovery claim.
+
+The release pipeline must run
+`node .github/scripts/embedding-release-preflight.cjs deployment.json` after
+migrations and immediately before API activation. This read-only gate checks the
+trusted candidate configuration against D1 scene projections, current heads
+(including staging), and unfinished upserts. Missing schema, missing provenance,
+mismatch, malformed results, and management API failures block activation. It
+never changes data. An explicit `MIGRATION_TRAFFIC_STATE=paused` candidate may be
+deployed without serving; this is not a resume authorization. Before controlled
+resume, use the same trusted target configuration with `--resume`; the gate then
+requires compatible provenance even when the configuration is paused.
+
+The traffic pause blocks the application HTTP router, chat Durable Objects, and
+scheduled maintenance. It does not prove existing invocations have drained.
+Freeze producers and drain them under the existing owned maintenance procedure
+before cutover. Do not run ordinary public ingestion to rebuild through a paused
+API. Use a separate isolated rebuild deployment with no public routes and no
+ordinary queue consumers, operator-authorized Workflow invocations, and the
+explicit target D1/Vectorize bindings. That deployment can run its controlled
+index writer and synchronizer while the production API remains paused; it must
+use the candidate identity and never expose a general traffic admission path.
+Then execute the release preflight against the actual target and follow the
+existing controlled resource/traffic cutover procedure. For rollback to old code,
+restore the old matched storage pair; a paused candidate is not a compatibility
+bypass. The real D1 test also demonstrates that a schema-compatible old writer
+creates NULL provenance and blocks the new release until its generation is
+replaced, so mixed old/new producer operation is not an approved rollout.
