@@ -185,6 +185,48 @@ class MaskDenialTests(unittest.TestCase):
                              ["empty_namespace_only", "not_found", "empty_namespace_only"])
 
 
+class PyavReleaseTests(unittest.TestCase):
+    def fixture(self):
+        native = SimpleNamespace(__version__="19.0.2", ffmpeg_version_info="9.1",
+                                 library_versions=dict(PROBE.REVIEWED_FFMPEG_VERSIONS))
+        package = {"name": "av", "version": "19.0.2", "ffmpegVersion": "9.1",
+                   "filename": "av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl",
+                   "url": PROBE.REVIEWED_PYAV_WHEEL_URL, "sha256": PROBE.REVIEWED_PYAV_WHEEL_SHA256,
+                   "size": PROBE.REVIEWED_PYAV_WHEEL_SIZE}
+        return native, {"manifest": {"packages": [package]}}
+
+    def test_exact_published_release_and_all227_native_source_members(self):
+        native, receipt = self.fixture()
+        self.assertEqual(PROBE.verify_pyav_release(native, receipt)["ffmpegVersion"], "9.1")
+        self.assertEqual(len(PROBE.REVIEWED_PYAV_MEMBERS), 227)
+        libraries = {name for name in PROBE.REVIEWED_PYAV_MEMBERS if name.startswith("av.libs/")}
+        self.assertEqual(len(libraries), 7)
+        self.assertIn("av.libs/libavcodec-603659c5.so.63.24.100", libraries)
+        self.assertNotIn("av.libs/libavcodec-d61378e8.so.63.1.102", libraries)
+
+    def test_release_receipt_version_library_or_hash_drift_rejected(self):
+        for key, value in [("url", "https://github.com/other/project/wheel.whl"),
+                           ("sha256", "0" * 64), ("size", 1), ("version", "19.0.3"),
+                           ("filename", "renamed.whl"), ("ffmpegVersion", "9.0.2")]:
+            with self.subTest(key=key):
+                native, receipt = self.fixture()
+                receipt["manifest"]["packages"][0][key] = value
+                with self.assertRaises(ValueError):
+                    PROBE.verify_pyav_release(native, receipt)
+        for mutate in [lambda native: setattr(native, "ffmpeg_version_info", "9.0.2"),
+                       lambda native: setattr(native, "__version__", "19.0.1"),
+                       lambda native: native.library_versions.update(libavcodec=(63, 1, 102)),
+                       lambda native: native.library_versions.update(libunknown=(1, 0, 0))]:
+            native, receipt = self.fixture()
+            mutate(native)
+            with self.assertRaises(ValueError):
+                PROBE.verify_pyav_release(native, receipt)
+        native, receipt = self.fixture()
+        receipt["manifest"]["packages"].append(dict(receipt["manifest"]["packages"][0]))
+        with self.assertRaises(ValueError):
+            PROBE.verify_pyav_release(native, receipt)
+
+
 class TorchCodecMaskTests(unittest.TestCase):
     @contextmanager
     def masked_package(self):
