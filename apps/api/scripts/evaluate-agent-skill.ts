@@ -1,5 +1,5 @@
 /** Opt-in, paid CLI smoke test using synthetic subtitles, never a user's course data. */
-import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, lstat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
@@ -20,9 +20,21 @@ const run = (command: string, args: string[], options: { cwd: string; timeout: n
   return execution;
 };
 const resume = process.argv[2] === '--resume';
-const outputRoot = (resume ? process.argv[3] : process.argv[2]) ?? tmpdir();
-await mkdir(outputRoot, { recursive: true });
-const directory = resume ? outputRoot : await mkdtemp(join(outputRoot, 'videoq-skill-evaluation-'));
+const createDirectory = async () => {
+  if (resume) {
+    const existing = process.argv[3];
+    if (!existing) throw new Error('--resume requires an existing evaluation directory.');
+    const info = await lstat(existing);
+    if (!info.isDirectory() || info.isSymbolicLink() || (info.mode & 0o077) !== 0 || (process.getuid && info.uid !== process.getuid())) {
+      throw new Error('Resume requires a private evaluation directory owned by the current user.');
+    }
+    return existing;
+  }
+  const outputRoot = process.argv[2];
+  if (outputRoot) await mkdir(outputRoot, { recursive: true });
+  return mkdtemp(join(outputRoot ?? tmpdir(), 'videoq-skill-evaluation-'));
+};
+const directory = await createDirectory();
 console.log(`Evaluation directory: ${directory}`);
 const stages: { stage: string; passed: boolean }[] = [];
 let callIndex = 0;
