@@ -30,6 +30,14 @@ def files(directory):
     return result
 
 
+def readable_tree(directory):
+    # Validate the complete tree before changing modes; mounted inputs contain no secrets.
+    files(directory)
+    directory.chmod(0o755)
+    for path in directory.rglob('*'):
+        path.chmod(0o755 if path.is_dir() else 0o644)
+
+
 def candidate_wheel(candidate):
     wheels = list((candidate / 'wheels').glob('*.whl'))
     if len(wheels) != 1:
@@ -93,6 +101,8 @@ def stage(candidate, lock, cache, output, receipt, download=False):
                 'productionLockSha256': digest(lock), 'wheel': wheel.name,
                 'wheelSha256': digest(wheel), 'candidateFiles': candidate_files,
                 'overlayFiles': files(output)}
+        readable_tree(candidate)
+        readable_tree(output)
         receipt.parent.mkdir(parents=True, exist_ok=True)
         receipt.write_text(json.dumps(data, indent=2) + '\n')
         return data
@@ -107,6 +117,42 @@ def verify(candidate, output, receipt):
         raise ValueError('Built, scanned and smoked candidate bytes changed')
 
 
+def verify_native(candidate, output, receipt, native_receipt):
+    verify(candidate, output, receipt)
+    report = json.loads(native_receipt.read_text())
+    provenance = json.loads((candidate / 'provenance.json').read_text())
+    members = provenance['wheel']['members']
+    expected_members = {name: value for name, value in members.items()
+                        if name.startswith(('av/', 'av.libs/'))}
+    if (provenance['wheel']['sha256'] != digest(candidate_wheel(candidate)) or
+            provenance['recipeHashes']['verify.py'] != digest(candidate / 'verify.py')):
+        raise ValueError('Native verifier or wheel provenance mismatch')
+    for name, value in expected_members.items():
+        if digest(output / name) != value:
+            raise ValueError('Native installed member differs from provenance')
+    exact = {'status': 'passed', 'ffmpegVersion': '9.1', 'pyavVersion': '19.0.2',
+             'installedMemberCount': len(expected_members),
+             'compiledFilters': ['abuffer', 'abuffersink', 'aformat', 'aresample', 'buffer', 'buffersink'],
+             'compiledDecoders': ['flac', 'mp3', 'mp3float', 'pcm_s16le'],
+             'compiledEncoders': [], 'nativeMuxers': [],
+             'nativeProtocols': {'0': ['file', 'pipe'], '1': ['file', 'pipe']}}
+    if any(report.get(key) != value for key, value in exact.items()):
+        raise ValueError('Native capability receipt does not match the exact candidate contract')
+    elfs = sorted('/opt/videoq-audio/' + name for name in expected_members
+                  if name.startswith('av.libs/') and '.so' in name)
+    if not elfs or report.get('loadedCandidateElfs') != elfs:
+        raise ValueError('Native loaded ELF paths differ from the exact wheel closure')
+    fixtures = ['pcm16-16k-mono', 'pcm16-48k-stereo', 'extra_overread.mp3', 'luckynight.flac']
+    for key, count_key in [('decodeResample', 'samples16kMono'), ('whisperPreprocessing', 'samples')]:
+        rows = report.get(key, [])
+        if ([row.get('fixture') for row in rows] != fixtures or
+                any(type(row.get(count_key)) is not int or row[count_key] <= 0 for row in rows)):
+            raise ValueError('Missing actual native codec or serving preprocessing evidence')
+    if any(not isinstance(row.get('duration'), (int, float)) or not 0 < row['duration'] <= 180
+           for row in report['whisperPreprocessing']):
+        raise ValueError('Invalid actual serving duration')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--candidate', type=Path, required=True)
@@ -116,8 +162,11 @@ if __name__ == '__main__':
     parser.add_argument('--cache', type=Path)
     parser.add_argument('--download', action='store_true')
     parser.add_argument('--verify', action='store_true')
+    parser.add_argument('--native-receipt', type=Path)
     args = parser.parse_args()
-    if args.verify:
+    if args.native_receipt:
+        verify_native(args.candidate, args.output, args.receipt, args.native_receipt)
+    elif args.verify:
         verify(args.candidate, args.output, args.receipt)
     else:
         if args.cache is None:
