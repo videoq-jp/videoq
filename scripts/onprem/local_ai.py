@@ -111,7 +111,20 @@ def validate_served_model(pod, provisioner, revision, filename):
     if llama and (parsed.get('--model')!=expected or parsed.get('--pooling')!='last' or not parsed.get('--embedding') or not parsed.get('--offline')):
         raise ValueError('GGUF model target or embedding contract differs')
     if not llama and parsed.get('--runner')!='pooling':raise ValueError('Expected embedding pooling runner')
-    return hashlib.sha256(json.dumps({'command':server.get('command',[]),'args':args,'env':server.get('env',[])},sort_keys=True).encode()).hexdigest()
+    # Only vector semantics enter identity: credentials, endpoints and scheduling
+    # settings are operational and must not force adoption of another vector space.
+    operational_env={'PYTHONPATH','TORCHDYNAMO_DISABLE','HF_HUB_OFFLINE','TRANSFORMERS_OFFLINE',
+                     'HF_HUB_DISABLE_TELEMETRY','VLLM_NO_USAGE_STATS','DO_NOT_TRACK','HOME',
+                     'VLLM_CONFIG_ROOT','VLLM_CACHE_ROOT','HF_TOKEN','HUGGING_FACE_HUB_TOKEN',
+                     'VLLM_API_KEY','OPENAI_API_KEY','API_KEY'}
+    environment=server.get('env',[])
+    if len({entry['name'] for entry in environment})!=len(environment) or any(entry['name'] not in operational_env for entry in environment):
+        raise ValueError('Unsupported or ambiguous embedding server environment')
+    semantic_flags={'--ctx-size','--max-model-len','--pooling','--embedding','--dtype',
+                    '--pooler-config','--hf-overrides','--convert','--runner','--limit-mm-per-prompt'}
+    material={'engine':'llamacpp' if llama else 'vllm',
+              'vectorOptions':{flag:value for flag,value in parsed.items() if flag in semantic_flags}}
+    return hashlib.sha256(json.dumps(material,sort_keys=True).encode()).hexdigest()
 
 
 def embedding_runtime_identity(objects, profile):
