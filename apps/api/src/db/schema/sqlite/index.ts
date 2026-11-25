@@ -8,3 +8,4 @@ export * from "./visual-objects";
 export * from "./checkpoints";
 
 export * from "./migration-imports";
+export * from './policy-observation';
