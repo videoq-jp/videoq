@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 
 const [output = 'artifacts/release-compatibility.json'] = process.argv.slice(2);
 const pin = JSON.parse(await readFile('.github/release-compatibility.json', 'utf8'));
-for (const sha of [pin.apiSource, pin.pythonSource]) assert.match(sha, /^[a-f0-9]{40}$/);
+for (const sha of [pin.apiSource, pin.apiDeployedSource, pin.pythonSource]) assert.match(sha, /^[a-f0-9]{40}$/);
 const snapshot = await mkdtemp(resolve(tmpdir(), 'videoq-compatibility-'));
 async function extract(sha, role) {
   const root = resolve(snapshot, role); await mkdir(root);
@@ -19,15 +19,17 @@ async function extract(sha, role) {
   return root;
 }
 const oldRoot = await extract(pin.apiSource, 'api');
+const deployedApi = await extract(pin.apiDeployedSource, 'api-deployed');
 const oldPython = await extract(pin.pythonSource, 'python');
 const candidate = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-const versions = { old: resolve(oldRoot), new: process.cwd() };
+const versions = { old: resolve(oldRoot), deployed: deployedApi, new: process.cwd() };
+const pythonVersions = { old: oldPython, new: process.cwd() };
 const report = { candidate, deployed: pin, passed: false, combinations: [] };
 await mkdir(resolve(output, '..'), { recursive: true });
 try {
   // Run each revision's own vectors in addition to candidate vectors. Old vectors
   // must not silently change when the candidate updates its shared fixtures.
-  for (const [producerVersion, producerRoot] of Object.entries({ 'api-old': oldRoot, 'api-new': versions.new, 'python-old': oldPython, 'python-new': versions.new })) {
+  for (const [producerVersion, producerRoot] of Object.entries({ 'api-old': oldRoot, 'api-deployed': deployedApi, 'api-new': versions.new, 'python-old': oldPython, 'python-new': versions.new })) {
     let emitted;
     if (producerVersion.startsWith('python')) {
       emitted = JSON.parse(execFileSync(process.env.COMPATIBILITY_PYTHON ?? 'python3',
@@ -63,13 +65,17 @@ try {
         }
       }
       report.combinations.push({ producer: producerVersion, consumer: `api-${consumerVersion}`, cases: emitted.length, passed: true });
+    }
+    for (const [consumerVersion, consumerRoot] of Object.entries(pythonVersions)) {
       // Python consumers use the selected revision's execution entry point and
       // canonical hash, in a separate process to prevent module-cache shadowing.
       const result = JSON.parse(execFileSync(process.env.COMPATIBILITY_PYTHON ?? 'python3',
-        ['.github/scripts/release-compatibility.py', consumerVersion === 'old' ? oldPython : consumerRoot, wire], { encoding: 'utf8' }));
+        ['.github/scripts/release-compatibility.py', consumerRoot, wire], { encoding: 'utf8' }));
       report.combinations.push({ producer: producerVersion, consumer: `python-${consumerVersion}`, ...result });
     }
   }
+  assert.equal(report.combinations.length, 25);
+  assert.equal(new Set(report.combinations.map(row => row.producer + ':' + row.consumer)).size, 25);
   report.passed = true;
 } finally {
   await writeFile(output, JSON.stringify(report, null, 2) + '\n');
