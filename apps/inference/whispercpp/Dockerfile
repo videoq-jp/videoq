@@ -34,7 +34,12 @@ LABEL org.opencontainers.image.source="https://github.com/videoq-jp/videoq" \
       io.videoq.whisper.upstream.image="${UPSTREAM_IMAGE}"
 # Remove packages, rather than deleting their files while leaving false SBOM
 # records. No source, development headers, build tools, models or apt are copied.
-RUN apk del --purge busybox apk-tools
+# Wolfi baselayout may own compatibility symlinks separately from the packages.
+# Keep a transient cleanup executable within this single layer, remove those
+# tool links after uninstall, then remove the cleanup executable itself.
+RUN cp "$(command -v busybox)" /tmp/runtime-cleanup \
+    && apk del --purge busybox apk-tools \
+    && /tmp/runtime-cleanup rm -f /usr/bin/apk /sbin/apk /bin/sh /bin/ash /bin/bash /bin/busybox /usr/bin/busybox /tmp/runtime-cleanup
 WORKDIR /app
 USER 10001:10001
 ENTRYPOINT ["/app/build/bin/whisper-server"]
