@@ -4,7 +4,7 @@ import type { Bindings } from "../../types/bindings";
 import { apiServiceUnavailable } from "../../shared/errors";
 import { stripTrailingSlashes } from "../../lib/url";
 
-const STRIPE_API_VERSION = "2026-09-30.endive" as const;
+const STRIPE_API_VERSION = "2026-10-28.endive" as const;
 
 export function stripeSecretKey(env: Bindings): string | null {
   const key = env.STRIPE_SECRET_KEY?.trim();
