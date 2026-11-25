@@ -94,6 +94,13 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
           if (source.status !== 'indexing') throw new Error('Video is not ready for indexing');
           const status = await finish(source);
           if (status === 'completed') return null;
+          // Published runs already own durable delivery tasks. Their final
+          // readiness acknowledgement atomically queues a completion job; do
+          // not spend workflow retries or regenerate embeddings while waiting.
+          if (status === 'pending') {
+            if (this.env.TASK_SCHEDULER) await armMaintenance(this.env, Date.now() + 1000);
+            return null;
+          }
           if (status !== 'missing') throw new Error('Scene index delivery is pending or source changed');
           if (!source.transcript.trim() && !job.payload.allow_empty) throw new Error('Video has no transcript');
         }
@@ -191,7 +198,10 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
         if (job.type === 'index_video_transcript') {
           await step.do('finish-video-indexing', retry, async () => {
             await renew();
-            if (await finish(prepared.source) !== 'completed') {
+            const status = await finish(prepared.source);
+            if (status === 'pending') {
+              if (this.env.TASK_SCHEDULER) await armMaintenance(this.env, Date.now() + 1000);
+            } else if (status !== 'completed') {
               // Deletion can follow vector readiness before this durable step
               // wakes up. A removed source has no remaining indexing work;
               // existing sources must still pass the revision/readiness fence.

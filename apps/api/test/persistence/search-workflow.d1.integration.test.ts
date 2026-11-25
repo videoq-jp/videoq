@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import { createD1Fixture } from './d1-fixture';
 import type { Bindings } from '../../src/types/bindings';
+import type { Vectorize } from '@cloudflare/workers-types';
+import { synchronizeD1SceneIndex } from '../../src/persistence/d1/scene-index-sync';
 
 // Use the real workflow body and D1 migrations, with a durable-step simulator to
 // inject a lost acknowledgement. Workerd platform tests cover the entrypoint.
@@ -46,6 +48,34 @@ beforeEach(async()=>{
 });
 afterEach(async()=>{await fixture.dispose();});
 describe('resumable search workflow with actual D1 persistence',()=>{
+  it('hands propagation to durable tasks and completes the video from their acknowledgement without embedding again',async()=>{
+    await fixture.database.prepare("UPDATE videos SET status='indexing' WHERE id=1").run();
+    const send=vi.fn(async()=>{});env.SEARCH_FAILURES={send} as unknown as Queue;
+    const initial={...job,type:'index_video_transcript'};
+    await workflow().run({payload:initial} as WorkflowEvent<unknown>,simulator().step);
+    expect(calls).toBe(1);expect(objects.size).toBe(0);expect(send).not.toHaveBeenCalled();
+    expect(await fixture.database.prepare("SELECT status FROM videos WHERE id=1").first('status')).toBe('indexing');
+    expect(await fixture.database.prepare("SELECT status FROM job_executions WHERE job_id='workflow-test'").first('status')).toBe('completed');
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE completed_at IS NULL").first('n')).toBe(1);
+    // An independently delivered duplicate while propagation is still pending
+    // must finish its own job without replacing the published scene generation.
+    await workflow().run({payload:{...initial,job_id:'while-delivery-pending'}} as WorkflowEvent<unknown>,simulator().step);
+    expect(calls).toBe(1);
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_runs").first('n')).toBe(1);
+    const stored=new Map<string,{id:string;values:number[];metadata:Record<string,unknown>}>();
+    const index={
+      upsert:async(rows:Array<{id:string;values:number[];metadata:Record<string,unknown>}>)=>{for(const row of rows)stored.set(row.id,row);return{mutationId:'visible'};},
+      queryById:async(id:string)=>({matches:stored.has(id)?[{...stored.get(id)!,score:1}]:[]}),
+    } as unknown as Vectorize;
+    expect(await synchronizeD1SceneIndex(fixture.database,{768:index})).toMatchObject({completed:1,failed:0});
+    const payload=await fixture.database.prepare("SELECT payload FROM external_tasks WHERE dedupe_key LIKE 'scene-ready:%'").first<string>('payload');
+    const completion=JSON.parse(payload!).message;
+    expect(completion).toMatchObject({type:'index_video_transcript',payload:{video_id:1}});
+    await workflow().run({payload:completion} as WorkflowEvent<unknown>,simulator().step);
+    expect(calls).toBe(1);expect(send).not.toHaveBeenCalled();
+    expect(await fixture.database.prepare("SELECT status FROM videos WHERE id=1").first('status')).toBe('completed');
+  });
+
   it('completes and cleans artifacts when the video is deleted before the finish step',async()=>{
     await fixture.database.prepare("UPDATE videos SET status='indexing' WHERE id=1").run();
     const send=vi.fn(async()=>{});env.SEARCH_FAILURES={send} as unknown as Queue;
