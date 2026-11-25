@@ -115,13 +115,50 @@ function assess(report, policy, architecture, profiles, now = new Date(), header
     impactStatement: policy.impactStatement, accepted, preAssessed, blocking };
 }
 
+function assessMinimalWhisper(report, policy, architecture, profiles, runtime) {
+  assert.equal(policy.engine, 'whispercpp');
+  assert.equal(policy.mode, 'strict-no-exceptions');
+  const image = policy.images[architecture];
+  assert.ok(image?.startsWith('ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:'));
+  assert.equal(report.SchemaVersion, 2);
+  assert.equal(report.ArtifactType, 'container_image');
+  assert.ok(report.Metadata.RepoDigests.includes(image), 'Unreviewed minimal runtime digest');
+  assert.deepEqual(report.Metadata.OS, policy.os);
+  const config = report.Metadata.ImageConfig;
+  assert.equal(config.architecture, architecture); assert.equal(config.os, 'linux');
+  assert.deepEqual(config.config.Entrypoint, policy.imageEntrypoint);
+  assert.deepEqual(config.config.Cmd, ['--help']);
+  assert.equal(config.config.User, '10001:10001');
+  assert.ok(!config.config.OnBuild?.length);
+  assert.equal(config.config.Labels['org.opencontainers.image.revision'], policy.sourceRevision);
+  assert.equal(config.config.Labels['io.videoq.whisper.upstream.image'], policy.upstreamImages[architecture]);
+  assert.equal(profiles.length, 3);
+  profiles.forEach(documents => verifyRuntime(documents, { ...policy, image }));
+  assert.equal(runtime.architecture, architecture);
+  assert.equal(runtime.candidateConfigDigest, policy.configDigests[architecture]);
+  assert.equal(runtime.upstreamImage, policy.upstreamImages[architecture]);
+  assert.equal(runtime.nonRootReadOnlyNoEgressServerHealth, true);
+  assert.equal(runtime.syntheticWavInference, true);
+  assert.ok(report.Results?.some(r => r.Type === 'wolfi' && r.Class === 'os-pkgs'), 'Missing final OS package inventory');
+  const blocking = [];
+  for (const result of report.Results) {
+    assert.ok(!result.ModifiedFindings?.length && !result.ExperimentalModifiedFindings?.length, 'Minimal runtime accepts no suppressed findings');
+    for (const finding of result.Vulnerabilities || []) {
+      if (['HIGH', 'CRITICAL', 'UNKNOWN'].includes(finding.Severity)) blocking.push(finding);
+    }
+  }
+  return { image, architecture, mode: policy.mode, accepted: [], preAssessed: [], blocking,
+    nativeRuntimeChecked: true, sourceRevision: policy.sourceRevision };
+}
+
 function main() {
   const { parseAllDocuments, parse } = require('yaml');
   const [input, architecture, output, engine = 'llamacpp'] = process.argv.slice(2);
   assert.ok(input && architecture && output, 'Usage: onprem-upstream-security.cjs RAW_REPORT ARCH OUTPUT');
   const root = resolve(__dirname, '../..');
   assert.ok(['llamacpp', 'whispercpp'].includes(engine));
-  const policy = JSON.parse(readFileSync(resolve(root, `apps/inference/${engine}/security/apt-runtime-assessment.json`)));
+  const policy = JSON.parse(readFileSync(resolve(root, engine === 'whispercpp'
+    ? '.github/whisper-runtime-pins.json' : 'apps/inference/llamacpp/security/apt-runtime-assessment.json')));
   const values = parse(readFileSync(resolve(root, 'charts/videoq-inference/values.yaml'), 'utf8'));
   const image = engine === 'llamacpp' ? values.llamacpp.image : values.whispercpp.images[architecture];
   assert.equal(`${image.repository}@${image.digest}`, policy.images?.[architecture] || policy.image);
@@ -132,16 +169,15 @@ function main() {
     .map(args => parseAllDocuments(execFileSync(process.env.HELM_BIN || 'helm',
       ['template', 'assessment', 'charts/videoq-inference', ...args], { cwd: root, encoding: 'utf8' }))
       .map(d => { assert.equal(d.errors.length, 0); return d.toJSON(); }));
-  const headerEvidence = engine === 'whispercpp' ? {
-    actual: JSON.parse(readFileSync(process.env.HEADER_INVENTORY || resolve(root, 'header-inventory.json'))),
-    approved: JSON.parse(readFileSync(resolve(root, 'apps/inference/whispercpp/security/header-image-inventory.json'))).images[architecture],
-    vex: JSON.parse(readFileSync(resolve(root, 'apps/inference/whispercpp/security/kernel-headers.openvex.json'))),
-  } : undefined;
-  const result = assess(JSON.parse(readFileSync(input)), policy, architecture, profiles, new Date(), headerEvidence);
+  const report = JSON.parse(readFileSync(input));
+  const result = engine === 'whispercpp'
+    ? assessMinimalWhisper(report, policy, architecture, profiles, JSON.parse(readFileSync(process.env.MINIMAL_RUNTIME_RECEIPT || resolve(root, 'minimal-runtime.json'))))
+    : assess(report, policy, architecture, profiles);
   writeFileSync(output, JSON.stringify(result, null, 2) + '\n');
-  console.log(`${result.accepted.length} runtime-assessed findings; ${result.preAssessed.length} verified header assessments; ${result.blocking.length} blocking findings`);
+  console.log(result.mode === 'strict-no-exceptions' ? `Strict minimal runtime: ${result.blocking.length} blocking findings; no exceptions`
+    : `${result.accepted.length} runtime-assessed findings; ${result.preAssessed.length} verified header assessments; ${result.blocking.length} blocking findings`);
   assert.equal(result.blocking.length, 0, 'Unassessed HIGH/CRITICAL/UNKNOWN findings');
 }
 
 if (require.main === module) main();
-module.exports = { assess, verifyRuntime };
+module.exports = { assess, verifyRuntime, assessMinimalWhisper };

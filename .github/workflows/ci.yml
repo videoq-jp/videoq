@@ -337,6 +337,8 @@ jobs:
               - '.github/scripts/vllm-*-smoke.*'
               - '.github/workflows/upstream-vllm.yml'
             upstream_images:
+              - '.github/whisper-runtime-pins.json'
+              - 'apps/inference/whispercpp/verify_runtime.py'
               - '.github/actions/scan-image/**'
               - '.github/scripts/grype-scan.py'
               - '.github/scripts/install-security-tools.py'
