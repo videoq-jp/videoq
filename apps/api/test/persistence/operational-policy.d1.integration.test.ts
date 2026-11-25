@@ -52,3 +52,36 @@ it('rejects insecure webhook targets without sending and masks transport details
  await expect(deliverPolicyNotification({url:'http://operator.test',token:'secret'},event,'id',send)).rejects.toThrow('Invalid policy notification configuration');expect(send).not.toHaveBeenCalled();
  await expect(deliverPolicyNotification({url:'https://operator.test',token:'secret'},event,'id',async()=>{throw Error('secret remote URL')})).rejects.toThrow(/^Policy notification delivery failed$/);
 });
+it('respects delivery backoff/live leases without starving eligible rows beyond the first hundred',async()=>{
+ const f=await createD1Fixture();try {
+ const db=f.database;
+ const {policyMaintenanceWakeup}=await import('../../src/persistence/d1/policy-wakeup');
+ const {createD1OperationalPolicyRepository}=await import('../../src/persistence/d1/operational-policy');
+ const env={DEPLOYMENT_EDITION:'cloud',PERSISTENCE_BACKEND:'d1',DB:db,OPERATIONAL_POLICY_WEBHOOK_URL:'https://operator.example.test',OPERATIONAL_POLICY_WEBHOOK_TOKEN:'synthetic'} as Bindings;
+ const deleted=new Date(Date.now()-49*3600000).toISOString();
+ for(let i=0;i<101;i++) {
+  const id='leased-'+i;
+  await db.prepare("INSERT INTO policy_cleanup(id,scope,task_id,logical_deleted_at) VALUES(?,'active-object',?,?)").bind(id,id,deleted).run();
+  await db.prepare("INSERT INTO policy_notifications(id,severity,state,attempts,lease_until) VALUES(?,'incident',?,1,strftime('%Y-%m-%dT%H:%M:%fZ','now','+5 minutes'))").bind('cleanup:'+id+':incident',i%2?'sending':'pending').run();
+ }
+ const before=Date.now(),wake=await policyMaintenanceWakeup(env,{nextAt:null,nextFutureAt:null});
+ expect(wake.nextAt!.getTime()).toBeGreaterThan(before+4*60000);
+ expect(wake.nextFutureAt!.getTime()).toBeGreaterThan(before+4*60000);
+ expect((await createD1OperationalPolicyRepository(db).read(new Date().toISOString())).cleanup).toEqual([]);
+ await db.prepare("INSERT INTO policy_cleanup(id,scope,task_id,logical_deleted_at) VALUES('eligible','active-object','eligible',?)").bind(deleted).run();
+ const snapshot=await createD1OperationalPolicyRepository(db).read(new Date().toISOString());expect(snapshot.cleanup.map(row=>row.id)).toEqual(['eligible']);
+ expect((await policyMaintenanceWakeup(env,{nextAt:null,nextFutureAt:null})).nextAt!.getTime()).toBeLessThan(Date.now());
+ const send=vi.fn(async()=>new Response(null,{status:204}));await observeOperationalPolicy(env,new Date(),send);expect(send).toHaveBeenCalledOnce();
+ const after=await policyMaintenanceWakeup(env,{nextAt:null,nextFutureAt:null});expect(after.nextAt!.getTime()).toBeGreaterThan(before+4*60000);
+ }finally{await f.dispose();}
+},60000);
+it('schedules completed late cleanup without pending jobs, while successful delivery removes its wakeup',async()=>{
+ const f=await createD1Fixture();try {
+ const db=f.database,{policyMaintenanceWakeup}=await import('../../src/persistence/d1/policy-wakeup');
+ const env={DEPLOYMENT_EDITION:'cloud',PERSISTENCE_BACKEND:'d1',DB:db,OPERATIONAL_POLICY_WEBHOOK_URL:'https://operator.example.test',OPERATIONAL_POLICY_WEBHOOK_TOKEN:'synthetic'} as Bindings;
+ await db.prepare("INSERT INTO policy_cleanup(id,scope,task_id,logical_deleted_at,completed_at) VALUES('late','active-index','late',?,?)").bind(new Date(Date.now()-49*3600000).toISOString(),new Date(Date.now()-1000).toISOString()).run();
+ expect((await policyMaintenanceWakeup(env,{nextAt:null,nextFutureAt:null})).nextAt!.getTime()).toBeLessThan(Date.now());
+ await observeOperationalPolicy(env,new Date(),async()=>new Response(null,{status:204}));
+ expect(await policyMaintenanceWakeup(env,{nextAt:null,nextFutureAt:null})).toEqual({nextAt:null,nextFutureAt:null});
+ }finally{await f.dispose();}
+},60000);
