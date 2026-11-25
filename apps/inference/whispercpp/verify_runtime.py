@@ -113,8 +113,10 @@ def verify(candidate: str, architecture: str, receipt: Path) -> dict:
             docker('export', '--output', str(archive), containers[1])
             with tarfile.open(archive) as rootfs:
                 names = rootfs.getnames()
-                database = next((name for name in ['lib/apk/db/installed', 'var/lib/apk/db/installed'] if name in names), None)
-                packages = package_names(rootfs.extractfile(database).read().decode()) if database else []
+                database = next((name for name in ['usr/lib/apk/db/installed', 'lib/apk/db/installed', 'var/lib/apk/db/installed'] if name in names), None)
+                if database is None:
+                    raise ValueError(f'Runtime package inventory missing; APK archive paths: {[name for name in names if "/apk/" in name]}')
+                packages = package_names(rootfs.extractfile(database).read().decode())
                 validate_inventory(names, packages)
                 linked = rootfs.extractfile('usr/share/doc/videoq-whispercpp/linked-libraries.txt').read().decode()
                 if 'not found' in linked or 'libwhisper' not in linked:
