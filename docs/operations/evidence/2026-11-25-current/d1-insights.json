@@ -1,0 +1,233 @@
+{
+  "observedAt": "2026-11-25T03:19:08.606Z",
+  "provider": "Cloudflare D1 Insights",
+  "window": "previous two hours, hourly analytics; dedicated fixture only",
+  "selection": "20 queries sorted by total duration; includes setup/recovery/maintenance, not per-RAG attribution",
+  "rows": [
+    {
+      "sqlSha256": "6de2fc3aded8b22831831c1da7a84d9593560ef9cd26cb93153d665a74a6cca0",
+      "avgRowsRead": 241,
+      "totalRowsRead": 72310,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.3463276666666667,
+      "totalDurationMs": 103.8983,
+      "numberOfTimesRun": 300,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+      "avgRowsRead": 1,
+      "totalRowsRead": 244,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.2045848360655738,
+      "totalDurationMs": 49.9187,
+      "numberOfTimesRun": 244,
+      "queryEfficiency": 1
+    },
+    {
+      "sqlSha256": "4010135965ded9f6bbe693e30975e972cffd14aac9e973b2d388d1100c2f0edd",
+      "avgRowsRead": 9,
+      "totalRowsRead": 596,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.726595,
+      "totalDurationMs": 43.5957,
+      "numberOfTimesRun": 60,
+      "queryEfficiency": 0.1111111111111111
+    },
+    {
+      "sqlSha256": "7cd543b3c061d6704359ba1769eddd3e95e11e362888c06f824d4d87422cc0ec",
+      "avgRowsRead": 4,
+      "totalRowsRead": 477,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.3435965811965812,
+      "totalDurationMs": 40.2008,
+      "numberOfTimesRun": 117,
+      "queryEfficiency": 0.25
+    },
+    {
+      "sqlSha256": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+      "avgRowsRead": 1,
+      "totalRowsRead": 291,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.11987147766323025,
+      "totalDurationMs": 34.882600000000004,
+      "numberOfTimesRun": 291,
+      "queryEfficiency": 1
+    },
+    {
+      "sqlSha256": "2fbcaea58ec937e6345d23f4f0eb4d12da3d795839383711711bbb91100071ef",
+      "avgRowsRead": 7,
+      "totalRowsRead": 630,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.3191134831460674,
+      "totalDurationMs": 28.4011,
+      "numberOfTimesRun": 89,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "2d65b3dfce5046c8b0e74a73d50fe76aff3b9289aabbd4eba68d6b09333c7322",
+      "avgRowsRead": 5,
+      "totalRowsRead": 415,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.33513975903614457,
+      "totalDurationMs": 27.8166,
+      "numberOfTimesRun": 83,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "284bd6dbd51006b4acef705d88b84e56914e0fe603e6c8a99a4a2fb8e9a49a28",
+      "avgRowsRead": 4,
+      "totalRowsRead": 152,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.657,
+      "totalDurationMs": 24.966,
+      "numberOfTimesRun": 38,
+      "queryEfficiency": 0.25
+    },
+    {
+      "sqlSha256": "699b002efcd1541d2ebfb832b6650312dea759c7ade26eec52e3dd832d4f5607",
+      "avgRowsRead": 5,
+      "totalRowsRead": 360,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.33100416666666665,
+      "totalDurationMs": 23.8323,
+      "numberOfTimesRun": 72,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "bb253cd1e6843b2cbb3f75c72314c8524a51f1a77a38644134afcd817db44cdf",
+      "avgRowsRead": 4,
+      "totalRowsRead": 156,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.5955923076923078,
+      "totalDurationMs": 23.2281,
+      "numberOfTimesRun": 39,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "4b5495c89c5dbfb6236d65ccfdd6bcdf9b94a004319a3e5c7ea3c6030e491894",
+      "avgRowsRead": 1,
+      "totalRowsRead": 149,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.14991677852348995,
+      "totalDurationMs": 22.337600000000002,
+      "numberOfTimesRun": 149,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "45f24ed4472a368e7d50ddebfd6bf7c8bf83eec68b9bf74db2e8c2ac89ea4c88",
+      "avgRowsRead": 5,
+      "totalRowsRead": 406,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 45,
+      "avgDurationMs": 0.26215641025641023,
+      "totalDurationMs": 20.4482,
+      "numberOfTimesRun": 78,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "686dc15d6aa2ddf0965b1d9f4f8441f89e248edad754fc8b1d901bc837eabf25",
+      "avgRowsRead": 841,
+      "totalRowsRead": 5046,
+      "avgRowsWritten": 70,
+      "totalRowsWritten": 420,
+      "avgDurationMs": 2.8632000000000004,
+      "totalDurationMs": 17.1792,
+      "numberOfTimesRun": 6,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "7824163f8971c7aea587c895f9552a382a8150361e21448763542adbae3372f1",
+      "avgRowsRead": 4,
+      "totalRowsRead": 528,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.1270431818181818,
+      "totalDurationMs": 16.769699999999997,
+      "numberOfTimesRun": 132,
+      "queryEfficiency": 0.5
+    },
+    {
+      "sqlSha256": "0caced20e4c0f8a7c0d46226fd914c643d739a4b9c94b896dbcb1f70bb0e49da",
+      "avgRowsRead": 2,
+      "totalRowsRead": 122,
+      "avgRowsWritten": 2,
+      "totalRowsWritten": 122,
+      "avgDurationMs": 0.2709409836065574,
+      "totalDurationMs": 16.5274,
+      "numberOfTimesRun": 61,
+      "queryEfficiency": 0.5
+    },
+    {
+      "sqlSha256": "06a62485e14847e46858860b2dd34f2a1c89c28623435a1d751c92a3493cc15a",
+      "avgRowsRead": 3,
+      "totalRowsRead": 210,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.21460571428571432,
+      "totalDurationMs": 15.022400000000003,
+      "numberOfTimesRun": 70,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "1a22b58ed1c9804af9d43a6a31e2c9404332aceb62fa07b2b88a670afe78432c",
+      "avgRowsRead": 2,
+      "totalRowsRead": 138,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.18097826086956523,
+      "totalDurationMs": 12.4875,
+      "numberOfTimesRun": 69,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "461cb34dc3cce81c852d2e08b5079f58c668938161ca63ecd4575eb9edc634d9",
+      "avgRowsRead": 3,
+      "totalRowsRead": 165,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 0,
+      "avgDurationMs": 0.20777454545454546,
+      "totalDurationMs": 11.4276,
+      "numberOfTimesRun": 55,
+      "queryEfficiency": 0.3333333333333333
+    },
+    {
+      "sqlSha256": "bd3386c78269d4598aa8d263aac844539d16bd6c06757217e95e4effacb4f64d",
+      "avgRowsRead": 227,
+      "totalRowsRead": 1362,
+      "avgRowsWritten": 1,
+      "totalRowsWritten": 6,
+      "avgDurationMs": 1.8079,
+      "totalDurationMs": 10.8474,
+      "numberOfTimesRun": 6,
+      "queryEfficiency": 0
+    },
+    {
+      "sqlSha256": "98f9ef60e7389c4c48cdc098299052dda5af04788b9fcecac6049c7162ad2f78",
+      "avgRowsRead": 5,
+      "totalRowsRead": 252,
+      "avgRowsWritten": 0,
+      "totalRowsWritten": 38,
+      "avgDurationMs": 0.24419090909090907,
+      "totalDurationMs": 10.744399999999999,
+      "numberOfTimesRun": 44,
+      "queryEfficiency": 0
+    }
+  ],
+  "limits": [
+    "Top query subset, not total account/database read count",
+    "Analytics ingestion delay and hour-bucket boundaries apply",
+    "Provider SQL may normalize text differently from application SQL hashes"
+  ]
+}

@@ -1,0 +1,385 @@
+{
+  "identity": {
+    "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+    "configSha256": "86f9c785c2616a474a79ce90149641549793723fd9f8037750598909f0a3d296",
+    "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+    "account": "12daec56fdba43f677f2766ee26a5a39",
+    "worker": "videoq-acceptance-20261125-c33d",
+    "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+    "index": "videoq-acceptance-20261125-c33d",
+    "bucket": "videoq-acceptance-20261125-c33d",
+    "workflow": "videoq-acceptance-20261125-c33d",
+    "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+    "model": "@cf/google/embeddinggemma-2",
+    "dimensions": 768,
+    "productionModified": false
+  },
+  "at": "2026-11-25T03:05:08.250Z",
+  "cells": [
+    {
+      "tenantVideoCount": 1,
+      "concurrency": 1,
+      "samples": 5,
+      "failures": 0,
+      "qualityFailures": 0,
+      "coldLogicalClientMs": 7261.036042000001,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 4904.2190409999985,
+        "p95": 6015.818416999999,
+        "p99": 6015.818416999999
+      },
+      "firstAnswerMs": {
+        "count": 5,
+        "p50": 5167,
+        "p95": 5632,
+        "p99": 5632
+      },
+      "completeMs": {
+        "count": 5,
+        "p50": 5395,
+        "p95": 6095,
+        "p99": 6095
+      },
+      "queryCounts": {
+        "count": 5,
+        "p50": 6,
+        "p95": 6,
+        "p99": 6
+      },
+      "totalQueryCalls": 30,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 30
+    },
+    {
+      "tenantVideoCount": 1,
+      "concurrency": 2,
+      "samples": 5,
+      "failures": 0,
+      "qualityFailures": 0,
+      "coldLogicalClientMs": 5942.103292,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 6684.544666000002,
+        "p95": 17424.316124999998,
+        "p99": 17424.316124999998
+      },
+      "firstAnswerMs": {
+        "count": 5,
+        "p50": 5798,
+        "p95": 16615,
+        "p99": 16615
+      },
+      "completeMs": {
+        "count": 5,
+        "p50": 6492,
+        "p95": 17168,
+        "p99": 17168
+      },
+      "queryCounts": {
+        "count": 5,
+        "p50": 6,
+        "p95": 6,
+        "p99": 6
+      },
+      "totalQueryCalls": 30,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 30
+    },
+    {
+      "tenantVideoCount": 100,
+      "concurrency": 1,
+      "samples": 5,
+      "failures": 0,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 7462.026291000002,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 6402.127542000002,
+        "p95": 21166.518167000002,
+        "p99": 21166.518167000002
+      },
+      "firstAnswerMs": {
+        "count": 5,
+        "p50": 5957,
+        "p95": 20356,
+        "p99": 20356
+      },
+      "completeMs": {
+        "count": 5,
+        "p50": 6586,
+        "p95": 20934,
+        "p99": 20934
+      },
+      "queryCounts": {
+        "count": 5,
+        "p50": 7,
+        "p95": 7,
+        "p99": 7
+      },
+      "totalQueryCalls": 35,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 35
+    },
+    {
+      "tenantVideoCount": 100,
+      "concurrency": 2,
+      "samples": 5,
+      "failures": 0,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 7774.257916000002,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 7842.509999999995,
+        "p95": 21289.419834,
+        "p99": 21289.419834
+      },
+      "firstAnswerMs": {
+        "count": 5,
+        "p50": 6987,
+        "p95": 19279,
+        "p99": 19279
+      },
+      "completeMs": {
+        "count": 5,
+        "p50": 7595,
+        "p95": 20038,
+        "p99": 20038
+      },
+      "queryCounts": {
+        "count": 5,
+        "p50": 7,
+        "p95": 7,
+        "p99": 7
+      },
+      "totalQueryCalls": 35,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 35
+    },
+    {
+      "tenantVideoCount": 1000,
+      "concurrency": 1,
+      "samples": 5,
+      "failures": 5,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 4623.026374999987,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 4667.209333000006,
+        "p95": 5755.629167000006,
+        "p99": 5755.629167000006
+      },
+      "firstAnswerMs": null,
+      "completeMs": null,
+      "queryCounts": {
+        "count": 5,
+        "p50": 17,
+        "p95": 17,
+        "p99": 17
+      },
+      "totalQueryCalls": 85,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 85
+    },
+    {
+      "tenantVideoCount": 1000,
+      "concurrency": 2,
+      "samples": 5,
+      "failures": 5,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 4861.161458000017,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 4122.7330409999995,
+        "p95": 5972.078666000016,
+        "p99": 5972.078666000016
+      },
+      "firstAnswerMs": null,
+      "completeMs": null,
+      "queryCounts": {
+        "count": 5,
+        "p50": 17,
+        "p95": 17,
+        "p99": 17
+      },
+      "totalQueryCalls": 85,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 85
+    }
+  ],
+  "stageSummary": [
+    {
+      "name": "answer_provider",
+      "count": 100,
+      "p50": 952,
+      "p95": 2833,
+      "p99": 14025,
+      "totalMs": 150529
+    },
+    {
+      "name": "d1_hydration",
+      "count": 180,
+      "p50": 112,
+      "p95": 131,
+      "p99": 203,
+      "totalMs": 20757
+    },
+    {
+      "name": "d1_authentication",
+      "count": 120,
+      "p50": 110,
+      "p95": 123,
+      "p99": 133,
+      "totalMs": 13464
+    },
+    {
+      "name": "authentication",
+      "count": 30,
+      "p50": 439,
+      "p95": 495,
+      "p99": 507,
+      "totalMs": 13464
+    },
+    {
+      "name": "embedding_provider",
+      "count": 30,
+      "p50": 284,
+      "p95": 1260,
+      "p99": 1369,
+      "totalMs": 12868
+    },
+    {
+      "name": "provenance_validation",
+      "count": 30,
+      "p50": 280,
+      "p95": 599,
+      "p99": 1560,
+      "totalMs": 10579
+    },
+    {
+      "name": "vectorize",
+      "count": 30,
+      "p50": 11,
+      "p95": 34,
+      "p99": 48,
+      "totalMs": 475
+    }
+  ],
+  "sqlOperations": [
+    {
+      "hash": "6de2fc3aded8b22831831c1da7a84d9593560ef9cd26cb93153d665a74a6cca0",
+      "calls": 130,
+      "elapsedMs": 15164,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 130,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    },
+    {
+      "hash": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+      "calls": 60,
+      "elapsedMs": 6764,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 60,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    },
+    {
+      "hash": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+      "calls": 60,
+      "elapsedMs": 6700,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 60,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    },
+    {
+      "hash": "49f19ec4d2c78407cfc36a256086d81eca39cf93ec4c583eb5e7698bd07878d6",
+      "calls": 10,
+      "elapsedMs": 1138,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 10,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    },
+    {
+      "hash": "cef2ae4c7ca3047c4f57df2dde641e904818870695e48280a303890f8965e47c",
+      "calls": 10,
+      "elapsedMs": 1137,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 10,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    },
+    {
+      "hash": "812e649e2f0a10396da89fd0684a116a30c976de0b728b1c8f46cebbba2dbc82",
+      "calls": 10,
+      "elapsedMs": 1110,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 10,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    },
+    {
+      "hash": "c1b9f5297f3d2b46ad06689e5a055a72c7962906ef2573c2cea112d7a34b4b28",
+      "calls": 10,
+      "elapsedMs": 1109,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 10,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    },
+    {
+      "hash": "e5d885430968efee78b7d7faaf66148348914a52895845470269f54c3287f1d5",
+      "calls": 10,
+      "elapsedMs": 1099,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 10,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    }
+  ],
+  "dominantMeasuredOperation": "answer_provider",
+  "sqlChangeProposed": false,
+  "limits": [
+    "HTTP endpoint composes native auth with actual streamRag, excludes native chat HTTP billing/rate-limit/course setup",
+    "24 warm requests plus 6 first requests, 1/100/1000 selected-video scopes; one relevant scene",
+    "No production SLO or statistically reliable p99 from four samples",
+    "Provider timings are binding response availability, not additive with total token streaming time",
+    "Nearest-rank p95/p99 of four warm observations equals their maximum; this is descriptive, not a tail confidence estimate.",
+    "Phase spans overlap; summed provider spans are not additive critical-path wall time.",
+    "Binding answer_provider spans end when the provider response is available; firstAnswer/complete include stream consumption.",
+    "D1 raw/first omit metadata; knownSubsetRowsRead is never a total. Provider analytics must be reported separately.",
+    "Two transcribed scene fixtures, 1000 metadata videos; tenant selection/filter scaling is exercised, production corpus density and semantic recall are not established.",
+    "Authenticated harness composes the actual RAG stack, excludes the public chat route billing/course/rate-limit setup.",
+    "Per-request provenance_validation is separate measured safety overhead."
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "sourceSha": "c7a764ed01c93ea138b23cc00d84e9e19bd10acf",
+  "productionConfigSha256": "07137a460b154f50ad2a4ba191913fefff3fc1d9d7027d42c596ad5969291c14",
+  "migrationsSha256": "fc292549aec3522ba08e2757f155e561333e6aba4aeca629f9c5be5f7d10c200",
+  "harnessSha256": "762db2b668e01dce995caa7bf6ba46586b542c103c83c4ae5c7c2694bed157de",
+  "measurementSha256": "8945d41579557d604a844d241a7476b5307ef621478b309812be65233aa16b33",
+  "model": "@cf/google/embeddinggemma-2",
+  "dimensions": 768,
+  "placement": "local workerd D1/R2; Node agent; simulated external providers",
+  "snapshotDigest": "0ae0fdf2610395224d7110d636399d30e14d83bfa995c5b4366528802c30de69",
+  "snapshotAt": 1795576858704,
+  "failureAt": 1795576858769,
+  "restoreAndValidationMs": 273.9994999999999,
+  "lossWindowMs": 65,
+  "lostSyntheticWrites": 1,
+  "restoredTables": [
+    "users",
+    "videos",
+    "video_index_versions",
+    "scene_index_runs",
+    "video_index_heads",
+    "scenes",
+    "job_executions",
+    "external_tasks"
+  ],
+  "checks": {
+    "objectHash": "690758e29609deeb256114e268bd1ede8c4e77eb2406044e4943433a52a8598d",
+    "missingObjectDetected": true,
+    "duplicateDeliveryExecutions": 1,
+    "staleLeaseRejected": true,
+    "identityConflictRejected": true,
+    "deletedEvidenceHidden": true,
+    "crossOwnerDenied": true,
+    "unknownExternalOutcomeDeferred": true
+  },
+  "productionModified": false,
+  "approvedRpoMs": null,
+  "approvedRtoMs": null,
+  "businessComparison": "pending stakeholder agreement",
+  "fidelity": {
+    "d1": "actual local workerd binding and repository adapters",
+    "r2": "actual local workerd binding",
+    "vectorize": "768-dimensional snapshot and adversarial query binding simulation; no remote ANN/visibility",
+    "queue": "serialized duplicate deliveries replayed through real job lease repository; no managed queue drain",
+    "workflow": "serialized stage/revision manifest only; no managed Workflow restart",
+    "outbox": "actual repository; no external send"
+  },
+  "excluded": [
+    "Production RTO/RPO",
+    "Cloudflare managed Queue/Workflow state export/restart",
+    "all-table operational backup",
+    "provider consistency and network latency",
+    "external side effect delivery confirmation"
+  ]
+}

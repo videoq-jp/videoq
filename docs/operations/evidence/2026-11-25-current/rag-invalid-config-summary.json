@@ -1,0 +1,247 @@
+{
+  "identity": {
+    "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+    "configSha256": "714067ef7a7ad0a4a691990e85a6950ba8586eb9edfc484bbfc0e587cd3b870f",
+    "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+    "account": "12daec56fdba43f677f2766ee26a5a39",
+    "worker": "videoq-acceptance-20261125-c33d",
+    "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+    "index": "videoq-acceptance-20261125-c33d",
+    "bucket": "videoq-acceptance-20261125-c33d",
+    "workflow": "videoq-acceptance-20261125-c33d",
+    "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+    "model": "@cf/google/embeddinggemma-2",
+    "dimensions": 768,
+    "productionModified": false
+  },
+  "at": "2026-11-25T02:59:52.753Z",
+  "cells": [
+    {
+      "tenantVideoCount": 1,
+      "concurrency": 1,
+      "samples": 5,
+      "failures": 5,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 1723.8463330000002,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 842.0955840000001,
+        "p95": 857.6021249999999,
+        "p99": 857.6021249999999
+      },
+      "firstAnswerMs": null,
+      "completeMs": null,
+      "queryCounts": {
+        "count": 5,
+        "p50": 4,
+        "p95": 4,
+        "p99": 4
+      },
+      "totalQueryCalls": 20,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 20
+    },
+    {
+      "tenantVideoCount": 1,
+      "concurrency": 2,
+      "samples": 5,
+      "failures": 5,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 834.2247920000009,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 842.9740830000001,
+        "p95": 853.8463339999998,
+        "p99": 853.8463339999998
+      },
+      "firstAnswerMs": null,
+      "completeMs": null,
+      "queryCounts": {
+        "count": 5,
+        "p50": 4,
+        "p95": 4,
+        "p99": 4
+      },
+      "totalQueryCalls": 20,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 20
+    },
+    {
+      "tenantVideoCount": 100,
+      "concurrency": 1,
+      "samples": 5,
+      "failures": 5,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 849.254249999999,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 840.9454160000005,
+        "p95": 957.4924169999995,
+        "p99": 957.4924169999995
+      },
+      "firstAnswerMs": null,
+      "completeMs": null,
+      "queryCounts": {
+        "count": 5,
+        "p50": 4,
+        "p95": 4,
+        "p99": 4
+      },
+      "totalQueryCalls": 20,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 20
+    },
+    {
+      "tenantVideoCount": 100,
+      "concurrency": 2,
+      "samples": 5,
+      "failures": 5,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 917.8614160000016,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 836.7895000000008,
+        "p95": 1934.1081250000007,
+        "p99": 1934.1081250000007
+      },
+      "firstAnswerMs": null,
+      "completeMs": null,
+      "queryCounts": {
+        "count": 5,
+        "p50": 4,
+        "p95": 4,
+        "p99": 4
+      },
+      "totalQueryCalls": 20,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 20
+    },
+    {
+      "tenantVideoCount": 1000,
+      "concurrency": 1,
+      "samples": 5,
+      "failures": 5,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 818.6852500000005,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 819.2685829999973,
+        "p95": 838.5592500000021,
+        "p99": 838.5592500000021
+      },
+      "firstAnswerMs": null,
+      "completeMs": null,
+      "queryCounts": {
+        "count": 5,
+        "p50": 4,
+        "p95": 4,
+        "p99": 4
+      },
+      "totalQueryCalls": 20,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 20
+    },
+    {
+      "tenantVideoCount": 1000,
+      "concurrency": 2,
+      "samples": 5,
+      "failures": 5,
+      "qualityFailures": 5,
+      "coldLogicalClientMs": 829.9527500000004,
+      "warmClientMs": {
+        "count": 4,
+        "p50": 811.8531249999978,
+        "p95": 1566.348958999999,
+        "p99": 1566.348958999999
+      },
+      "firstAnswerMs": null,
+      "completeMs": null,
+      "queryCounts": {
+        "count": 5,
+        "p50": 4,
+        "p95": 4,
+        "p99": 4
+      },
+      "totalQueryCalls": 20,
+      "queriesWithReadMetadata": 0,
+      "totalRowsRead": null,
+      "knownSubsetRowsRead": 0,
+      "queriesWithoutReadMetadata": 20
+    }
+  ],
+  "stageSummary": [
+    {
+      "name": "d1_authentication",
+      "count": 120,
+      "p50": 103,
+      "p95": 112,
+      "p99": 124,
+      "totalMs": 12569
+    },
+    {
+      "name": "authentication",
+      "count": 30,
+      "p50": 413,
+      "p95": 455,
+      "p99": 488,
+      "totalMs": 12569
+    },
+    {
+      "name": "provenance_validation",
+      "count": 30,
+      "p50": 271,
+      "p95": 309,
+      "p99": 311,
+      "totalMs": 8276
+    }
+  ],
+  "sqlOperations": [
+    {
+      "hash": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+      "calls": 60,
+      "elapsedMs": 6312,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 60,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    },
+    {
+      "hash": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+      "calls": 60,
+      "elapsedMs": 6257,
+      "rowsRead": null,
+      "rowsWritten": null,
+      "metadataUnavailable": 60,
+      "knownSubsetRowsRead": 0,
+      "knownSubsetRowsWritten": 0,
+      "metadataCovered": 0
+    }
+  ],
+  "dominantMeasuredOperation": "d1_authentication",
+  "sqlChangeProposed": false,
+  "limits": [
+    "HTTP endpoint composes native auth with actual streamRag, excludes native chat HTTP billing/rate-limit/course setup",
+    "24 warm requests plus 6 first requests, 1/100/1000 selected-video scopes; one relevant scene",
+    "No production SLO or statistically reliable p99 from four samples",
+    "Provider timings are binding response availability, not additive with total token streaming time",
+    "Nearest-rank p95/p99 of four warm observations equals their maximum; this is descriptive, not a tail confidence estimate.",
+    "Phase spans overlap; summed provider spans are not additive critical-path wall time.",
+    "Binding answer_provider spans end when the provider response is available; firstAnswer/complete include stream consumption.",
+    "D1 raw/first omit metadata; knownSubsetRowsRead is never a total. Provider analytics must be reported separately.",
+    "Two transcribed scene fixtures, 1000 metadata videos; tenant selection/filter scaling is exercised, production corpus density and semantic recall are not established.",
+    "Authenticated harness composes the actual RAG stack, excludes the public chat route billing/course/rate-limit setup.",
+    "Per-request provenance_validation is separate measured safety overhead."
+  ]
+}

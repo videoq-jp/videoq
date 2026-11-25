@@ -1,0 +1,94 @@
+[
+  {
+    "results": [
+      {
+        "event": "active_cleanup_incident",
+        "severity": "incident",
+        "deliveries": 1
+      },
+      {
+        "event": "delivery_probe",
+        "severity": "warning",
+        "deliveries": 1
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.0863
+      },
+      "duration": 0.0863,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 1343488,
+      "rows_read": 4,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  },
+  {
+    "results": [
+      {
+        "state": "delivered",
+        "notifications": 1
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.0336
+      },
+      "duration": 0.0336,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 1343488,
+      "rows_read": 2,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  },
+  {
+    "results": [
+      {
+        "dedupe_key": "synthetic-frozen-outbox-replay",
+        "attempts": 1,
+        "completed_at": "2026-11-25T02:49:24.644Z",
+        "last_error": ""
+      },
+      {
+        "dedupe_key": "synthetic-frozen-outbox-replay:isolated-recovery-v4",
+        "attempts": 1,
+        "completed_at": "2026-11-25T02:56:15.549Z",
+        "last_error": ""
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.0457
+      },
+      "duration": 0.0457,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 1343488,
+      "rows_read": 3,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]

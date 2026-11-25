@@ -1,0 +1,15 @@
+/** Read-only absence verification for the single fixed disposable resource set. */
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync} from 'node:fs';
+const directory=process.env.ACCEPTANCE_PRIVATE_DIR;if(!directory)throw Error('ACCEPTANCE_PRIVATE_DIR required');
+const config=JSON.parse(readFileSync(directory+'/wrangler.json','utf8'));
+const name='videoq-acceptance-20261125-c33d',account='12daec56fdba43f677f2766ee26a5a39';assert.equal(config.name,name);assert.equal(config.account_id,account);assert.equal(config.d1_databases[0].database_name,name);
+const token=process.env.CLOUDFLARE_API_TOKEN??readFileSync(process.env.HOME+'/Library/Preferences/.wrangler/config/default.toml','utf8').match(/^oauth_token\s*=\s*"([^"]+)"/m)?.[1];if(!token)throw Error('Authentication unavailable');
+async function get(path){const response=await fetch('https://api.cloudflare.com/client/v4/accounts/'+account+path,{headers:{authorization:'Bearer '+token},redirect:'error',signal:AbortSignal.timeout(30000)});const json=await response.json();if([401,403,429].includes(response.status)||response.status>=500)throw Error('Absence check unavailable '+response.status);return {status:response.status,json};}
+const points={database:'/d1/database/'+config.d1_databases[0].database_id,bucket:'/r2/buckets/'+name,index:'/vectorize/v2/indexes/'+name,workflow:'/workflows/'+name,worker:'/workers/services/'+name,sink:'/workers/services/'+name+'-sink'};
+const results={};for(const [kind,path]of Object.entries(points)){const {status,json}=await get(path);results[kind]={status,absent:status===404||(kind==='index'&&status===410&&json.errors?.some(row=>row.code===3005&&row.message.includes('vectorize.index.deleted')))||(json.success===false&&json.errors?.some(row=>/not found|does not exist|no such|could not find/i.test(row.message))),errors:json.errors?.map(row=>({code:row.code,message:row.message}))};}
+for(const queue of [name,name+'-dlq']){const {json}=await get('/queues?name='+encodeURIComponent(queue));assert.equal(json.success,true);assert(Array.isArray(json.result));results[queue]={absent:!json.result.some(row=>row.queue_name===queue),matching:json.result.filter(row=>row.queue_name===queue).length};}
+let namespaces=[];for(let page=1;page<=20;page++){const {json}=await get('/workers/durable_objects/namespaces?page='+page+'&per_page=100');assert.equal(json.success,true);assert(Array.isArray(json.result));namespaces.push(...json.result);if(json.result.length<100)break;if(page===20)throw Error('Namespace listing incomplete');}
+const owned=namespaces.filter(row=>[row.name,row.script,row.script_name].some(value=>typeof value==='string'&&value.includes(name)));
+results.durableObjects={absent:owned.length===0,matching:owned.map(row=>({id:row.id,name:row.name}))};
+const report={at:new Date().toISOString(),account,namespace:name,results,allAbsent:Object.values(results).every(row=>row.absent),productionModified:false};writeFileSync(directory+'/cleanup-verification.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({allAbsent:report.allAbsent,results}));assert.equal(report.allAbsent,true);

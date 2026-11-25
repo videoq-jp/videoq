@@ -1,0 +1,99 @@
+{
+  "rawConfigSha256": "86f9c785c2616a474a79ce90149641549793723fd9f8037750598909f0a3d296",
+  "main": "<REPO>/apps/api/scripts/acceptance/deployed.worker.ts",
+  "compatibility_date": "2026-08-20",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "vars": {
+    "ENVIRONMENT": "production",
+    "DEPLOYMENT_EDITION": "cloud",
+    "PERSISTENCE_BACKEND": "d1",
+    "EMBEDDING_PROVIDER": "workers-ai",
+    "EMBEDDING_PROFILE": "embeddinggemma2",
+    "EMBEDDING_MODEL": "@cf/google/embeddinggemma-2",
+    "LLM_MODEL": "@cf/google/gemma-4-26b-a4b-it",
+    "LLM_MAX_TOKENS": "4096",
+    "LLM_SEPARATE_TOOL_SCHEMA": "true",
+    "LLM_PRESERVE_TOOL_REASONING": "true",
+    "MIGRATION_TRAFFIC_STATE": "running",
+    "SEARCH_JOB_BACKEND": "cloudflare",
+    "BETTER_AUTH_URL": "https://videoq-acceptance-20261125-c33d.yukiharada1228.workers.dev",
+    "OPERATIONAL_POLICY_WEBHOOK_URL": "https://videoq-acceptance-20261125-c33d-sink.yukiharada1228.workers.dev/"
+  },
+  "bindings": {
+    "d1": [
+      {
+        "binding": "DB",
+        "database_name": "videoq-acceptance-20261125-c33d",
+        "database_id": "ca70322e-c692-44b2-9052-de5d01a60e61"
+      }
+    ],
+    "r2": [
+      {
+        "binding": "VIDEO_BUCKET",
+        "bucket_name": "videoq-acceptance-20261125-c33d"
+      }
+    ],
+    "vectorize": [
+      {
+        "binding": "SCENE_VECTORIZE_768",
+        "index_name": "videoq-acceptance-20261125-c33d"
+      }
+    ],
+    "workflows": [
+      {
+        "binding": "SEARCH_INDEX_WORKFLOW",
+        "name": "videoq-acceptance-20261125-c33d",
+        "class_name": "RecoveryWorkflow"
+      }
+    ],
+    "queues": {
+      "producers": [
+        {
+          "binding": "SEARCH_JOBS",
+          "queue": "videoq-acceptance-20261125-c33d"
+        },
+        {
+          "binding": "SEARCH_FAILURES",
+          "queue": "videoq-acceptance-20261125-c33d-dlq"
+        }
+      ],
+      "consumers": [
+        {
+          "queue": "videoq-acceptance-20261125-c33d",
+          "max_batch_size": 1,
+          "max_retries": 2,
+          "max_concurrency": 1,
+          "dead_letter_queue": "videoq-acceptance-20261125-c33d-dlq"
+        }
+      ]
+    },
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "RATE_LIMITER",
+          "class_name": "RateLimiter"
+        },
+        {
+          "name": "TASK_SCHEDULER",
+          "class_name": "TaskScheduler"
+        }
+      ]
+    },
+    "migrations": [
+      {
+        "tag": "isolated-v1",
+        "new_sqlite_classes": [
+          "RateLimiter",
+          "TaskScheduler"
+        ]
+      }
+    ]
+  },
+  "limits": [
+    "Credentials excluded; original workspace-specific main/migrations paths are represented by source commit and hashes",
+    "Provider-managed model revisions are not immutable weight receipts"
+  ]
+}
