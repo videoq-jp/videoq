@@ -12,7 +12,7 @@ import { createD1Connection } from "../../db/d1/connection";
 import { scenes, videos, users } from "../../db/schema/sqlite";
 import type { SceneSearchRepository } from "../contracts/scene-search";
 
-/** Split large course selections by the serialized filter size, preserving scope. */
+/** Respect both Vectorize's 100-value $in limit and serialized filter size. */
 function filters(userId: string, videoIds: readonly number[]): VectorizeVectorMetadataFilter[] {
   const result: VectorizeVectorMetadataFilter[] = [];
   let ids: number[] = [];
@@ -20,7 +20,7 @@ function filters(userId: string, videoIds: readonly number[]): VectorizeVectorMe
   const bytes = (values: number[]) => new TextEncoder().encode(JSON.stringify(filter(values))).length;
   for (const id of new Set(videoIds)) {
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid video ID");
-    if (bytes([...ids, id]) >= 2048) {
+    if (ids.length >= 100 || bytes([...ids, id]) >= 2048) {
       if (!ids.length) throw new Error("Vectorize scope exceeds the metadata filter size limit");
       result.push(filter(ids));
       ids = [];
