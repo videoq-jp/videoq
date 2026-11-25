@@ -200,6 +200,8 @@ jobs:
               - '.github/workflows/terraform-apply.yml'
             operations:
               - '.github/workflows/cloudflare-maintenance.yml'
+              - '.github/workflows/schema-maintenance.yml'
+              - '.github/scripts/schema-maintenance*'
               - '.github/scripts/maintenance-deployment*'
               - 'infra/cloudflare-maintenance/**'
               - '.github/actions/cloudflare-maintenance-tools/**'

@@ -1,0 +1,126 @@
+name: Controlled D1 Schema Maintenance
+on:
+  workflow_dispatch:
+    inputs:
+      acknowledge_service_pause:
+        description: Pause application writes, drain background work, apply current-main migrations and restore service
+        type: boolean
+        required: true
+        default: false
+      previous_run:
+        description: Exact failed read-only GitHub run to recover; leave blank only when no owner exists
+        type: string
+        required: false
+      previous_source:
+        description: Exact source SHA of the failed read-only owner
+        type: string
+        required: false
+      previous_attempt:
+        description: Exact terminal attempt of the failed read-only owner
+        type: string
+        required: false
+permissions:
+  contents: read
+# Ordinary application deployment cannot race the pause/schema/restore sequence.
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+jobs:
+  admit:
+    name: admit
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/heads/main' && inputs.acknowledge_service_pause
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-db-migration
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/cloudflare-maintenance-tools
+        with:
+          purpose: migration
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: await require('./.github/scripts/validate-deployment.cjs')({github, context});
+      - name: Run owned admit phase
+        env:
+          GH_MAINTENANCE_READ_TOKEN: ${{ github.token }}
+          PREVIOUS_MIGRATION_RUN: ${{ inputs.previous_run }}
+          PREVIOUS_MIGRATION_SOURCE: ${{ inputs.previous_source }}
+          PREVIOUS_MIGRATION_ATTEMPT: ${{ inputs.previous_attempt }}
+        run: node .github/scripts/schema-maintenance.cjs admit
+  pause:
+    name: pause
+    needs: admit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-app
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/cloudflare-maintenance-tools
+        with:
+          purpose: migration
+      - name: Run owned pause phase
+        env:
+          GH_MAINTENANCE_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node .github/scripts/schema-maintenance.cjs pause
+  migrate:
+    name: migrate
+    needs: pause
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: production-db-migration
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/cloudflare-maintenance-tools
+        with:
+          purpose: migration
+      - name: Run owned migrate phase
+        env:
+          GH_MAINTENANCE_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_MAINTENANCE_TOKEN: ${{ secrets.CLOUDFLARE_MAINTENANCE_TOKEN }}
+          CLOUDFLARE_BACKGROUND_TOKEN: ${{ secrets.CLOUDFLARE_BACKGROUND_TOKEN }}
+        run: node .github/scripts/schema-maintenance.cjs migrate
+  resume:
+    name: resume
+    needs: migrate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-app
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/cloudflare-maintenance-tools
+        with:
+          purpose: migration
+      - name: Run owned resume phase
+        env:
+          GH_MAINTENANCE_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node .github/scripts/schema-maintenance.cjs resume

@@ -1,6 +1,6 @@
 // One coordination atom per production database, not per HTTP/application request.
 // Locks have no TTL: cancellation, eviction and a failed job never reopen writers.
-export const PLAN_KEYS = new Set(['background-queues','background-drain','background-workflows','background-restore','background-schema-complete','operation-result']);
+export const PLAN_KEYS = new Set(['background-queues','background-drain','background-workflows','background-restore','background-schema-complete','operation-result','api-traffic-plan','api-traffic-paused','api-traffic-drained','schema-maintenance-result','api-traffic-resumed']);
 const hex = bytes => [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2,'0')).join('');
 export const digest = async value => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(value))));
 export const runKey = identity => digest(`github:${identity.kind}:${identity.runId}`).then(value => value.slice(0,32));
@@ -30,6 +30,32 @@ export class CoordinatorStore {
     return row;
   }
   metadata(row) { return { run:row.id, kind:row.kind, source:row.source, attempt:row.attempt, state:row.state, writersStopped:Boolean(row.writers_stopped) }; }
+  async recoverReadonly(identity, previous) {
+    if (identity.kind !== 'migration' || identity.workflow !== 'schema-maintenance.yml' || identity.environment !== 'production-db-migration') throw Error('INVALID_MAINTENANCE_ACTION');
+    const oldId = await runKey({kind:'migration',runId:previous.runId}), id = await runKey(identity);
+    if (oldId === id) throw Error('MAINTENANCE_RECOVERY_REQUIRED');
+    const proof = {version:1,previousRun:oldId,previousGithubRun:previous.runId,previousSource:previous.source,previousAttempt:previous.attempt,run:id,source:identity.source};
+    const encoded = JSON.stringify(proof), hash = await digest(proof);
+    return this.storage.transactionSync(() => {
+      const old = this.row(oldId), current = this.row(id), owner = this.owner();
+      if (current) {
+        const receipt = this.sql.exec('SELECT value,digest FROM maintenance_plans WHERE run=? AND name=?',id,'schema-recovered-readonly').toArray()[0];
+        if (!receipt || receipt.value !== encoded || receipt.digest !== hash || current.source !== identity.source || current.github_run !== identity.runId) throw Error('MAINTENANCE_RUN_CHANGED');
+        if (current.state === 'released') return this.metadata(current);
+        if (owner !== id || identity.attempt < current.attempt || current.state === 'failed' && identity.attempt <= current.attempt) throw Error('MAINTENANCE_RECOVERY_REQUIRED');
+        this.sql.exec('UPDATE maintenance_runs SET attempt=?,state=?,updated_at=? WHERE id=?',identity.attempt,current.state === 'completed'?'completed':'running',this.now(),id);
+        return this.metadata(this.row(id));
+      }
+      const plans = this.sql.exec('SELECT count(*) AS count FROM maintenance_plans WHERE run=?',oldId).toArray()[0].count;
+      if (owner !== oldId || !old || old.kind !== 'migration' || old.state !== 'failed' || old.writers_stopped !== 0 || old.github_run !== previous.runId || old.source !== previous.source || old.attempt !== previous.attempt || plans !== 0) throw Error('MAINTENANCE_RECOVERY_REQUIRED');
+      this.sql.exec('INSERT INTO maintenance_plans VALUES(?,?,?,?)',oldId,'read-only-recovery',encoded,hash);
+      this.sql.exec('UPDATE maintenance_runs SET state=?,updated_at=? WHERE id=?','released',this.now(),oldId);
+      this.sql.exec('INSERT INTO maintenance_runs VALUES(?,?,?,?,?,?,?,?)',id,'migration',identity.runId,identity.attempt,identity.source,'running',1,this.now());
+      this.sql.exec('INSERT INTO maintenance_plans VALUES(?,?,?,?)',id,'schema-recovered-readonly',encoded,hash);
+      this.sql.exec('UPDATE maintenance_owner SET run=? WHERE singleton=1 AND run=?',id,oldId);
+      return this.metadata(this.row(id));
+    });
+  }
   async operate(id, identity, body) {
     const action = body.action;
     if (!['acquire','assert','load','save','complete','release','fail'].includes(action)) throw Error('INVALID_MAINTENANCE_ACTION');
@@ -81,7 +107,14 @@ export class CoordinatorStore {
         const proof = saved ? JSON.parse(saved.value):null;
         if (!proof || proof.version !== 1 || proof.kind !== row.kind || proof.run !== id || proof.source !== row.source
           || (row.kind === 'smoke' && proof.syntheticCleanupComplete !== true)
-          || (row.kind === 'migration' && (row.writers_stopped ? proof.backgroundRestored !== true : proof.readOnly !== true))) throw Error('MAINTENANCE_COMPLETION_PROOF_REQUIRED');
+          || (row.kind === 'migration' && (row.writers_stopped ? proof.backgroundRestored !== true : proof.readOnly !== true))
+          || (identity.workflow === 'schema-maintenance.yml' && proof.apiTrafficRestored !== true)) throw Error('MAINTENANCE_COMPLETION_PROOF_REQUIRED');
+        if (identity.workflow === 'schema-maintenance.yml') {
+          const load = name => { const entry = this.sql.exec('SELECT value FROM maintenance_plans WHERE run=? AND name=?',id,name).toArray()[0]; return entry ? JSON.parse(entry.value):null; };
+          const schema = load('schema-maintenance-result'), resumed = load('api-traffic-resumed');
+          const matches = value => value?.version === 1 && value.run === id && value.source === row.source;
+          if (!matches(schema) || schema.schemaCompleted !== true || schema.backgroundRestored !== true || !matches(resumed) || resumed.applicationReadyVerified !== true) throw Error('MAINTENANCE_COMPLETION_PROOF_REQUIRED');
+        }
         this.sql.exec('UPDATE maintenance_runs SET state=?,updated_at=? WHERE id=?','completed',this.now(),id);
       } else if (action === 'release') {
         if (row.state !== 'completed') throw Error('MAINTENANCE_COMPLETION_PROOF_REQUIRED');

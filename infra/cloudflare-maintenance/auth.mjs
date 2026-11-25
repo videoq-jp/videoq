@@ -3,7 +3,7 @@ export const ISSUER = 'https://token.actions.githubusercontent.com';
 export const AUDIENCE = 'videoq-maintenance-prod';
 export const REPOSITORY = 'videoq-jp/videoq';
 const purposes = {
-  migration: { environment: 'production-db-migration', workflows: ['cd.yml', 'database-migrate.yml'] },
+  migration: { environment: 'production-db-migration', workflows: ['cd.yml', 'database-migrate.yml', 'schema-maintenance.yml'] },
   smoke: { environment: 'production-db-smoke', workflows: ['operations.yml'] },
 };
 export async function boundedJson(response, limit = 128 * 1024) {
@@ -40,13 +40,13 @@ export async function verifyIdentity(token, kind, { fetcher = fetch, now = Date.
   if (!await cryptoProvider.subtle.verify('RSASSA-PKCS1-v1_5', key, decode(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]))) throw Error('OIDC_REQUIRED');
   const c = parse(parts[1]), seconds = Math.floor(now() / 1000);
   if (c.iss !== ISSUER || c.aud !== AUDIENCE || c.repository !== REPOSITORY || c.repository_id !== '1083911938' || c.repository_owner_id !== '349188820'
-    || c.ref !== 'refs/heads/main' || c.ref_type !== 'branch' || c.environment !== purpose.environment || c.runner_environment !== 'github-hosted'
-    || c.sub !== `repo:videoq-jp@349188820/videoq@1083911938:environment:${purpose.environment}` || !['workflow_run', 'workflow_dispatch', 'schedule'].includes(c.event_name)
+    || c.ref !== 'refs/heads/main' || c.ref_type !== 'branch' || !(c.environment === purpose.environment || kind === 'migration' && c.environment === 'production-app' && c.workflow_ref === `${REPOSITORY}/.github/workflows/schema-maintenance.yml@refs/heads/main`) || c.runner_environment !== 'github-hosted'
+    || c.sub !== `repo:videoq-jp@349188820/videoq@1083911938:environment:${c.environment}` || !['workflow_run', 'workflow_dispatch', 'schedule'].includes(c.event_name)
     || !(statusOnly ? c.workflow_ref === `${REPOSITORY}/.github/workflows/maintenance-status.yml@refs/heads/main` : purpose.workflows.some(file => c.workflow_ref === `${REPOSITORY}/.github/workflows/${file}@refs/heads/main`))
     || !/^[a-f0-9]{40}$/.test(c.sha ?? '') || !/^[a-f0-9]{40}$/.test(c.workflow_sha ?? '') || c.workflow_sha !== c.sha
     || !/^[1-9][0-9]{0,19}$/.test(c.run_id ?? '') || !/^[1-9][0-9]{0,5}$/.test(c.run_attempt ?? '')
     || ![c.exp,c.iat,c.nbf].every(Number.isSafeInteger) || c.exp <= seconds || c.nbf > seconds + 30 || c.iat > seconds + 30 || c.exp - c.iat > 600 || c.iat < seconds - 600) throw Error('OIDC_REQUIRED');
-  return { access: statusOnly ? 'status' : 'operate', kind, runId: c.run_id, attempt: Number(c.run_attempt), source: c.sha, workflow: c.workflow_ref.slice(`${REPOSITORY}/.github/workflows/`.length).split('@')[0] };
+  return { access: statusOnly ? 'status' : 'operate', environment:c.environment, kind, runId: c.run_id, attempt: Number(c.run_attempt), source: c.sha, workflow: c.workflow_ref.slice(`${REPOSITORY}/.github/workflows/`.length).split('@')[0] };
 }
 export async function verifyStart(identity, githubToken, { fetcher = fetch, recovery = false } = {}) {
   if (typeof githubToken !== 'string' || githubToken.length < 20 || /[\r\n\0]/.test(githubToken)) throw Error('GITHUB_METADATA_REQUIRED');
@@ -60,11 +60,11 @@ export async function verifyStart(identity, githubToken, { fetcher = fetch, reco
   // aggregate run queued/waiting while this OIDC-authenticated job is executing.
   // Admit that case only with independent proof of the exact maintenance job.
   if (run.status !== 'in_progress') {
-    const jobName = { 'cd.yml': 'Drizzle DB Migrate', 'database-migrate.yml': 'verify', 'operations.yml': 'production-smoke', 'maintenance-status.yml': `status (${identity.kind}, production-db-${identity.kind})` }[identity.workflow];
+    const jobName = identity.workflow === 'schema-maintenance.yml' ? (identity.environment === 'production-app' ? ['pause','resume'] : ['admit','migrate']) : [{ 'cd.yml': 'Drizzle DB Migrate', 'database-migrate.yml': 'verify', 'operations.yml': 'production-smoke', 'maintenance-status.yml': `status (${identity.kind}, production-db-${identity.kind})` }[identity.workflow]];
     const result = await get(`actions/runs/${identity.runId}/attempts/${identity.attempt}/jobs?per_page=100`);
-    if (!jobName || !Array.isArray(result.jobs) || !Number.isSafeInteger(result.total_count) || result.total_count < 1
+    if (!jobName[0] || !Array.isArray(result.jobs) || !Number.isSafeInteger(result.total_count) || result.total_count < 1
       || result.total_count > 100 || result.jobs.length !== result.total_count
-      || result.jobs.filter(job => job.name === jobName && job.status === 'in_progress' && job.conclusion === null
+      || result.jobs.filter(job => jobName.includes(job.name) && job.status === 'in_progress' && job.conclusion === null
         && String(job.run_id) === identity.runId && job.head_sha === identity.source && job.completed_at === null).length !== 1) throw Error('GITHUB_RUN_REQUIRED');
   }
   const commits = await get('git/ref/heads/main');
@@ -73,4 +73,13 @@ export async function verifyStart(identity, githubToken, { fetcher = fetch, reco
   if (!Array.isArray(ci.workflow_runs) || ci.workflow_runs.length > 100 || ci.workflow_runs.some(r => !Number.isSafeInteger(r.id) || r.id <= 0)) throw Error('MAIN_CI_REQUIRED');
   const latest = [...ci.workflow_runs].sort((a,b) => b.id-a.id)[0];
   if (!latest || latest.head_sha !== identity.source || latest.head_branch !== 'main' || latest.event !== 'push' || latest.status !== 'completed' || latest.conclusion !== 'success' || latest.repository?.id !== 1083911938 || latest.head_repository?.id !== 1083911938) throw Error('MAIN_CI_REQUIRED');
+}
+
+// A failed read-only run can be handed off only after GitHub confirms the exact
+// terminal attempt. The Durable Object independently checks owner, mode and plans.
+export async function verifyReadonlyFailure(previous, githubToken, {fetcher=fetch}={}) {
+  if (!previous || Object.keys(previous).sort().join(',') !== 'attempt,runId,source' || !/^[1-9][0-9]{0,19}$/.test(previous.runId ?? '') || !/^[a-f0-9]{40}$/.test(previous.source ?? '') || !Number.isSafeInteger(previous.attempt) || previous.attempt < 1) throw Error('INVALID_MAINTENANCE_REQUEST');
+  const run = await boundedJson(await fetcher(`https://api.github.com/repos/${REPOSITORY}/actions/runs/${previous.runId}`, {headers:{authorization:'Bearer '+githubToken,accept:'application/vnd.github+json','user-agent':'videoq-maintenance'},redirect:'manual',signal:AbortSignal.timeout(10000)}));
+  if (String(run.id) !== previous.runId || run.run_attempt !== previous.attempt || run.head_sha !== previous.source || run.head_branch !== 'main' || run.status !== 'completed' || run.conclusion !== 'failure' || run.repository?.id !== 1083911938 || run.head_repository?.id !== 1083911938 || !['.github/workflows/cd.yml','.github/workflows/database-migrate.yml'].includes(run.path)) throw Error('MAINTENANCE_RECOVERY_REQUIRED');
+  return previous;
 }
