@@ -47,7 +47,7 @@ For server health it extracts only the already-bundled upstream
 `/app/models/ggml-base.en.bin` into disposable host storage and mounts that file
 read-only. The model is not included in the final runtime. The server has a
 network-none namespace; a separately pinned Python probe image shares that same
-namespace and verifies the actual HTTP health endpoint after model loading.
+namespace and verifies the actual HTTP health endpoint after model loading, then submits a generated one-second PCM WAV through the inference endpoint and requires a successful JSON transcription response.
 The helper removes only containers it creates and deletes its temporary files;
 it never restarts or prunes Docker. A missing model, dependency, unhealthy server,
 extra build artifact or unsupported architecture fails verification.

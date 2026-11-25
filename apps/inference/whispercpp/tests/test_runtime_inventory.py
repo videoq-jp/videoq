@@ -18,6 +18,9 @@ class InventoryTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.validate_inventory([], [])
 
+    def test_generated_native_probe_is_valid_python(self):
+        compile(module.HEALTH_PROBE, '<native-health-inference-probe>', 'exec')
+
     def test_package_database(self):
         self.assertEqual(module.package_names('P:glibc\nV:1\n\nP:libgomp\nV:2\n'), ['glibc', 'libgomp'])
 

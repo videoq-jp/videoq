@@ -59,15 +59,25 @@ def elf_hashes(directory: Path) -> dict[str, str]:
         raise ValueError('Server/shared libraries missing')
     return result
 
-HEALTH_PROBE = '''import json,time,urllib.request
+HEALTH_PROBE = '''import io,json,time,urllib.request,wave
 for attempt in range(360):
  try:
   with urllib.request.urlopen('http://127.0.0.1:8081/health',timeout=2) as response:
    value=json.load(response)
    assert response.status==200 and value.get('status')=='ok'
-   print(json.dumps({'health':True}));break
+   break
  except (OSError,AssertionError):time.sleep(.25)
 else:raise RuntimeError('whisper-server did not become healthy')
+audio=io.BytesIO()
+with wave.open(audio,'wb') as wav:
+ wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(16000);wav.writeframes(bytes(32000))
+boundary='videoq-synthetic-whisper-smoke'
+body=(('--'+boundary+'\\r\\nContent-Disposition: form-data; name="response_format"\\r\\n\\r\\njson\\r\\n--'+boundary+'\\r\\nContent-Disposition: form-data; name="file"; filename="silence.wav"\\r\\nContent-Type: audio/wav\\r\\n\\r\\n').encode()+audio.getvalue()+('\\r\\n--'+boundary+'--\\r\\n').encode())
+request=urllib.request.Request('http://127.0.0.1:8081/inference',data=body,headers={'content-type':'multipart/form-data; boundary='+boundary})
+with urllib.request.urlopen(request,timeout=90) as response:
+ result=json.load(response)
+ assert response.status==200 and isinstance(result,dict) and isinstance(result.get('text'),str)
+print(json.dumps({'health':True,'synthetic_wav_inference':True}))
 '''
 
 def verify(candidate: str, architecture: str, receipt: Path) -> dict:
@@ -122,11 +132,11 @@ def verify(candidate: str, architecture: str, receipt: Path) -> dict:
             containers.append(server)
             docker('run','--detach','--name',server,'--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--cpus','2','--memory','2g','--mount',f'type=bind,src={model},dst=/models/model.bin,readonly',candidate,'--model','/models/model.bin','--host','127.0.0.1','--port','8081','--no-gpu','--threads','2')
             health = json.loads(docker('run','--rm','--network',f'container:{server}','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--user','10001:10001','--entrypoint','/usr/local/bin/python',PROBE_IMAGE,'-c',HEALTH_PROBE,timeout=120))
-            if health != {'health': True}:
+            if health != {'health': True, 'synthetic_wav_inference': True}:
                 raise ValueError('Health probe failed')
             result = {'architecture': architecture, 'candidateConfigDigest': info['Id'], 'upstreamImage': upstream,
                       'exactUpstreamElfHashes': candidate_hashes, 'runtimePackages': packages,
-                      'linkedLibraries': linked, 'nonRootReadOnlyNoEgressServerHealth': True,
+                      'linkedLibraries': linked, 'nonRootReadOnlyNoEgressServerHealth': True, 'syntheticWavInference': True,
                       'syntheticProbeModelSha256': hashlib.sha256(model.read_bytes()).hexdigest(),
                       'fullSecurityScanRequiredSeparately': True, 'published': False}
             receipt.write_text(json.dumps(result, indent=2) + '\n')
