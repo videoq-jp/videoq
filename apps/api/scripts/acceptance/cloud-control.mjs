@@ -1,24 +1,31 @@
 /** Bounded, fixed-target disposable rehearsal driver. Never prints credentials. */
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {readFileSync,writeFileSync,existsSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import {resolve} from 'node:path';
+import {withPrivateWorkspace,cloudflareUrl,applicationUrl,databaseId} from './io-boundary.mjs';
 import {execFileSync} from 'node:child_process';
 import releasePreflight from '../../../../.github/scripts/embedding-release-preflight.cjs';
+await withPrivateWorkspace(process.env.ACCEPTANCE_PRIVATE_DIR,async workspace=>{
 const name='videoq-acceptance-20261125-c33d',account='12daec56fdba43f677f2766ee26a5a39';
 const origin=`https://${name}.yukiharada1228.workers.dev`;
-const directory=process.env.ACCEPTANCE_PRIVATE_DIR;
+const directory=workspace.root;
 if(!directory) throw Error('ACCEPTANCE_PRIVATE_DIR required');
-const config=JSON.parse(readFileSync(directory+'/wrangler.json','utf8'));
+const config=JSON.parse(workspace.read('wrangler.json'));
 assert.equal(config.name,name);assert.equal(config.account_id,account);assert(!config.routes);assert(!config.env);
 assert.equal(config.d1_databases.length,1);assert.equal(config.d1_databases[0].database_name,name);
-const database=config.d1_databases[0].database_id;assert(/^[a-f0-9-]{36}$/.test(database));
+const database=databaseId(config.d1_databases[0].database_id);
+assert.equal(resolve(config.main),fileURLToPath(new URL('./deployed.worker.ts',import.meta.url)),'Untrusted fixture entrypoint');
+assert.equal(config.vars.BETTER_AUTH_URL,origin);
+assert.equal(config.vars.OPERATIONAL_POLICY_WEBHOOK_URL,`https://${name}-sink.yukiharada1228.workers.dev/`);
 assert.equal(config.r2_buckets.length,1);assert.equal(config.vectorize.length,1);assert.equal(config.workflows.length,1);
 assert.equal(config.r2_buckets[0].bucket_name,name);assert.equal(config.vectorize[0].index_name,name);
 assert(!config.hyperdrive);assert(!config.services);
 if(config.queues){assert.equal(config.queues.consumers.length,1);assert.equal(config.queues.consumers[0].queue,name);assert(config.queues.producers.every(value=>[name,name+'-dlq'].includes(value.queue)));}
 assert.equal(config.workflows[0].name,name);
-const state=JSON.parse(readFileSync(directory+'/private.json','utf8'));
-const output=process.env.ACCEPTANCE_REPORT_PATH ?? directory+'/receipt.json';
+const state=JSON.parse(workspace.read('private.json'));
+const outputName=workspace.outputName(process.env.ACCEPTANCE_REPORT_PATH,'receipt.json');const output=workspace.path(outputName);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const jobId=process.env.ACCEPTANCE_JOB_ID??'isolated-recovery-v2';assert(/^isolated-recovery-v[234]$/.test(jobId));
 const videoId=Number(process.env.ACCEPTANCE_JOB_VIDEO??1);assert([1,2].includes(videoId));
@@ -26,7 +33,7 @@ const job={type:'reindex_video_transcript',job_id:jobId,payload:{video_id:videoI
 // canonicalBackgroundJob keys and whitespace match the production contract.
 const canonical=JSON.stringify({payload:job.payload,type:job.type});
 const workflowId=hash(job.job_id+'\n'+canonical);
-const privateSave=()=>writeFileSync(directory+'/private.json',JSON.stringify(state),{mode:0o600});
+const privateSave=()=>workspace.write('private.json',JSON.stringify(state));
 function oauth() {
  if(process.env.CLOUDFLARE_API_TOKEN) return process.env.CLOUDFLARE_API_TOKEN;
  const contents=readFileSync(process.env.HOME+'/Library/Preferences/.wrangler/config/default.toml','utf8');
@@ -34,13 +41,13 @@ function oauth() {
 }
 async function cf(path,method='GET',body,allowMissing=false) {
  assert(path.startsWith('/accounts/'+account+'/'));
- const response=await fetch('https://api.cloudflare.com/client/v4'+path,{method,redirect:'error',signal:AbortSignal.timeout(30000),headers:{authorization:'Bearer '+oauth(),'content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
- const json=await response.json();if(allowMissing&&response.status===404)return {alreadyAbsent:true};if(!response.ok||json.success===false)throw Error('Cloudflare fixture operation failed: '+response.status+' '+JSON.stringify(json.errors?.map(e=>({code:e.code,message:e.message}))));return json.result;
+ const response=await fetch(cloudflareUrl(path),{method,redirect:'error',signal:AbortSignal.timeout(30000),headers:{authorization:'Bearer '+oauth(),'content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+ const json=await response.json();if(allowMissing&&response.status===404)return {alreadyAbsent:true};if(!response.ok||json.success===false)throw Error('Cloudflare fixture operation failed: '+response.status+' '+JSON.stringify(json.errors?.map(e=>e.code).filter(Number.isSafeInteger)));return json.result;
 }
 async function sql(query,params=[]) {return (await cf(`/accounts/${account}/d1/database/${database}/query`,'POST',{sql:query,params}))[0];}
 async function app(path,method='GET',body,authenticated=true) {
  assert(path.startsWith('/'));
- const response=await fetch(origin+path,{method,redirect:'error',signal:AbortSignal.timeout(120000),headers:{'content-type':'application/json',...(authenticated?{cookie:state.cookie??''}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+ const response=await fetch(applicationUrl(path),{method,redirect:'error',signal:AbortSignal.timeout(120000),headers:{'content-type':'application/json',...(authenticated?{cookie:state.cookie??''}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
  return response;
 }
 async function rpc(name,input,mutation=false,authenticated=true) {
@@ -49,7 +56,7 @@ async function rpc(name,input,mutation=false,authenticated=true) {
  const json=await response.json();return {status:response.status,data:json.result?.data,error:json.error?.data?.code};
 }
 async function signIn() {
- const response=await fetch(origin+'/api/auth/sign-in/email',{method:'POST',redirect:'error',signal:AbortSignal.timeout(30000),headers:{origin,'content-type':'application/json'},body:JSON.stringify({email:'acceptance@example.test',password:state.password})});
+ const response=await fetch(applicationUrl('/api/auth/sign-in/email'),{method:'POST',redirect:'error',signal:AbortSignal.timeout(30000),headers:{origin,'content-type':'application/json'},body:JSON.stringify({email:'acceptance@example.test',password:state.password})});
  if(response.status!==200) {await response.body?.cancel();throw Error('Isolated sign in failed '+response.status);}
  state.cookie=response.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');privateSave();return {status:response.status,cookieFlags:response.headers.getSetCookie().every(value=>value.includes('HttpOnly'))};
 }
@@ -57,19 +64,19 @@ const remoteDatabase=await cf(`/accounts/${account}/d1/database/${database}`);as
 const wrangler=new URL('../../../../node_modules/.bin/wrangler',import.meta.url).pathname;
 function cli(args) {return execFileSync(wrangler,[...args,'--config',directory+'/wrangler.json'],{encoding:'utf8',stdio:['ignore','pipe','pipe']});}
 const command=process.argv[2];
-const report=existsSync(output)?JSON.parse(readFileSync(output,'utf8')):{};
+const savedReport=workspace.read(outputName,{optional:true});const report=savedReport===undefined?{}:JSON.parse(savedReport);
 report.identity={sourceSha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),configSha256:hash(JSON.stringify(config)),workerSourceSha256:hash(readFileSync(config.main)),account,worker:name,database,index:name,bucket:name,workflow:name,workflowId,model:'@cf/google/embeddinggemma-2',dimensions:768,productionModified:false};
 report.operations??=[];
 let result;
 if(command==='configure-fixture') {
- const sinkConfig=JSON.parse(readFileSync(directory+'/wrangler.sink.json','utf8'));assert.equal(sinkConfig.name,name+'-sink');assert.equal(sinkConfig.account_id,account);assert.equal(sinkConfig.d1_databases[0].database_id,database);
+ const sinkConfig=JSON.parse(workspace.read('wrangler.sink.json'));assert.equal(sinkConfig.name,name+'-sink');assert.equal(sinkConfig.account_id,account);assert.equal(sinkConfig.d1_databases[0].database_id,database);
  for(const [key,value,path] of [['BETTER_AUTH_SECRET',state.authSecret,directory+'/wrangler.json'],['OPERATIONAL_POLICY_WEBHOOK_TOKEN',state.notificationToken,directory+'/wrangler.json'],['ACCEPTANCE_SINK_TOKEN',state.notificationToken,directory+'/wrangler.sink.json']]) {
   assert(typeof value==='string'&&value.length>=32);try{execFileSync(wrangler,['secret','put',key,'--config',path],{input:value,encoding:'utf8',stdio:['pipe','pipe','pipe']});}catch{throw Error('Fixture secret configuration failed');}
  }
  result={configuredSecretBindings:3,valuesWithheld:true};
 }
 else if(command==='seed-fixture') {
- const seed=readFileSync(directory+'/seed.sql','utf8');assert(seed.includes('recovery_probe'));await sql(seed);
+ const seed=workspace.read('seed.sql');assert(seed.includes('recovery_probe'));await sql(seed);
  result={users:(await sql("SELECT count(*) AS n FROM users WHERE id='owner'")).results[0].n,videos:(await sql('SELECT count(*) AS n FROM videos WHERE id IN(1,2)')).results[0].n};
 }
 else if(command==='sign-in') result=await signIn();
@@ -93,8 +100,8 @@ else if(command==='verify') {
 }
 else if(command==='pause') {
  const paused=cli(['queues','pause-delivery',name]);
- config.vars.MIGRATION_TRAFFIC_STATE='paused';writeFileSync(directory+'/wrangler.json',JSON.stringify(config,null,2));
- const deployment=cli(['deploy']);writeFileSync(directory+'/pause.log',deployment);
+ config.vars.MIGRATION_TRAFFIC_STATE='paused';workspace.write('wrangler.json',JSON.stringify(config,null,2));
+ const deployment=cli(['deploy']);workspace.write('pause.log',deployment);
  let stopped;const propagationDeadline=Date.now()+60000;do{stopped=await app('/ready','GET',undefined,false);if(stopped.status===503)break;await stopped.body?.cancel();await new Promise(resolve=>setTimeout(resolve,1000));}while(Date.now()<propagationDeadline);assert.equal(stopped.status,503);
  const workflows=await cf(`/accounts/${account}/workflows/${name}/instances`);
  const active=(Array.isArray(workflows)?workflows:workflows.instances??[]).filter(row=>['queued','running','waiting'].includes(row.status));assert.equal(active.length,0);
@@ -126,7 +133,7 @@ else if(command==='bookmark') {
  const bookmark=JSON.parse(cli(['d1','time-travel','info',name,'--json']));state.bookmark=bookmark.bookmark??bookmark.current_bookmark;assert(state.bookmark);state.snapshotAt=Date.now();privateSave();result={bookmark:state.bookmark,snapshotAt:state.snapshotAt};
 }
 else if(command==='export') {
- const path=directory+'/snapshot.sql';writeFileSync(path,'',{mode:0o600});cli(['d1','export',name,'--remote','--output',path,'--skip-confirmation']);result={sqlSha256:hash(readFileSync(path)),bytes:readFileSync(path).length};
+ const path=workspace.reserve('snapshot.sql');cli(['d1','export',name,'--remote','--output',path,'--skip-confirmation']);result={sqlSha256:hash(readFileSync(path)),bytes:readFileSync(path).length};
 }
 else if(command==='restore-db') {
  assert(state.bookmark);state.restoreStartedAt=Date.now();privateSave();
@@ -139,7 +146,7 @@ else if(command==='resume') {
  for(const key of ['objectsEqual','vectorsEqual','postSnapshotMarkerLost','corruptionReverted']) assert.equal(reconciliation[key],true);
  const provenance=await releasePreflight.preflight(config,{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:oauth()},fetch,{resume:true});
  assert.equal(provenance.serving,true);assert.equal(provenance.dimensions,768);
- config.vars.MIGRATION_TRAFFIC_STATE='running';writeFileSync(directory+'/wrangler.json',JSON.stringify(config,null,2));const deployment=cli(['deploy']);writeFileSync(directory+'/resume.log',deployment);cli(['queues','resume-delivery',name]);
+ config.vars.MIGRATION_TRAFFIC_STATE='running';workspace.write('wrangler.json',JSON.stringify(config,null,2));const deployment=cli(['deploy']);workspace.write('resume.log',deployment);cli(['queues','resume-delivery',name]);
  result={reconciliation,provenance,queueResumed:true,workerVersion:deployment.match(/Current Version ID: ([a-f0-9-]+)/)?.[1],restoreToResumeMs:state.restoreStartedAt?Date.now()-state.restoreStartedAt:null};
 }
 else if(command==='cleanup') {
@@ -152,7 +159,7 @@ else if(command==='cleanup') {
  const bindings=config.durable_objects?.bindings??[];
  assert.deepEqual(bindings.map(value=>value.class_name).sort(),['RateLimiter','TaskScheduler']);assert(bindings.every(value=>!value.script_name));
  const retirement={...config,main:new URL('./cleanup.worker.ts',import.meta.url).pathname,durable_objects:{bindings:[]},workflows:[],migrations:[...config.migrations,{tag:'acceptance-retire-20261125',deleted_classes:['RateLimiter','TaskScheduler']}]};delete retirement.queues;
- const retirementPath=directory+'/wrangler.retire.json';writeFileSync(retirementPath,JSON.stringify(retirement,null,2));
+ const retirementPath=directory+'/wrangler.retire.json';workspace.write('wrangler.retire.json',JSON.stringify(retirement,null,2));
  const retirementReceipt=execFileSync(wrangler,['deploy','--config',retirementPath],{encoding:'utf8',stdio:['ignore','pipe','pipe']});actions.push({operation:'retire owned Durable Object namespaces',receiptSha256:hash(retirementReceipt)});
  await cf(`/accounts/${account}/workers/services/${name}?force=false`,'DELETE');actions.push({operation:'delete isolated worker without forcing dependencies',accepted:true});
  for(const args of [['queues','delete',name],['queues','delete',name+'-dlq'],['vectorize','delete',name,'--force'],['r2','bucket','delete',name]]) {
@@ -175,6 +182,8 @@ else if(command==='measure') {
 }
 else throw Error('Expected sign-in/create-workflow/status/inspect/restart/verify/measure');
 // Never persist API instance logs/output (may include scene text) in public receipts.
-if(command==='status') result={id:result.id,status:result.status,versionId:result.version_id,errorName:result.error?.name,errorCode:result.error?.message?.slice(0,200)};
-report.operations.push({command,identity:report.identity,at:new Date().toISOString(),result});writeFileSync(output,JSON.stringify(report,null,2)+'\n');
+if(command==='status') result={id:result.id,status:result.status,versionId:result.version_id,errorName:result.error?.name,errorCode:/^[A-Z0-9_]{1,64}$/.test(result.error?.message??'')?result.error.message:undefined};
+report.operations.push({command,identity:report.identity,at:new Date().toISOString(),result});workspace.write(outputName,JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify({command,reportPath:output,status:result.status??result.workflowStatus??'recorded'}));
+
+});
