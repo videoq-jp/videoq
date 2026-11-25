@@ -25,11 +25,13 @@ export async function synchronizeSceneIndex(deps: SceneIndexSyncDependencies, li
   const result = { claimed: 0, completed: 0, pending: 0, failed: 0, leaseLost: 0 };
   let requested = 0;
   const consume = async () => {
-    // Reserve one slot for ingestion so old delete backlogs cannot block new videos.
-    // The remaining slots retain oldest-first cleanup scheduling.
+    // Independent reserved slots prevent new writes, propagation checks and
+    // deletion from starving one another. The repository falls back to the
+    // oldest eligible task whenever the preferred lane is empty.
     while (requested < limit) {
       const slot = requested++;
-      const task = await tasks.claim({ preferUpserts: slot === 0 });
+      const prefer = (["delivery", "readiness", "cleanup"] as const)[slot % 3];
+      const task = await tasks.claim({ prefer });
       if (!task) break;
       result.claimed++;
       if (!deps.indexAvailable(task.dimensions)) {
