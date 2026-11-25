@@ -4,7 +4,10 @@ const userId = z.object({ id: z.string().min(1) });
 // Quota and monthly usage counters use PostgreSQL integer columns.
 const nonNegativeInt32 = z.number().int().nonnegative().max(2_147_483_647);
 
+const recoveryJob = z.object({ job: z.unknown() }).strict();
 export const adminInputSchemas = {
+  'admin.inspectSearchRecovery': recoveryJob,
+  'admin.restartSearchWorkflow': recoveryJob.extend({inspection:z.string().regex(/^[a-f0-9]{64}$/)}),
   "admin.createUser": z.object({
     email: z.email().max(254), username: z.string().trim().min(3).max(150).regex(/^[a-zA-Z0-9_.]+$/),
   }).strict(),

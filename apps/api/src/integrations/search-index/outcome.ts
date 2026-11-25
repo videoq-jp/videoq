@@ -1,21 +1,18 @@
+import { SafeJobError } from '../../application/job-failure';
 import type { SceneIndexOutcome } from '../../application/scene-index-execution';
 
 type FailureOutcome = Exclude<SceneIndexOutcome, { status: 'completed' | 'skipped' }>;
 
 /** The queue boundary keeps retry behavior while exposing typed diagnostic facts. */
-export class SceneIndexOutcomeError extends Error {
-  readonly code: string;
-  readonly retryable: boolean;
+export class SceneIndexOutcomeError extends SafeJobError {
   constructor(readonly outcome: FailureOutcome) {
     const detail = failureDetails(outcome);
-    super(detail.message);
+    super(detail.code, detail.retryable, detail.message);
     this.name = 'SceneIndexOutcomeError';
-    this.code = detail.code;
-    this.retryable = detail.retryable;
   }
 }
 
-function failureDetails(outcome: FailureOutcome): { message: string; code: string; retryable: boolean } {
+function failureDetails(outcome: FailureOutcome): { message: string; code: ConstructorParameters<typeof SafeJobError>[0]; retryable: boolean } {
   switch (outcome.status) {
     case 'pending_delivery': return { message: 'Scene index delivery is pending or source changed; retry', code: 'INDEX_DELIVERY_PENDING', retryable: true };
     case 'source_changed': return {

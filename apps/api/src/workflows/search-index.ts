@@ -1,3 +1,4 @@
+import { SafeJobError, classifyJobFailure } from '../application/job-failure';
 import { streamingOtsuBoundary } from '../application/streaming-otsu';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from 'cloudflare:workers';
 import { canonicalBackgroundJob, parseBackgroundJob } from '../application/background-job';
@@ -92,13 +93,13 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
         if (!source) return null;
         if (job.type === 'index_video_transcript') {
           if (source.status === 'completed') return null;
-          if (source.status !== 'indexing') throw new Error('Video is not ready for indexing');
+          if (source.status !== 'indexing') throw new SafeJobError('INDEX_NOT_READY', true, 'Video is not ready for indexing');
           const status = await finish(source);
           if (status === 'completed') return null;
-          if (status !== 'missing') throw new Error('Scene index delivery is pending or source changed');
-          if (!source.transcript.trim() && !job.payload.allow_empty) throw new Error('Video has no transcript');
+          if (status !== 'missing') throw new SafeJobError('INDEX_DELIVERY_PENDING', true, 'Scene index delivery is pending or source changed');
+          if (!source.transcript.trim() && !job.payload.allow_empty) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Video has no transcript');
         }
-        if (source.transcript.trim() && !parseSearchScenes(source.transcript).length) throw new Error('Invalid SRT source');
+        if (source.transcript.trim() && !parseSearchScenes(source.transcript).length) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Invalid SRT source');
         const runId = crypto.randomUUID();
         await bucket.put(sourceKey, JSON.stringify(source), { httpMetadata: { contentType: 'application/json' } });
         return { fingerprint, runId, source: { ...source, transcript: '' }, model: config.model, profile: config.profile ?? 'openai', dimensions };
@@ -148,7 +149,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
               });
             }) : '';
           scenes = parseSearchScenes(grouped);
-          if (source.transcript.trim() && !scenes.length) throw new Error('Scene splitting produced no scenes');
+          if (source.transcript.trim() && !scenes.length) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Scene splitting produced no scenes');
         }
         prepared = await step.do('prepare-scenes', retry, async () => {
           await renew();
@@ -161,7 +162,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
         await step.do('start-scene-run', retry, async () => {
           await renew();
           if (this.env.TASK_SCHEDULER) await armMaintenance(this.env, Date.now() + 1000);
-          if (!await persistence.writer.start({ runId: prepared.runId, videoId: prepared.source.videoId, userId: prepared.source.userId, sourceRevision: prepared.source.sourceRevision, embeddingFingerprint: fingerprint, dimensions, expectedScenes: prepared.count })) throw new Error('Scene source changed');
+          if (!await persistence.writer.start({ runId: prepared.runId, videoId: prepared.source.videoId, userId: prepared.source.userId, sourceRevision: prepared.source.sourceRevision, embeddingFingerprint: fingerprint, dimensions, expectedScenes: prepared.count })) throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Scene source changed');
         });
         for (let offset = 0; offset < prepared.count; offset += 20) {
           await step.do(`embed-stage-${offset}`, retry, async () => {
@@ -181,12 +182,12 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
               // different immutable vector version after a lost acknowledgement.
               await bucket.put(artifact, JSON.stringify(rows), { httpMetadata: { contentType: 'application/json' } });
             }
-            if (!await persistence.writer.stage(prepared.runId, prepared.source.userId, rows)) throw new Error('Scene source changed during indexing');
+            if (!await persistence.writer.stage(prepared.runId, prepared.source.userId, rows)) throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Scene source changed during indexing');
           });
         }
         await step.do('publish-scene-run', retry, async () => {
           await renew();
-          if (!await persistence.writer.publish(prepared.runId, prepared.source.userId)) throw new Error('Scene source changed before publication');
+          if (!await persistence.writer.publish(prepared.runId, prepared.source.userId)) throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Scene source changed before publication');
           if (this.env.TASK_SCHEDULER) await armMaintenance(this.env, Date.now() + 1000);
         });
         if (job.type === 'index_video_transcript') {
@@ -197,7 +198,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
               // wakes up. A removed source has no remaining indexing work;
               // existing sources must still pass the revision/readiness fence.
               if (await persistence.readSource(prepared.source.videoId) !== null) {
-                throw new Error('Scene index delivery is pending or source changed');
+                throw new SafeJobError('INDEX_DELIVERY_PENDING', true, 'Scene index delivery is pending or source changed');
               }
             }
           });
@@ -215,7 +216,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
       });
       await step.do('remove-workflow-artifacts', retry, cleanup);
     } catch (error) {
-      await repository.fail(job.job_id, leaseToken, 'WORKER_EXECUTION_FAILED').catch(() => false);
+      await repository.fail(job.job_id, leaseToken, classifyJobFailure(error).error_code).catch(() => false);
       throw error;
     }
   }

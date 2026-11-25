@@ -38,3 +38,13 @@ describe('TypeScript job identity and replay safety',()=>{
     const deps=dependencies();deps.repository.complete.mockResolvedValue(false);await expect(executeBackgroundJob(job,deps)).rejects.toThrow('lease was lost');
   });
 });
+
+it.each([
+  [Object.assign(new Error('secret'),{status:429}),'PROVIDER_RATE_LIMITED'],
+  [Object.assign(new Error('secret'),{code:'08006'}),'DATABASE_UNAVAILABLE'],
+  [Object.assign(new Error('secret'),{name:'TimeoutError'}),'DEADLINE_EXCEEDED'],
+])('persists the same safe cause as diagnostics for %s',async(error,code)=>{
+  const deps=dependencies();deps.execute.mockRejectedValueOnce(error);
+  await expect(executeBackgroundJob(job,deps)).rejects.toBe(error);
+  expect(deps.repository.fail).toHaveBeenCalledWith(job.job_id,'lease',code);
+});

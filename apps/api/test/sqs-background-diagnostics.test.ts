@@ -38,3 +38,21 @@ it.each([
   expect(JSON.parse(serialized)).toMatchObject({ event: 'background_job_retry', error_code: code,
     job_id: 'job-1', message_id: 'message-1', job_type: 'delete_account_data', attempts: 3, stage: 'execute' });
 });
+
+it('observes visibility control failure separately without acknowledging or leaking either exception', async () => {
+  const operations:string[]=[];
+  const log=vi.spyOn(console,'error').mockImplementation(()=>{});
+  vi.spyOn(AwsClient.prototype,'fetch').mockImplementation(async(_input,init)=>{
+    const op=new Headers(init?.headers).get('x-amz-target')!.split('.')[1];operations.push(op);
+    if(op==='ReceiveMessage')return Response.json({Messages:[{MessageId:'message-2',ReceiptHandle:'private-receipt',Body:JSON.stringify({type:'delete_account_data',job_id:'job-2',payload:{user_id:'private-owner'}})}]});
+    throw new Error('private-credentials');
+  });
+  vi.mocked(runBackgroundJob).mockRejectedValueOnce(Object.assign(new Error('private-provider'),{status:429}));
+  await new SqsBackgroundConsumer({AWS_ACCESS_KEY_ID:'private-key',AWS_SECRET_ACCESS_KEY:'private-secret'} as Bindings,'https://queue.invalid/account','account').poll(new AbortController().signal);
+  expect(operations).toEqual(['ReceiveMessage','ChangeMessageVisibility']);
+  const events=log.mock.calls.map(call=>JSON.parse(String(call[0])));
+  expect(events).toHaveLength(2);
+  expect(events[0]).toMatchObject({event:'background_job_retry',error_code:'PROVIDER_RATE_LIMITED',job_id:'job-2',message_id:'message-2'});
+  expect(events[1]).toMatchObject({event:'background_visibility_change_failed',error_code:'VISIBILITY_CHANGE_FAILED',original_error_code:'PROVIDER_RATE_LIMITED',job_id:'job-2',message_id:'message-2'});
+  expect(JSON.stringify(events)).not.toContain('private-');
+});

@@ -3,6 +3,7 @@ import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 
 /** Local workerd D1 binding, with the actual independent migration chain. */
 type FixtureOptions = {
+  workflowScript?: string;
   r2?: boolean;
   beforeMigration?: string;
   worker?: {
@@ -16,8 +17,9 @@ export async function createD1Fixture(options: FixtureOptions = {}) {
   let outboundRequests=0;
   const runtime = new Miniflare(convertV4MiniflareOptions({
     modules: true,
-    script: options.worker?.script??"export default { fetch() { return new Response('D1 fixture'); } }",
+    script: options.workflowScript ?? options.worker?.script??"export default { fetch() { return new Response('D1 fixture'); } }",
     compatibilityDate: "2026-08-20",
+    ...(options.workflowScript ? {compatibilityFlags:["nodejs_compat"],workflows:{SEARCH_INDEX_WORKFLOW:{name:"recovery-probe",className:"RecoveryWorkflow"}},bindings:{DEPLOYMENT_EDITION:"cloud",PERSISTENCE_BACKEND:"d1",EMBEDDING_PROVIDER:"workers-ai",EMBEDDING_PROFILE:"embeddinggemma2"}} : {}),
     ...(options.worker ? {
       compatibilityFlags: ['nodejs_compat'],
       bindings: options.worker.bindings,
@@ -44,6 +46,7 @@ export async function createD1Fixture(options: FixtureOptions = {}) {
       }
     }
     return {
+      runtime,
       database,
       bucket: options.r2 ? await runtime.getR2Bucket("VIDEO_BUCKET") : undefined,
       origin: options.worker ? (await runtime.ready).origin : undefined,

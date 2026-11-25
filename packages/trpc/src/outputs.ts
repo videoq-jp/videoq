@@ -11,7 +11,11 @@ const messageSchema = z.object({ message: z.string() });
 const addedItemsSchema = messageSchema.extend({ added_count: z.number(), skipped_count: z.number() });
 
 /** Runtime output validation and handler output types share this definition. */
+const recoveryHash=z.string().regex(/^[a-f0-9]{64}$/);
+const recoveryInspection=z.object({target:z.string(),inspection:recoveryHash,workflowId:recoveryHash,status:z.enum(['errored','terminated']),payloadHash:recoveryHash,sourceHash:recoveryHash.nullable(),artifacts:z.array(z.object({key_hash:recoveryHash,content_hash:recoveryHash})),ledger:z.object({job_type:z.string(),payload_sha256:recoveryHash,status:z.string(),attempts:z.number(),lease_until:z.string().nullable()}).nullable()});
 export const outputSchemas = {
+  'admin.inspectSearchRecovery': recoveryInspection,
+  'admin.restartSearchWorkflow': z.object({auditId:z.string(),workflowId:recoveryHash,inspection:recoveryHash,outcome:z.literal('restart_accepted')}),
   ...qaOutputSchemas,
   "account.me": models.userSchema,
   "account.integrationApiKeys": z.array(z.object({

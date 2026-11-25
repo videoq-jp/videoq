@@ -1,3 +1,4 @@
+import { SafeJobError } from '../../application/job-failure';
 import pg from 'pg';
 import { PGEngine, PGVectorStore } from '@yukiharada1228/langchain-postgres';
 import type { SearchScene } from '../../application/search-scene-splitting';
@@ -74,7 +75,7 @@ export async function replacePostgresTranscriptIndex(
       [snapshot.transcript, snapshot.videoId, snapshot.userId],
     );
     if (!rows.length) { await client.query('ROLLBACK'); return 0; }
-    if (!rows[0].matches) throw new Error('Video transcript changed during indexing; retry');
+    if (!rows[0].matches) throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Video transcript changed during indexing; retry');
     const store = await PGVectorStore.initialize(transactionEngine(pool, client), {
       embedQuery: () => Promise.reject(new Error('Use precomputed embeddings')),
       embedDocuments: () => Promise.reject(new Error('Use precomputed embeddings')),
@@ -104,7 +105,7 @@ export async function clearPostgresTranscriptIndex(pool: pg.Pool, snapshot: Post
     await client.query('BEGIN');
     const { rows } = await client.query<{ matches: boolean }>('SELECT coalesce(transcript,\'\')=$1 AS matches FROM videos WHERE id=$2 AND user_id=$3 FOR UPDATE', [snapshot.transcript, snapshot.videoId, snapshot.userId]);
     if (!rows.length) { await client.query('ROLLBACK'); return 0; }
-    if (!rows[0].matches) throw new Error('Video transcript changed during clearing; retry');
+    if (!rows[0].matches) throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Video transcript changed during clearing; retry');
     let count = 0;
     for (const table of ['scene_embeddings','scene_embeddings_768']) {
       count += (await client.query(`DELETE FROM ${quote(table)} WHERE video_id=$1`, [snapshot.videoId])).rowCount ?? 0;

@@ -1,3 +1,4 @@
+import { safeJobFailureCode } from '../../application/job-failure';
 import { and, eq, ne, or, isNull, sql } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { jobExecutions } from "../../db/schema/sqlite";
@@ -35,7 +36,7 @@ export function createD1JobRepository(database: D1Database): JobRepository {
     },
     async fail(jobId, token, errorCode) {
       const rows = await db.update(jobExecutions).set({ status: "failed", leaseToken: null, leaseUntil: null,
-        lastError: errorCode.slice(0, 2000), updatedAt: now }).where(owns(jobId, token)).returning({ id: jobExecutions.jobId });
+        lastError: safeJobFailureCode(errorCode), updatedAt: now }).where(owns(jobId, token)).returning({ id: jobExecutions.jobId });
       return rows.length > 0;
     },
     async heartbeat(jobId, token) {
