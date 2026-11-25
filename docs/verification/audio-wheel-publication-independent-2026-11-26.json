@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "observedAtUTC": "2026-11-25T21:42:06.327463+00:00",
+  "scope": "Independent read-only published same-byte wheel verification; no publication, rebuild, model, Docker or cloud mutation by this reviewer.",
+  "status": "published-bytes-and-fixed-identities-verified",
+  "repository": "videoq-jp/videoq",
+  "publisherRevision": "14634eb281a90f3e575b8cf469412adc57b807dc",
+  "publisherSourceSha256": "84949847cb8eb8881218e78fe0c3dcd701c9d1c0713ca4ee3b91cc8959f66429",
+  "refsBefore": {
+    "videoq-audio-wheel-publisher-20261126-v1": {
+      "ref": "refs/tags/videoq-audio-wheel-publisher-20261126-v1",
+      "sha": "14634eb281a90f3e575b8cf469412adc57b807dc",
+      "type": "commit"
+    },
+    "videoq-audio-wheel-20261126-v1": {
+      "ref": "refs/tags/videoq-audio-wheel-20261126-v1",
+      "sha": "14634eb281a90f3e575b8cf469412adc57b807dc",
+      "type": "commit"
+    }
+  },
+  "refsAfter": {
+    "videoq-audio-wheel-publisher-20261126-v1": {
+      "ref": "refs/tags/videoq-audio-wheel-publisher-20261126-v1",
+      "sha": "14634eb281a90f3e575b8cf469412adc57b807dc",
+      "type": "commit"
+    },
+    "videoq-audio-wheel-20261126-v1": {
+      "ref": "refs/tags/videoq-audio-wheel-20261126-v1",
+      "sha": "14634eb281a90f3e575b8cf469412adc57b807dc",
+      "type": "commit"
+    }
+  },
+  "release": {
+    "id": 458679721,
+    "tag": "videoq-audio-wheel-20261126-v1",
+    "targetCommit": "14634eb281a90f3e575b8cf469412adc57b807dc",
+    "draft": false,
+    "prerelease": false,
+    "publishedAt": "2026-11-25T21:39:57Z",
+    "url": "https://github.com/videoq-jp/videoq/releases/tag/videoq-audio-wheel-20261126-v1",
+    "assetCount": 1,
+    "asset": {
+      "id": 793244875,
+      "name": "av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl",
+      "state": "uploaded",
+      "size": 3283767,
+      "sha256": "75fd08d21f054bd7e1ca800f32799131926b43857e8fa2ffe43f8bc755043ffa",
+      "apiDigest": "sha256:75fd08d21f054bd7e1ca800f32799131926b43857e8fa2ffe43f8bc755043ffa",
+      "url": "https://github.com/videoq-jp/videoq/releases/download/videoq-audio-wheel-20261126-v1/av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl"
+    },
+    "stableAcrossAnonymousDownload": true
+  },
+  "anonymousReadback": {
+    "authenticated": false,
+    "httpStatus": 200,
+    "size": 3283767,
+    "sha256": "75fd08d21f054bd7e1ca800f32799131926b43857e8fa2ffe43f8bc755043ffa",
+    "equalsReviewedArtifactWheel": true,
+    "method": "urllib fixed public URL without authorization headers/token; bounded to expected size+1; response redirect URLs not retained"
+  },
+  "originalEvidence": {
+    "run": 45703318443,
+    "attempt": 1,
+    "workflow": ".github/workflows/patched-audio-candidate.yml",
+    "head": "eec22a499371271100a72813c52223065c2af4ae",
+    "source": "258a1524b3157c144358e795db967fcd46aaf13c",
+    "status": "completed",
+    "conclusion": "success",
+    "artifact": {
+      "id": 15063499680,
+      "name": "patched-audio-candidate-258a1524b3157c144358e795db967fcd46aaf13c-1",
+      "digest": "sha256:469f5594e3cc240edcaaaab45a29bda3d0f7786ce4dee85b32219b8f4ce25523",
+      "expired": false,
+      "zipSize": 10636397,
+      "zipSha256": "469f5594e3cc240edcaaaab45a29bda3d0f7786ce4dee85b32219b8f4ce25523"
+    },
+    "receipts": {
+      "audio-evidence/source.json": {
+        "sha256": "ebbcee043cedb57d4adfd6fa7337342c7d160e0a2cb51aef06eaaf1e2ef98061",
+        "matchesReviewedPin": true
+      },
+      "audio-evidence/identity.json": {
+        "sha256": "5aed9568295e8a46ebf0fbec9cb0ed95e5e98e5e50f6f7e941d899604f588d2f",
+        "matchesReviewedPin": true
+      },
+      "audio-evidence/security.json.grype.json": {
+        "sha256": "3b3106c9cb3126c20057527dd5ec4329dc0f1fbb504c064caeb537e6d8741256",
+        "matchesReviewedPin": true
+      },
+      "audio-evidence/security.json.syft.json": {
+        "sha256": "8afdf5cfb5c2b85579ebf002c23296150a21ea6be2e86461b4b18a266e475efc",
+        "matchesReviewedPin": true
+      },
+      "audio-native/native-smoke.json": {
+        "sha256": "6b1203c75fb24d584ce22c6897f9fdf193bc9e18d59bddf468aa001acec0775d",
+        "matchesReviewedPin": true
+      },
+      "audio-candidate/provenance.json": {
+        "sha256": "c81978f9d029a7dae465e69f2328c26cd06bfd2848fa88c44fe301216220cd57",
+        "matchesReviewedPin": true
+      },
+      "audio-candidate/source-lock.json": {
+        "sha256": "3d5fe1dad0cf48e578c9d92a1a1f77be1b991846d285fde58f9ee2029f44c29c",
+        "matchesReviewedPin": true
+      },
+      "audio-candidate/build-smoke.json": {
+        "sha256": "e9e7bd70c6344132ff6f2016e807bfad2cef7ace25aa22f88e3bfe8e53512415",
+        "matchesReviewedPin": true
+      }
+    },
+    "freshRunGateValidation": "passed using exact reviewed validator and current read-only run/attempt/jobs/artifact APIs",
+    "wheelMembers": 235,
+    "installedWheelMembers": 227,
+    "loadedCandidateELFs": [
+      "/opt/videoq-audio/av.libs/libavcodec-603659c5.so.63.24.100",
+      "/opt/videoq-audio/av.libs/libavdevice-2c5bc585.so.63.5.100",
+      "/opt/videoq-audio/av.libs/libavfilter-2f2a3af1.so.12.8.100",
+      "/opt/videoq-audio/av.libs/libavformat-11e44de1.so.63.16.100",
+      "/opt/videoq-audio/av.libs/libavutil-e158dbe9.so.61.19.100",
+      "/opt/videoq-audio/av.libs/libswresample-ddc57576.so.7.6.100",
+      "/opt/videoq-audio/av.libs/libswscale-0198d4e0.so.10.5.100"
+    ],
+    "decodeResample": [
+      {
+        "fixture": "pcm16-16k-mono",
+        "samples16kMono": 1600
+      },
+      {
+        "fixture": "pcm16-48k-stereo",
+        "samples16kMono": 1600
+      },
+      {
+        "fixture": "extra_overread.mp3",
+        "samples16kMono": 160079
+      },
+      {
+        "fixture": "luckynight.flac",
+        "samples16kMono": 967680
+      }
+    ],
+    "whisperPreprocessing": [
+      {
+        "fixture": "pcm16-16k-mono",
+        "duration": 0.1,
+        "samples": 1600
+      },
+      {
+        "fixture": "pcm16-48k-stereo",
+        "duration": 0.1,
+        "samples": 1600
+      },
+      {
+        "fixture": "extra_overread.mp3",
+        "duration": 9.9929375,
+        "samples": 159887
+      },
+      {
+        "fixture": "luckynight.flac",
+        "duration": 60.48,
+        "samples": 967680
+      }
+    ],
+    "ffmpegVersion": "9.1",
+    "pyavVersion": "19.0.2",
+    "nativeStatus": "passed",
+    "rawScan": {
+      "matches": 0,
+      "ignoredMatches": 0,
+      "databaseValid": true,
+      "databaseBuilt": "2026-11-25T06:22:21Z",
+      "scannerVersion": "0.122.0",
+      "configuredIgnore": [],
+      "configuredExclude": [],
+      "vexDocuments": []
+    }
+  },
+  "latestRelease": {
+    "observedId": 458679721,
+    "observedTag": "videoq-audio-wheel-20261126-v1",
+    "observedPublishedAt": "2026-11-25T21:39:57Z",
+    "isAudioWheelRelease": true,
+    "prepublicationBaselineAvailable": false,
+    "unchanged": null,
+    "limitation": "The reviewed publisher passes --latest=false, but current GitHub releases/latest returns this audio wheel release. No before-state receipt was available; unchanged is not established and this observation was reported to coordinator.",
+    "baselineAvailabilityConfirmedByCoordinator": true
+  },
+  "acceptanceBoundaries": [
+    "Verifies published wheel bytes, original artifact/receipt bindings and fixed public release/ref/sole-asset identities.",
+    "Original artifact proves CPU native FFmpeg/PyAV capability, codec/resampling and unbound vLLM Whisper preprocessing without model weights, not GPU inference.",
+    "Raw zero-finding scan is the exact candidate audio overlay evidence; this receipt does not grant full upstream image/NVIDIA policy acceptance or dismiss masked-base findings.",
+    "Consumer lock adoption, changed probe hashes and current full-image/profile evidence are separately owned and require fresh review; historical proof is not silently inherited.",
+    "No guarantee of future tag/asset immutability beyond before/after read-only observation."
+  ],
+  "latestMetadataRemedyResearch": {
+    "source": "https://docs.github.com/en/rest/releases/releases#get-the-latest-release",
+    "updateSource": "https://docs.github.com/en/rest/releases/releases#update-a-release",
+    "finding": "Official REST documentation excludes prereleases and drafts from the latest full-release endpoint, and supports updating prerelease metadata. Marking this artifact-only release prerelease is a concrete supported exclusion mechanism.",
+    "implementationOwner": "coordinator and delivery worker",
+    "status": "pending; no metadata mutation or after-state readback performed by this reviewer",
+    "afterState": null,
+    "historyRule": "Retain observed prerelease=false/current-latest-wheel before-state; append an actual after-state only after coordinator confirms correction, never fabricate prepublication Latest or claim restoration to an unobserved baseline."
+  }
+}
