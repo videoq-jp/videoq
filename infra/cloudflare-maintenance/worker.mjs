@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { verifyIdentity, verifyStart, boundedJson } from './auth.mjs';
+import { verifyIdentity, verifyStart, verifyReadonlyFailure, boundedJson } from './auth.mjs';
 import { CoordinatorStore, runKey } from './coordinator.mjs';
 export class MaintenanceCoordinator extends DurableObject {
   #store;
@@ -10,6 +10,12 @@ export class MaintenanceCoordinator extends DurableObject {
       await verifyStart(identity,githubToken); return this.#store.status();
     }
     const id = await runKey(identity);
+    if (body.action === 'recover-readonly') {
+      if (Object.keys(body).sort().join(',') !== 'action,previous' || identity.workflow !== 'schema-maintenance.yml' || identity.environment !== 'production-db-migration' || identity.kind !== 'migration') throw Error('INVALID_MAINTENANCE_ACTION');
+      await verifyStart(identity,githubToken,{recovery:this.#store.recovery(id,identity)});
+      const previous = await verifyReadonlyFailure(body.previous,githubToken);
+      return this.#store.recoverReadonly(identity,previous);
+    }
     if (body.action === 'acquire') await verifyStart(identity,githubToken,{recovery:this.#store.recovery(id,identity)});
     return this.#store.operate(id,identity,body);
   }

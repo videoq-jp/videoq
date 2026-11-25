@@ -234,3 +234,32 @@ Terraform state S3 and any attached media IAM boundary. The private database
 archive bucket contains **13 versions** in the production inventory taken on
 2026-11-23; preserve them. Its data is not disposable build output. A separate
 search-evaluation Lambda is disabled but is not part of this retirement scope.
+
+## Controlled schema maintenance and read-only handoff
+
+`schema-maintenance.yml` is the reviewed exception for a failed **read-only**
+owner that cannot apply pending D1 migrations. It never clears ownership. The
+coordinator checks the exact failed run/source/attempt against GitHub, requires
+`writersStopped=false` and zero saved plans, preserves its history and an audit
+receipt, and atomically transfers the single owner to the new current-main run.
+A running owner, any writer-enabled owner or any existing plan prevents handoff.
+
+After successful current-main push CI, dispatch with
+`acknowledge_service_pause=true`. Supply `previous_run`, `previous_source` and
+`previous_attempt` from the read-only status workflow when recovering that owner;
+leave them blank only when no owner exists. The protected `admit` job holds no
+Cloudflare credentials. `pause` and `resume` use only the production-app API
+credential; `migrate` uses only the migration and background credentials.
+
+The workflow shares application CD concurrency, persists the original API
+settings before pausing traffic, verifies public paused responses, and waits at
+least 16 minutes for API work to drain. Existing canonical background maintenance
+independently pauses and drains queues/workflows before the owned D1 schema
+command. Schema completion and background restoration must be recorded before
+API traffic is restored and readiness verified. Both receipts are required for
+coordinator completion and release. Ordinary CD can then verify the complete
+ledger and deploy the application without a writer-stop override.
+
+A failed phase retains ownership and the API pause. Retry failed jobs in the
+**same workflow run**, preserving immutable plans and source. Never start a new
+run to recover a writer-enabled owner or manually delete coordinator records.
