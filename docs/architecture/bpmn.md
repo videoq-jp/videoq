@@ -119,7 +119,7 @@ fact or expiry timer.
 ### Hot Spots and confirmation owners
 
 Initial policies have since been decided under delegated authority on 2026-11-25.
-See the [decision register](../operations/business-decisions-2026-11-25.md) for the
+See the [decision register](https://github.com/videoq-jp/videoq/blob/main/docs/operations/business-decisions-2026-11-25.md) for the
 responsible account, review deadline, acceptance examples and remaining monitoring
 integration. The table below preserves the original implementation questions.
 

@@ -145,7 +145,7 @@ Search and registration reject unknown or mismatched identities. Declare actual
 weights using `EMBEDDING_REVISION` and upstream preprocessing using
 `EMBEDDING_PREPROCESSING` consistently on API and worker. Provider-managed aliases
 cannot attest immutable weights. Existing vectors are never automatically adopted;
-follow the [staged rollout and rollback procedure](../operations/workers-ai-embedding-migration.md#fingerprint-rollout-issue-1676) before deploying strict readers.
+follow the [staged rollout and rollback procedure](https://github.com/videoq-jp/videoq/blob/main/docs/operations/workers-ai-embedding-migration.md#fingerprint-rollout-issue-1676) before deploying strict readers.
 
 For a new deployment, initialize the database with the chosen model settings.
 When changing models later, stop Q&A/indexing and rebuild the scene vectors
