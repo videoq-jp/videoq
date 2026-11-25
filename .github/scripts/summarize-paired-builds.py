@@ -11,7 +11,9 @@ def summarize(root):
     for key in ['source', 'platform', 'parallelism', 'runnerImage', 'cpuModelNames']:
         if a[key] != b[key]:
             raise ValueError('Unmatched paired metadata: ' + key)
-    for row in rows.values():
+    for variant, row in rows.items():
+        if row['dockerfileVariant'] != variant:
+            raise ValueError('Mislabeled or duplicated fixed-directory variant: ' + variant)
         if row['parallelism'] != 1 or row['failedBuilds'] or len(row['runs']) != 2:
             raise ValueError('Incomplete sequential cold/warm pair')
         if row['buildkitLimits'] != row['buildkitLimitsAfter']:
@@ -19,8 +21,8 @@ def summarize(root):
         controls = row['buildkitLimits']
         if (controls['effectiveCpus'], controls['memoryBytes'], controls['memorySwapBytes']) != (4,8589934592,8589934592):
             raise ValueError('Uncontrolled effective resources')
-        identity = json.loads((root / row['dockerfileVariant'] / 'checks/identity-verification.json').read_text())
-        if identity['source'] != row['source'] or len(identity['images']) != 3:
+        identity = json.loads((root / variant / 'checks/identity-verification.json').read_text())
+        if identity['source'] != row['source'] or identity['dockerfileVariant'] != variant or len(identity['images']) != 3:
             raise ValueError('Missing exact measured/smoked/scanned identity checks')
         for image in identity['images']:
             if not all(image[k] for k in ['smokeMatches','scanMatches','unchangedAfterChecks']):
