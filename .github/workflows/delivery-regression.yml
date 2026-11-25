@@ -25,10 +25,11 @@ jobs:
           python-version-file: .python-version
       - name: Configure disposable runner DNS
         run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
+      - name: Install checksum-pinned uv for the next step
+        run: bash .github/scripts/install-uv.sh
       - name: Install locked fixture dependencies
         run: |
           npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web --include-workspace-root
-          bash .github/scripts/install-uv.sh
           uv export --quiet --project apps/worker --locked --extra dev --no-emit-project --format requirements-txt --output-file "$RUNNER_TEMP/worker-requirements.txt"
           uv venv --python "$(command -v python)" "$RUNNER_TEMP/delivery-python"
           uv pip install --python "$RUNNER_TEMP/delivery-python/bin/python" --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/worker-requirements.txt"
