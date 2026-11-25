@@ -35,7 +35,7 @@ Keep legacy search/account Lambda consumers and their queues until the productio
 
 The Node `background-worker` service consumes dedicated search and account SQS-compatible queues. The Python `worker` service consumes media jobs. Compose includes both; Helm requires the Node worker and separate queue URLs.
 
-Search uses PostgreSQL with `@yukiharada1228/langchain-postgres`. Embeddings use the configured OpenAI-compatible endpoint through `@langchain/openai`. Local inference services can provide that endpoint without public egress. Cloudflare storage bindings are not required on-prem.
+Search uses PostgreSQL with `@videoq-jp/langchainjs-postgres`. Embeddings use the configured OpenAI-compatible endpoint through `@langchain/openai`. Local inference services can provide that endpoint without public egress. Cloudflare storage bindings are not required on-prem.
 
 ## Message format
 
