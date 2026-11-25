@@ -5,7 +5,10 @@ const {readFileSync} = require('node:fs');
 const {join} = require('node:path');
 const checksum = value => createHash('sha256').update(value).digest('hex');
 
+const nativeMasks = Object.freeze(['PyNvVideoCodec', 'opencv_python_headless.libs', 'mooncake', 'torchcodec']
+  .map(name => '/usr/local/lib/python3.12/dist-packages/' + name));
 function verifyWorkload(documents, policy) {
+  assert.deepEqual(policy.maskedNativeDirectories, nativeMasks, 'All four exact production native masks are required');
   let servers = 0;
   const lock = documents.find(d => d.kind === 'ConfigMap' && d.data?.['wheels.json']);
   assert.ok(lock, 'Missing runtime audio lock');
@@ -188,4 +191,4 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
   }
   return {image: policy.image, reviewedAt: policy.reviewedAt, expiresAt: policy.expiresAt, scope: policy.scope, accepted, blocking};
 }
-module.exports = {assess, verifyWorkload, verifyKernelReview};
+module.exports = {assess, verifyWorkload, verifyKernelReview, nativeMasks};

@@ -93,6 +93,7 @@ jobs:
             --tmpfs /usr/local/lib/python3.12/dist-packages/PyNvVideoCodec:ro,size=1m \
             --tmpfs /usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs:ro,size=1m \
             --tmpfs /usr/local/lib/python3.12/dist-packages/mooncake:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/torchcodec:ro,size=1m \
             -v "$RUNNER_TEMP/audio-candidate:/candidate:ro" \
             -v "$RUNNER_TEMP/audio-overlay:/opt/videoq-audio:ro" \
             -v "$RUNNER_TEMP/audio-native:/writable" \

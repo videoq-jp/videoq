@@ -461,9 +461,15 @@ acceptance and vulnerability evaluation.
 ### Grype native-library controls
 
 The upstream NVIDIA image is scanned in full. Its unused PyNvVideoCodec,
-OpenCV native-library and Mooncake directories are hidden behind mandatory
-empty read-only mounts in supported profiles. Video input and Mooncake KV
-transfer are outside these profiles. The read-only audio overlay includes a
+OpenCV native-library, Mooncake and optional TorchCodec directories are hidden
+behind mandatory empty read-only mounts in supported profiles. Masking TorchCodec
+selects the supported Whisper automatic SoundFile fallback rather than loading
+system FFmpeg through its optional decoder. Actual hosted full-duration MP3,
+FLAC and PCM preprocessing plus strict loaded-library checks remain required;
+the mask alone is not runtime acceptance or a vulnerability waiver. Video input,
+TorchCodec video decoding and Mooncake KV transfer are outside the supported
+chat, embedding and Whisper profiles. Optional-package namespace detection can
+still report TorchCodec as present, so it does not establish video support. The read-only audio overlay includes a
 manifest-hashed startup guard limiting PyAV to local MP3/WAV/FLAC and rejecting
 network input. CI verifies the actual runtime controls before accepting exact
 findings; changing/removing a control or adding a new CVE blocks promotion.
