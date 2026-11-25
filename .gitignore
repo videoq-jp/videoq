@@ -40,3 +40,8 @@ runtime-plan.json
 # Private migration archives include authentication data.
 *.videoq-export.ndjson
 .videoq-d1-export-*/
+
+# Disposable delivery regression evidence (reviewed reports live in docs/verification).
+artifacts/cors-browser.json*
+artifacts/release-compatibility.json*
+artifacts/onprem-build/

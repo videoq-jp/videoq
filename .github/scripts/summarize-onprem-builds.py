@@ -8,6 +8,8 @@ from statistics import mean
 def summarize(reports):
     if len(reports) != 4 or len({report['source'] for report in reports}) != 1:
         raise ValueError('Require four reports for exactly one candidate SHA')
+    if len({(report['platform'], report['before']['cpus'], report['before']['memoryTotal']) for report in reports}) != 1:
+        raise ValueError('Runner platform, CPU and memory must be comparable')
     groups = {}
     for parallelism in [1, 2]:
         selected = [report for report in reports if report['parallelism'] == parallelism]
@@ -16,12 +18,20 @@ def summarize(reports):
         for report in selected:
             if report['failedBuilds'] or len(report['runs']) != 2 or not all(report['cacheControl'][key] for key in ['sameInputReused', 'changedInputInvalidated']):
                 raise ValueError('Failed/incomplete build or cache validation cannot support adoption')
+            if any(run['seconds'] <= 0 for run in report['runs']):
+                raise ValueError('Build timings must be positive')
         groups[str(parallelism)] = {
             'coldSeconds': [report['runs'][0]['seconds'] for report in selected],
             'warmSeconds': [report['runs'][1]['seconds'] for report in selected],
             'measuredBuildRunnerSeconds': sum(report['seconds'] for report in selected),
             'failedBuilds': sum(report['failedBuilds'] for report in selected),
             'minDiskFreeBytes': min(sample['diskFreeBytes'] for report in selected for sample in [report['before'], report['after'], *report['resourceSamples']]),
+            'runner': {key: selected[0]['before'][key] for key in ['cpus', 'memoryTotal']},
+            'minMemoryAvailable': min((int(sample['memoryAvailable'].split()[0]) * 1024
+                for report in selected for sample in [report['before'], report['after'], *report['resourceSamples']]
+                if sample.get('memoryAvailable')), default=None),
+            'maxOneMinuteLoad': max((sample['loadAverage'][0]
+                for report in selected for sample in report['resourceSamples'] if sample.get('loadAverage')), default=None),
         }
     baseline, candidate = groups['1'], groups['2']
     return {'source': reports[0]['source'], 'strategies': groups,

@@ -10,9 +10,9 @@ spec.loader.exec_module(comparison)
 
 class BuildComparisonTest(unittest.TestCase):
     def reports(self):
-        return [{'source': 'a' * 40, 'parallelism': parallelism, 'failedBuilds': 0,
+        return [{'source': 'a' * 40, 'parallelism': parallelism, 'failedBuilds': 0, 'platform': 'linux/amd64',
             'runs': [{'seconds': 100 / parallelism}, {'seconds': 10 / parallelism}],
-            'seconds': 110 / parallelism, 'before': {'diskFreeBytes': 1000},
+            'seconds': 110 / parallelism, 'before': {'diskFreeBytes': 1000, 'cpus': 4, 'memoryTotal': '16GiB'},
             'after': {'diskFreeBytes': 500}, 'resourceSamples': [{'diskFreeBytes': 100}],
             'cacheControl': {'sameInputReused': True, 'changedInputInvalidated': True}}
             for parallelism in [1, 1, 2, 2]]
@@ -29,6 +29,8 @@ class BuildComparisonTest(unittest.TestCase):
         mutations = [lambda x: x.pop(), lambda x: x[0].update(source='b' * 40),
             lambda x: x[0].update(failedBuilds=1), lambda x: x[0]['runs'].pop(),
             lambda x: x[0]['cacheControl'].update(changedInputInvalidated=False),
+            lambda x: x[0]['before'].update(cpus=2),
+            lambda x: x[0]['runs'][0].update(seconds=0),
             lambda x: x[0].update(parallelism=2)]
         for mutate in mutations:
             with self.subTest(mutate=mutate):

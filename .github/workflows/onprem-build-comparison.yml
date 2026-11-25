@@ -5,6 +5,7 @@ on:
     types: [opened, reopened, labeled]
     paths:
       - '.github/scripts/build-onprem-measured.py'
+      - '.github/scripts/summarize-onprem-builds.py'
       - '.github/workflows/onprem-build-comparison.yml'
       - '.github/workflows/onprem-validation.yml'
 permissions:
