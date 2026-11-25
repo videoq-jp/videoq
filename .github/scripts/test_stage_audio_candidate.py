@@ -18,19 +18,23 @@ class CandidateOverlayTest(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.candidate = self.root / 'candidate'
         (self.candidate / 'wheels').mkdir(parents=True)
-        for name in ['provenance.json', 'build-smoke.json', 'verify.py', 'ffmpeg-config.log']:
+        for name in ['provenance.json', 'source-lock.json', 'build-smoke.json', 'verify.py', 'ffmpeg-config.log']:
             (self.candidate / name).write_text('{}')
+        (self.candidate / 'fixtures').mkdir()
+        (self.candidate / 'fixtures/sample.wav').write_bytes(b'fixture')
         self.lock = MODULE.ROOT / 'charts/videoq-inference/files/vllm-audio-wheels.json'
         self.manifest = json.loads(self.lock.read_text())
-        self.wheel = self.candidate / 'wheels/av-19.0.2-cp312-cp312-manylinux_2_28_x86_64.whl'
+        self.wheel = self.candidate / 'wheels/av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl'
         self.write_wheel(self.wheel, 'av', '19.0.2')
         self.output = self.root / 'overlay'
         self.receipt = self.root / 'identity.json'
 
     @staticmethod
-    def write_wheel(path, name, version, extra=None):
+    def write_wheel(path, name, version, extra=None, tags=None):
         with zipfile.ZipFile(path, 'w') as archive:
             archive.writestr(f'{name}-{version}.dist-info/METADATA', f'Name: {name}\nVersion: {version}\n')
+            archive.writestr(f'{name}-{version}.dist-info/WHEEL', ''.join(
+                f'Tag: {tag}\n' for tag in (tags or ['cp312-abi3-manylinux_2_28_x86_64'])))
             archive.writestr(f'{name}/__init__.py', '# fixture')
             for key, value in (extra or {}).items():
                 archive.writestr(key, value)
@@ -78,6 +82,21 @@ class CandidateOverlayTest(unittest.TestCase):
         (self.candidate / 'external').symlink_to(self.lock)
         with self.assertRaisesRegex(ValueError, 'Symlinks'):
             MODULE.files(self.candidate)
+
+    def test_compatible_platform_aliases_require_matching_internal_tags(self):
+        self.wheel = self.wheel.rename(self.wheel.with_name(
+            'av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.manylinux_2_17_x86_64.whl'))
+        self.write_wheel(self.wheel, 'av', '19.0.2', tags=[
+            'cp312-abi3-manylinux_2_28_x86_64', 'cp312-abi3-manylinux_2_17_x86_64'])
+        self.stage()
+        MODULE.verify(self.candidate, self.output, self.receipt)
+        self.write_wheel(self.wheel, 'av', '19.0.2', tags=['cp313-abi3-manylinux_2_28_x86_64'])
+        with self.assertRaisesRegex(ValueError, 'metadata tags'):
+            MODULE.candidate_wheel(self.candidate)
+        self.wheel.rename(self.wheel.with_name(
+            'av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.musllinux_1_2_x86_64.whl'))
+        with self.assertRaisesRegex(ValueError, 'platform alias'):
+            MODULE.candidate_wheel(self.candidate)
 
 
 if __name__ == '__main__':
