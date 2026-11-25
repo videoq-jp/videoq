@@ -75,6 +75,9 @@ def verify(candidate: str, architecture: str, receipt: Path) -> dict:
     if native.get(platform.machine().lower()) != architecture or native.get(docker('info', '--format', '{{.Architecture}}').lower()) != architecture:
         raise ValueError('Native host and Docker architecture must match the requested platform')
     upstream = PROVENANCE['binarySourceImages'][architecture]
+    # BuildKit's source cache is not necessarily present in the Docker engine
+    # image store used by docker create/cp. Pull this immutable source explicitly.
+    docker('pull', '--platform', f'linux/{architecture}', upstream, timeout=300)
     source_info, info = inspect(upstream), inspect(candidate)
     if source_info['Architecture'] != architecture or info['Architecture'] != architecture:
         raise ValueError('Native architecture mismatch')
