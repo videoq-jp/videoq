@@ -27,6 +27,13 @@ export function parseSearchEvaluationArguments(args: string[]) {
  return {input:resolve(options.get('--input')!),output:resolve(options.get('--output')!),archive:resolve(options.get('--archive')!),...(options.has('--preserved-policy')?{preservation:{backupDirectory:resolve(options.get('--backup-dir')!),policyPath:resolve(options.get('--preserved-policy')!)}}:{})};
 }
 
+/** Preserve the operator's embedding identity; never infer weights from endpoint/model aliases. */
+export function searchEvaluationEnvironment(databaseUrl:string,source:NodeJS.ProcessEnv=process.env):Bindings {
+ return {DATABASE_URL:databaseUrl,EMBEDDING_PROVIDER:source.EMBEDDING_PROVIDER,EMBEDDING_PROFILE:source.EMBEDDING_PROFILE,
+  EMBEDDING_REVISION:source.EMBEDDING_REVISION,EMBEDDING_PREPROCESSING:source.EMBEDDING_PREPROCESSING,
+  EMBEDDING_MODEL:source.EMBEDDING_MODEL,EMBEDDING_BASE_URL:source.EMBEDDING_BASE_URL,OPENAI_BASE_URL:source.OPENAI_BASE_URL} as Bindings;
+}
+
 /** Read-only comparison against the fixed, offline migration staging target. */
 export async function main(args=process.argv.slice(2)) {
  const options=parseSearchEvaluationArguments(args);
@@ -39,8 +46,7 @@ export async function main(args=process.argv.slice(2)) {
  if(!['127.0.0.1','localhost','[::1]'].includes(source.hostname)&&source.searchParams.get('sslmode')!=='verify-full')throw new Error('Remote source TLS verification is required.');
  // Force read-only sessions for the evaluator, without altering runtime settings.
  source.searchParams.set('options','-c default_transaction_read_only=on -c statement_timeout=300000');
- const env={DATABASE_URL:source.toString(),EMBEDDING_PROFILE:process.env.EMBEDDING_PROFILE,
-  EMBEDDING_MODEL:process.env.EMBEDDING_MODEL,EMBEDDING_BASE_URL:process.env.EMBEDDING_BASE_URL} as Bindings;
+ const env=searchEvaluationEnvironment(source.toString());
  const config=resolveEmbeddingConfig(env);
  if(embeddingDimensions(config)!==input.dimensions||config.model!==input.model)throw new Error('Evaluation model/profile differs from PostgreSQL configuration.');
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),configPath=join(root,'wrangler.d1-staging.jsonc');
