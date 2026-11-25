@@ -1,3 +1,5 @@
+# Set ai.embeddingRevision to the actual served weights revision plus checksum,
+# and ai.embeddingPreprocessing to the actual contract. No identity is inferred from aliases.
 # Use with inference/examples/vllm-nvidia.yaml.
 # "openai" below means the wire protocol; both endpoints are private services.
 ai:

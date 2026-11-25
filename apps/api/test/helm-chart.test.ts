@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { parseAllDocuments } from "yaml";
@@ -9,6 +10,7 @@ const settings = ["--set", "publicUrl=https://videoq.example.edu", "--set", "sto
   "--set", "queue.url=http://queue:9324/000000000000/videoq-jobs",
   "--set", "queue.searchUrl=http://queue:9324/000000000000/videoq-search",
   "--set", "queue.accountUrl=http://queue:9324/000000000000/videoq-account"];
+const privateIdentity = ["--set", "ai.embeddingRevision=immutable-test-weights", "--set", "ai.embeddingPreprocessing=raw-text-v1"];
 const withHelm = helm ? describe : describe.skip;
 
 withHelm("on-prem Helm distribution", () => {
@@ -26,10 +28,35 @@ withHelm("on-prem Helm distribution", () => {
     expect(config.SQS_ACCOUNT_QUEUE_URL).toContain("/videoq-account");
   });
   function render(...extra: string[]) {
-    const result = spawnSync(helm!, ["template", "test", chart, ...settings, ...extra], { encoding: "utf8" });
+    const result = spawnSync(helm!, ["template", "test", chart, ...settings, ...extra, ...(extra.some(value => value.includes("local-ai-") || value.includes("embeddingBaseUrl=")) ? privateIdentity : [])], { encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
     return parseAllDocuments(result.stdout).filter(doc => doc.contents).map(doc => doc.toJSON());
   }
+  it("renders real CPU identity from the actual inference chart lock without duplicating pins", () => {
+    const locked=parseAllDocuments(readFileSync(`${chart}/../videoq-inference/values.yaml`,"utf8"))[0].toJSON();
+    const script=fileURLToPath(new URL("../../../.github/scripts/onprem-lab.py",import.meta.url));
+    const values=spawnSync("python3",["-c","import importlib.util,json,sys; s=importlib.util.spec_from_file_location('lab',sys.argv[1]); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); v=m.lab_values(); v['ai'].update(m.locked_embedding_identity(json.load(sys.stdin))); print(json.dumps(v))",script],{input:JSON.stringify(locked),encoding:"utf8"});
+    expect(values.status,values.stderr).toBe(0);
+    const result=spawnSync(helm!,["template","test",chart,"-f","-"],{input:values.stdout,encoding:"utf8"});
+    expect(result.status,result.stderr).toBe(0);
+    const config=parseAllDocuments(result.stdout).filter(doc=>doc.contents).map(doc=>doc.toJSON()).find(row=>row.kind==="ConfigMap").data;
+    expect(config.EMBEDDING_REVISION).toBe(`${locked.servers.embedding.modelRevision}:sha256:${locked.servers.embedding.modelSha256}`);
+    expect(config.EMBEDDING_PREPROCESSING).toBe("raw-text-v1");
+  });
+  it("rejects missing or managed private identity and forwards explicit identity to all writers", () => {
+    for (const flags of [[], ["--set", "ai.embeddingRevision=provider-managed", "--set", "ai.embeddingPreprocessing=raw-text-v1"], ["--set", "ai.embeddingRevision=immutable"]]) {
+      const result=spawnSync(helm!, ["template","test",chart,...settings,"--set","ai.embeddingBaseUrl=http://embedding:8000/v1",...flags],{encoding:"utf8"});
+      expect(result.status).not.toBe(0);
+    }
+    const resources=render("--set","ai.embeddingBaseUrl=http://embedding:8000/v1");
+    const config=resources.find(row=>row.kind==="ConfigMap");
+    expect(config.data.EMBEDDING_REVISION).toBe("immutable-test-weights");
+    expect(config.data.EMBEDDING_PREPROCESSING).toBe("raw-text-v1");
+    for (const suffix of ["-api","-worker","-background-worker"]) {
+      const deployment=resources.find(row=>row.kind==="Deployment" && row.metadata.name.endsWith(suffix));
+      expect(deployment.spec.template.spec.containers[0].envFrom).toContainEqual({configMapRef:{name:config.metadata.name}});
+    }
+  });
   it("renders only app resources and references operator-managed credentials", () => {
     const resources = render();
     expect(resources.map(resource => resource.kind).sort()).toEqual([
