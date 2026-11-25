@@ -34,13 +34,15 @@ withHelm("on-prem Helm distribution", () => {
   }
   it("renders real CPU identity from the actual inference chart lock without duplicating pins", () => {
     const locked=parseAllDocuments(readFileSync(`${chart}/../videoq-inference/values.yaml`,"utf8"))[0].toJSON();
+    locked.servers.embedding.servedModel="explicit-custom-served-alias";
     const script=fileURLToPath(new URL("../../../.github/scripts/onprem-lab.py",import.meta.url));
-    const values=spawnSync("python3",["-c","import importlib.util,json,sys; s=importlib.util.spec_from_file_location('lab',sys.argv[1]); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); v=m.lab_values(); v['ai'].update(m.locked_embedding_identity(json.load(sys.stdin))); print(json.dumps(v))",script],{input:JSON.stringify(locked),encoding:"utf8"});
+    const values=spawnSync("python3",["-c","import importlib.util,json,sys; s=importlib.util.spec_from_file_location('lab',sys.argv[1]); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); v=m.real_model_values(json.load(sys.stdin)); print(json.dumps(v))",script],{input:JSON.stringify(locked),encoding:"utf8"});
     expect(values.status,values.stderr).toBe(0);
     const result=spawnSync(helm!,["template","test",chart,"-f","-"],{input:values.stdout,encoding:"utf8"});
     expect(result.status,result.stderr).toBe(0);
     const config=parseAllDocuments(result.stdout).filter(doc=>doc.contents).map(doc=>doc.toJSON()).find(row=>row.kind==="ConfigMap").data;
     expect(config.EMBEDDING_REVISION).toBe(`${locked.servers.embedding.modelRevision}:sha256:${locked.servers.embedding.modelSha256}`);
+    expect(config.EMBEDDING_MODEL).toBe("explicit-custom-served-alias");
     expect(config.EMBEDDING_PREPROCESSING).toBe("raw-text-v1");
   });
   it("rejects missing or managed private identity and forwards explicit identity to all writers", () => {

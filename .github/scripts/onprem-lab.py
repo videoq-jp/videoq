@@ -28,8 +28,21 @@ def locked_embedding_identity(defaults):
     model=defaults['servers']['embedding']
     if not re.fullmatch(r'[0-9a-f]{40}',model['modelRevision']) or not re.fullmatch(r'[0-9a-f]{64}',model['modelSha256']):
         raise ValueError('Invalid locked served embedding weights identity')
-    return {'embeddingRevision':model['modelRevision']+':sha256:'+model['modelSha256'],
+    if not isinstance(model.get('servedModel'), str) or not model['servedModel'].strip():
+        raise ValueError('Missing served embedding model alias')
+    return {'embeddingModel':model['servedModel'], 'embeddingRevision':model['modelRevision']+':sha256:'+model['modelSha256'],
             'embeddingPreprocessing':'raw-text-v1'}
+
+
+def real_model_values(defaults):
+    values=lab_values()
+    values['networkPolicy']={'localEgressOnly':True}
+    values['ai'].update(locked_embedding_identity(defaults))
+    values['ai'].update({'openaiBaseUrl':'http://videoq-inference-chat:8000/v1','llmModel':'videoq-chat',
+                         'embeddingBaseUrl':'http://videoq-inference-embedding:8000/v1',
+                         'separateToolSchema':True,'reasoningEffort':'none','requestTimeoutMs':600000,'streamTimeoutMs':600000,
+                         'whisperLocalUrl':'http://videoq-inference-whisper:8080/v1','whisperChunkSeconds':30})
+    return values
 
 
 def lab_values():
@@ -163,12 +176,7 @@ def main():
     values = lab_values()
     if args.real_models:
         inference_defaults = json.loads(run(["node", "--input-type=module", "-e", "import {parse} from 'yaml'; import {readFileSync} from 'node:fs'; console.log(JSON.stringify(parse(readFileSync(0,'utf8'))))"], data=run([helm,"show","values",str(args.inference_chart)])))
-        values['ai'].update(locked_embedding_identity(inference_defaults))
-        values["networkPolicy"] = {"localEgressOnly":True}
-        values["ai"].update({"openaiBaseUrl":"http://videoq-inference-chat:8000/v1", "llmModel":"videoq-chat",
-                            "embeddingBaseUrl":"http://videoq-inference-embedding:8000/v1", "embeddingModel":"gte-qwen2-1.5b-q4km-124fbdad",
-                            "separateToolSchema":True, "reasoningEffort":"none", "requestTimeoutMs":600000, "streamTimeoutMs":600000,
-                            "whisperLocalUrl":"http://videoq-inference-whisper:8080/v1", "whisperChunkSeconds":30})
+        values = real_model_values(inference_defaults)
         resources = []
         inference_values = {"downloadModels":False, "networkPolicy":{"clientNamespace":NAMESPACE,"clientRelease":"videoq","denyEgress":True},
                             "whisper":{"image":{"repository":"videoq-whisper","tag":args.image_tag,"digest":"","pullPolicy":"Never"}},
