@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { extractedFactsSchema, skillDraftSchema, skillPlanSchema, skillAuditSchema } from '@videoq/trpc/skills';
+import { skillDraftSchema, skillPlanSchema, skillAuditSchema } from '@videoq/trpc/skills';
 import { createSkillService, type SkillDependencies } from '../features/skills/service';
+import { extractionEvidence } from '../features/skills/evidence';
 import { draftClaims } from '../features/skills/core';
 import type { SkillTarget, SkillMaterial } from '../persistence/contracts/agent-skill-repository';
 import { createAgentSkillRepository } from '../persistence/factory';
@@ -98,8 +99,14 @@ export async function agentSkillService(env: Bindings, origin: string) {
 /** Shared production prompts; offline evaluations can supply a different model transport. */
 export function skillGenerators(env: Bindings, call: typeof skillModelCall = skillModelCall): Pick<SkillDependencies, 'extract' | 'plan' | 'synthesize' | 'audit'> {
   return {
-    extract: (ownerId, objective, language, cues, signal) => call(env, ownerId, extractedFactsSchema, 'extract',
-      `Read ALL supplied cues. If objective is empty, discover all reusable tasks taught in the cues without asking the user for a purpose. Otherwise extract only knowledge relevant to the objective. Extract: concrete principles, procedures, exceptions, worked examples and ways to verify results. Return at most 12 concise facts covering the distinct reusable tasks, or an empty facts array when none is relevant. For each fact, give its applicability conditions and exact verbatim source quotes with the supplied cueIds. Preserve negative conditions and exceptions. Never fabricate a quote.`, { objective, language, cues }, signal),
+    extract: async (ownerId, objective, language, cues, signal) => {
+      const evidence = extractionEvidence(cues);
+      if (!evidence.passages.length) return { facts: [] };
+      const result = await call(env, ownerId, evidence.schema, 'extract',
+        `Read ALL supplied source passages. If objective is empty, discover reusable tasks without asking the user for a purpose. Otherwise extract knowledge relevant to the objective. Extract concrete principles, procedures, exceptions, worked examples and verification methods. Return at most 12 concise facts, or an empty facts array when none is relevant. Preserve applicability conditions, negative conditions and exceptions. For each fact select one to three sourceIds whose passages directly support ALL its assertions. Select multiple passages when a statement spans subtitles. The server supplies the original quotes; never rewrite quotes or invent sourceIds.`,
+        { objective, language, sources: evidence.passages.map(({ id, cueId, quote }) => ({ sourceId: id, title: cues.find(cue => cue.id === cueId)?.title, text: quote })) }, signal);
+      return evidence.resolve(result);
+    },
     plan: (ownerId, language, facts, signal) => call(env, ownerId, skillPlanSchema, 'plan',
       `Automatically discover independently reusable tasks from ALL supplied facts. This may be one batch of a larger course; never treat its end as the end of the course. Partition this request-sized batch into focused Agent Skills (at most 12 per batch; the course continues in further batches) with concrete objectives; the user supplies no objective. Group by actual task/decision, not by video, chapter or lecturer. Merge overlapping tasks; separate unrelated capabilities to avoid broad skill activation. A coherent course may need only one skill; do not manufacture a quota. Assign EVERY factId to at least one skill. Shared facts may appear in multiple skills where needed. Keep each rule together with its qualifying conditions, exceptions and examples, even across video boundaries. Each skill must have enough facts for concrete criteria, a workflow and checks; at most 80 factIds per skill. Preserve course-specific limitations. Return only objectives and existing factIds, never new claims.`, { language, facts }, signal),
     synthesize: (ownerId, objective, language, facts, signal, revision) => call(env, ownerId, skillDraftSchema, 'synthesize',
