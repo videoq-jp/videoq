@@ -167,7 +167,7 @@ async function prepareAgent(
           } satisfies RagGenerationProgress);
           return handler({
             ...request,
-            // Preserve OptChat navigation/context and prepend trusted application instructions.
+            // Prepend trusted application instructions to the current conversation context.
             messages: [new SystemMessage(systemPrompt), ...request.messages],
             modelSettings: {
               ...request.modelSettings,
@@ -184,7 +184,7 @@ async function prepareAgent(
     agent,
     input: {
       messages: params.scope.memory?.checkpointId === null ? [new RemoveMessage({ id: REMOVE_ALL_MESSAGES }), ...inputMessages] : inputMessages,
-      ...(params.scope.memory?.checkpointId === null ? { evidenceSources: [], structuredResponse: undefined, optchat: undefined } : {}),
+      ...(params.scope.memory?.checkpointId === null ? { evidenceSources: [], structuredResponse: undefined } : {}),
     },
     result: () => {
       if (!completedResult) throw new Error("Missing completed agent answer");

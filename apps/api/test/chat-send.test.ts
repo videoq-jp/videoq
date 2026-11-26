@@ -642,7 +642,7 @@ describe("POST /messages（非ストリーミング）", () => {
       (chatRequests[0].body.tools as { function: { name: string } }[]).map(
         (t) => t.function.name,
       ),
-    ).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "get_course_info", "optchat_zoom", "optchat_date"]);
+    ).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "get_course_info"]);
 
     // 参照シーンは構造化したツール結果として渡す。
     const second = chatRequests[1].body.messages as { role: string; content: string }[];
