@@ -1,0 +1,32 @@
+{
+  "api-source.log": {
+    "sha256": "e1fa6ec5dc3ece9c7587615608ba163845efdb2d78d77f58694106eaad2fdcda",
+    "bytes": 5595,
+    "actualCompilerExecuted": false
+  },
+  "recipe-rebuild.log": {
+    "sha256": "ebb31d0401614fac32636ad1b702efed5f9948a4e8394f7130b89c853ba3ef12",
+    "bytes": 2155533,
+    "actualCompilerExecuted": true
+  },
+  "security-parent-refresh.log": {
+    "sha256": "b9b29e4b1def23557eb732fb7e1176c09e4c08a5a19c7a91199c3662df5c05f0",
+    "bytes": 2161740,
+    "actualCompilerExecuted": true
+  },
+  "compiler-flags.log": {
+    "sha256": "19159c205914c6420e6af858397fbba8d2eef1093f58f62d2db3783cc0f96b65",
+    "bytes": 2156782,
+    "actualCompilerExecuted": true
+  },
+  "vite-input.log": {
+    "sha256": "45e457aa748cce4aa47759a28d4f6234e385cc816989c119a86b4fc92c799248",
+    "bytes": 17158,
+    "actualCompilerExecuted": false
+  },
+  "patch-integrity.log": {
+    "sha256": "784517374588f6f33ac4a58b1854544e7b9a2bdfc5827c55b4b0b66a21c2ca8d",
+    "bytes": 6826,
+    "actualChecksumMismatchObserved": true
+  }
+}

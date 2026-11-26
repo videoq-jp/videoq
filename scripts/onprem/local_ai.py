@@ -68,6 +68,119 @@ def embedding_contract(objects):
     return hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()
 
 
+def validate_served_model(pod, provisioner, revision, filename):
+    server=pod['containers'][0]
+    expected='/models/'+revision+('/'+filename if filename else '')
+    def model_mount(container):
+        if any(m.get('mountPath','').startswith('/models/') for m in container.get('volumeMounts',[])):
+            raise ValueError('Nested mount overrides provisioned model path')
+        mounts=[m for m in container.get('volumeMounts',[]) if m.get('mountPath')=='/models']
+        if len(mounts)!=1 or any(m.get('subPath') or m.get('subPathExpr') for m in mounts):
+            raise ValueError('Ambiguous model volume mount')
+        return mounts[0]
+    source,target=model_mount(provisioner),model_mount(server)
+    if source['name']!=target['name'] or target.get('readOnly') is not True:
+        raise ValueError('Server model mount differs from provisioned volume')
+    if len([v for v in pod.get('volumes',[]) if v['name']==source['name']])!=1:
+        raise ValueError('Missing or ambiguous provisioned volume')
+    if provisioner.get('command')!=['python','provision.py'] or provisioner.get('args'):
+        raise ValueError('Unverified model provisioner command')
+    args=server.get('args',[])
+    if not all(isinstance(arg,str) for arg in args):raise ValueError('Malformed server arguments')
+    llama=bool(filename)
+    if llama:
+        if server.get('command'):raise ValueError('Unexpected GGUF server command')
+        remaining=args
+        allowed={'--model','--alias','--host','--port','--ctx-size','--threads','--parallel','--gpu-layers','--pooling'}
+        switches={'--offline','--embedding'}
+    else:
+        if server.get('command')!=['vllm','serve'] or not args or args[0]!=expected:
+            raise ValueError('Server snapshot target differs from provisioned revision')
+        remaining=args[1:]
+        allowed={'--served-model-name','--host','--port','--max-model-len','--gpu-memory-utilization','--max-num-seqs','--dtype','--cpu-offload-gb','--generation-config','--runner','--limit-mm-per-prompt','--attention-backend','--pooler-config','--convert','--hf-overrides'}
+        switches={'--enforce-eager'}
+    parsed={}; index=0
+    while index<len(remaining):
+        flag=remaining[index]
+        if flag in parsed or flag not in allowed|switches:
+            raise ValueError('Duplicate or unsupported model/runtime selector: '+flag)
+        if flag in switches:parsed[flag]=True;index+=1;continue
+        if index+1>=len(remaining) or remaining[index+1].startswith('-'):
+            raise ValueError('Missing model/runtime argument')
+        parsed[flag]=remaining[index+1];index+=2
+    if llama and (parsed.get('--model')!=expected or parsed.get('--pooling')!='last' or not parsed.get('--embedding') or not parsed.get('--offline')):
+        raise ValueError('GGUF model target or embedding contract differs')
+    if not llama and parsed.get('--runner')!='pooling':raise ValueError('Expected embedding pooling runner')
+    # Only vector semantics enter identity: credentials, endpoints and scheduling
+    # settings are operational and must not force adoption of another vector space.
+    operational_env={'PYTHONPATH','TORCHDYNAMO_DISABLE','HF_HUB_OFFLINE','TRANSFORMERS_OFFLINE',
+                     'HF_HUB_DISABLE_TELEMETRY','VLLM_NO_USAGE_STATS','DO_NOT_TRACK','HOME',
+                     'VLLM_CONFIG_ROOT','VLLM_CACHE_ROOT','HF_TOKEN','HUGGING_FACE_HUB_TOKEN',
+                     'VLLM_API_KEY','OPENAI_API_KEY','API_KEY'}
+    environment=server.get('env',[])
+    if len({entry['name'] for entry in environment})!=len(environment) or any(entry['name'] not in operational_env for entry in environment):
+        raise ValueError('Unsupported or ambiguous embedding server environment')
+    semantic_flags={'--ctx-size','--max-model-len','--pooling','--embedding','--dtype',
+                    '--pooler-config','--hf-overrides','--convert','--runner','--limit-mm-per-prompt'}
+    material={'engine':'llamacpp' if llama else 'vllm',
+              'vectorOptions':{flag:value for flag,value in parsed.items() if flag in semantic_flags}}
+    return hashlib.sha256(json.dumps(material,sort_keys=True).encode()).hexdigest()
+
+
+def embedding_runtime_identity(objects, profile):
+    deployments=[o for o in objects if o['kind']=='Deployment' and o['metadata']['name'].endswith('-embedding')]
+    if len(deployments)!=1:
+        raise ValueError('Expected exactly one rendered embedding deployment')
+    pod=deployments[0]['spec']['template']['spec']
+    provisioners=[c for c in pod.get('initContainers',[]) if c['name']=='provision-model']
+    if len(provisioners)!=1 or len(pod['containers'])!=1:
+        raise ValueError('Expected one immutable embedding model provisioner/server')
+    entries=provisioners[0].get('env',[])
+    names=[entry['name'] for entry in entries]
+    if len(names)!=len(set(names)):
+        raise ValueError('Ambiguous provisioned embedding metadata')
+    env={entry['name']:entry.get('value') for entry in entries}
+    if any(not isinstance(env.get(key),str) for key in ['MODEL_REPO','MODEL_REVISION','MODEL_FILE','MODEL_SHA256']):
+        raise ValueError('Missing explicit provisioned embedding metadata')
+    revision=env.get('MODEL_REVISION',''); repo=env.get('MODEL_REPO','')
+    if not re.fullmatch(r'[0-9a-f]{40}',revision) or not repo or any(c.isspace() for c in repo):
+        raise ValueError('Embedding model requires immutable repository revision')
+    contracts={'second-state/gte-Qwen2-1.5B-instruct-GGUF':('openai',1536),
+               'Qwen/Qwen3-Embedding-4B':('openai',1536),
+               'google/embeddinggemma-2':('embeddinggemma2',768)}
+    if repo not in contracts or contracts[repo][0]!=profile:
+        raise ValueError('Unsupported or mismatched embedding model/profile/dimension contract')
+    if repo=='second-state/gte-Qwen2-1.5B-instruct-GGUF' and not env['MODEL_FILE']:
+        raise ValueError('GGUF embedding requires actual served model file')
+    if env['MODEL_FILE'] and (env['MODEL_FILE'].startswith('/') or '..' in Path(env['MODEL_FILE']).parts):
+        raise ValueError('Model file escapes provisioned revision')
+    identity=repo+'@'+revision
+    if env.get('MODEL_FILE'):
+        checksum=env.get('MODEL_SHA256','')
+        if not re.fullmatch(r'[0-9a-f]{64}',checksum):
+            raise ValueError('GGUF embedding identity requires actual model checksum')
+        identity+=':sha256:'+checksum
+    runtime_hash=validate_served_model(pod,provisioners[0],revision,env['MODEL_FILE'])
+    identity+=':runtime-sha256:'+runtime_hash
+    args=pod['containers'][0].get('args',[])
+    if repo=='Qwen/Qwen3-Embedding-4B':
+        if args.count('--hf-overrides')!=1:
+            raise ValueError('Qwen embedding requires explicit 1536 dimensional contract')
+        try: dimensions=json.loads(args[args.index('--hf-overrides')+1]).get('matryoshka_dimensions')
+        except (IndexError,ValueError,AttributeError) as error: raise ValueError('Malformed embedding dimensions') from error
+        if dimensions!=[1536]:raise ValueError('Mismatched embedding dimensions')
+    positions=[i for i,arg in enumerate(args) if arg in ['--alias','--served-model-name']]
+    if len(positions)!=1 or positions[0]+1>=len(args) or not str(args[positions[0]+1]).strip():
+        raise ValueError('Expected exactly one served embedding alias')
+    return {'embeddingModel':args[positions[0]+1],'embeddingRevision':identity,'embeddingPreprocessing':'raw-text-v1','embeddingProfile':profile}
+
+
+def validate_embedding_overrides(values, identity):
+    for key,value in values.get('ai',{}).items():
+        if key in identity and value and value!=identity[key]:
+            raise ValueError('Application override disagrees with served embedding identity: '+key)
+
+
 class LocalAI:
     def prepare_inference(self):
         if self.ai == 'openai':
@@ -94,7 +207,11 @@ class LocalAI:
         contract = embedding_contract(self.ai_plan)
         if self.state.get('ai_embedding_contract', contract) != contract:
             raise ValueError('埋め込みモデルの版・量子化・設定が変わります。自動更新せず、バックアップと再索引を計画してください')
+        self.ai_identity_overlay = folder / 'embedding-identity.json'
+        identity=embedding_runtime_identity(self.ai_plan, 'openai')
         app_values = self.desired_application_values()
+        validate_embedding_overrides(app_values, identity)
+        private_json(self.ai_identity_overlay, {'ai':identity})
         if getattr(self.args, 'command', 'install') == 'update':
             live = json.loads(self.kube('get', 'deployments', '-o', 'json', capture=True))['items']
             recorded = self.state.get('pending_update', {}).get('runtime', {}).get('deployments', {})
@@ -106,7 +223,7 @@ class LocalAI:
         app_site = folder / 'application-site.json'
         private_json(app_site, app_values)
         app_raw = self.run('helm', 'template', 'videoq', str(self.chart), '-n', 'videoq', '-f', str(app_site),
-                           '-f', str(self.ai_app_overlay), '-f', str(self.images), capture=True)
+                           '-f', str(self.ai_app_overlay), '-f', str(self.images), '-f', str(self.ai_identity_overlay), capture=True)
         self.ai_app_plan = json_documents(self.kube('create', '--dry-run=client', '--validate=false', '-f', '-', '-o', 'json', data=app_raw, capture=True))
         base = Path(__file__).resolve().parents[2] / 'charts/videoq/examples/single-node/infrastructure.yaml'
         self.ai_infra_plan = json_documents(self.kube('create', '--dry-run=client', '--validate=false', '-f', str(base), '-o', 'json', capture=True))
@@ -159,4 +276,4 @@ class LocalAI:
             return []
         if not hasattr(self, 'ai_app_overlay'):
             self.prepare_inference()
-        return ['-f', str(self.ai_app_overlay)]
+        return ['-f', str(self.ai_app_overlay), '-f', str(self.ai_identity_overlay)]

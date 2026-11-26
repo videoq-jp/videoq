@@ -1,3 +1,4 @@
+import { classifyJobFailure } from '../application/job-failure';
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { workersAiEmbeddingFetch } from "./workers-ai-embedding-transport";
 import {
@@ -18,6 +19,8 @@ import type { UsageRecorder } from "../tools/usage";
 const EMBEDDING_TIMEOUT_MS = 30_000;
 
 export type EmbeddingEnv = {
+  EMBEDDING_REVISION?: string;
+  EMBEDDING_PREPROCESSING?: string;
   EMBEDDING_PROFILE?: string;
   EMBEDDING_PROVIDER?: string;
   AI?: Pick<Ai, "run">;
@@ -53,14 +56,14 @@ async function embedWithOpenAi(env: EmbeddingEnv, text: string, config: Embeddin
         body: JSON.stringify(body),
         signal: deadlineSignal(EMBEDDING_TIMEOUT_MS, signal),
       });
-    } catch {
+    } catch (error) {
       signal?.throwIfAborted();
-      throw new LlmProviderError("OpenAI embeddings request failed. Check the server connection.");
+      throw new LlmProviderError("OpenAI embeddings request failed. Check the server connection.",classifyJobFailure(error));
     }
     if (!res.ok) {
       await res.body?.cancel();
       if (res.status === 401) throw new LlmConfigurationError("Invalid OpenAI API key. Check the server configuration.");
-      throw new LlmProviderError(`OpenAI embeddings failed (HTTP ${res.status}).`);
+      throw new LlmProviderError(`OpenAI embeddings failed (HTTP ${res.status}).`,classifyJobFailure({status:res.status}));
     }
 
     const json: unknown = await embeddingJson(res, config, signal);
@@ -139,11 +142,11 @@ async function embedWithWorkersAi(env: EmbeddingEnv, texts: string[], inputType:
     vectors.forEach(vector => validateEmbedding(vector, "EMBEDDING_OUTPUT_INVALID", config));
     call?.complete(usage);
     return vectors;
-  } catch {
+  } catch (error) {
     if (deadline.aborted) { call?.interrupt(); deadline.throwIfAborted(); }
     call?.fail();
     if (transportError instanceof EmbeddingValidationError) throw transportError;
-    throw new LlmProviderError("Workers AI embeddings request failed. Check the server configuration.");
+    throw new LlmProviderError("Workers AI embeddings request failed. Check the server configuration.",classifyJobFailure(transportError ?? error));
   }
 }
 
@@ -191,6 +194,6 @@ async function embedDocumentsWithOpenAi(env: EmbeddingEnv, texts: string[], inpu
     signal?.throwIfAborted();
     if (validationError) throw validationError;
     if (error instanceof EmbeddingValidationError) throw error;
-    throw new LlmProviderError("OpenAI embeddings request failed. Check the server configuration.");
+    throw new LlmProviderError("OpenAI embeddings request failed. Check the server configuration.",classifyJobFailure(error));
   }
 }

@@ -185,3 +185,5 @@ Use this evaluation to decide whether another server is needed for inference,
 processing or storage. Keep off-host backups even while everything runs on one
 server. This installer does not provision GPU drivers or an offline distribution
 bundle; follow [local inference](local-inference.md) when preparing private models.
+
+Private inference also requires `--embedding-revision` with the actual immutable weights revision or content hash and `--embedding-preprocessing` with the actual preprocessing contract (for unchanged raw text, `raw-text-v1`). The installer rejects missing identity before creating configuration and forwards the same values to the API and workers. A model name is not an immutable revision. Changing either value requires the paused rebuild and readiness procedure; existing vectors are never automatically adopted. Hosted OpenAI keeps its managed-provider behavior.

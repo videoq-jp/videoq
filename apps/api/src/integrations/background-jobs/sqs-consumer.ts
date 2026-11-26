@@ -2,7 +2,7 @@ import { AwsClient } from 'aws4fetch';
 import { BackgroundJobBusyError, parseBackgroundJob, type BackgroundJob } from '../../application/background-job';
 import type { Bindings } from '../../types/bindings';
 import { runBackgroundJob } from './execute';
-import { logJobFailure, receiveAttempts, type JobStage } from './diagnostics';
+import { logJobFailure, jobFailure, receiveAttempts, type JobStage } from './diagnostics';
 
 export class SqsBackgroundConsumer {
   private readonly aws: AwsClient;
@@ -43,7 +43,11 @@ export class SqsBackgroundConsumer {
           message_id:message.MessageId,job_id:job?.job_id,job_type:job?.type,attempts:receiveAttempts(message.Attributes?.ApproximateReceiveCount)});
         // The execution repository releases failed work. Do not delete messages
         // after failures, process termination or a lost execution lease.
-        await this.request('ChangeMessageVisibility',{ReceiptHandle:message.ReceiptHandle,VisibilityTimeout:error instanceof BackgroundJobBusyError ? 960 : 30}).catch(()=>undefined);
+        await this.request('ChangeMessageVisibility',{ReceiptHandle:message.ReceiptHandle,VisibilityTimeout:error instanceof BackgroundJobBusyError ? 960 : 30}).catch(visibilityError => {
+          logJobFailure(visibilityError, {event:'background_visibility_change_failed',group:this.group,stage:'visibility',started,
+            original_error_code:jobFailure(error,stage).error_code,message_id:message.MessageId,job_id:job?.job_id,job_type:job?.type,
+            attempts:receiveAttempts(message.Attributes?.ApproximateReceiveCount)});
+        });
       }
     }
   }

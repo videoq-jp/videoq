@@ -86,6 +86,14 @@ describe("LangChain Vectorize synchronization from durable D1 tasks", () => {
     expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE video_id=2 AND attempts=0").first("n")).toBe(19);
   });
 
+  it("retains the active fingerprint gate when scheduled maintenance drains a bulk page", async () => {
+    await publish("legacy-maintenance");
+    const result = await maintainD1SceneIndex(fixture.database, { 1536: index }, 1536, "a".repeat(64));
+    expect(result).toMatchObject({ claimed: 1, completed: 0, failed: 1 });
+    expect(upsert).not.toHaveBeenCalled();
+    expect(await fixture.database.prepare("SELECT count(*) AS n FROM scene_index_tasks WHERE completed_at IS NOT NULL").first("n")).toBe(0);
+  });
+
   it("drains a bulk page concurrently with unique D1 leases and awaits every provider write", async () => {
     const count = 16;
     expect(await writer.start({ runId: "parallel-bulk", userId: "owner", videoId: 1, sourceRevision, dimensions: 1536, expectedScenes: count })).toBe(true);

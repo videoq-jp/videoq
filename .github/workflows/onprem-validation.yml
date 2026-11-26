@@ -2,6 +2,17 @@ name: On-prem Validation
 on:
   workflow_call:
     inputs:
+      build_parallelism:
+        description: Measured build experiment; 1 preserves the sequential baseline, 2 bounds contention
+        type: number
+        default: 1
+      build_repetitions:
+        description: Build repeats on the same disposable runner for warm-cache measurement
+        type: number
+        default: 1
+      build_evidence_suffix:
+        type: string
+        default: validation
       validate_lifecycle:
         description: Include inference containers, data recovery and Kubernetes rehearsals for lifecycle changes
         type: boolean
@@ -24,7 +35,9 @@ jobs:
   onprem:
     name: ${{ inputs.validate_lifecycle && 'Lifecycle rehearsal' || 'Image security checks' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    # Observed pre-generation work: 51.39m; three phases retain two 10m
+    # generation requests each. Allow the 111.39m envelope plus cleanup.
+    timeout-minutes: ${{ inputs.validate_lifecycle && inputs.validate_real_cpu && 120 || 90 }}
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       QUOTA_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
@@ -78,6 +91,8 @@ jobs:
       - name: Install checksum-pinned uv
         run: bash .github/scripts/install-uv.sh
       - name: Validate public downloads, signature policy and shared lifecycle helpers
+        env:
+          HELM_BIN: ${{ runner.temp }}/helm/helm
         run: |
           uv run --no-project --with-requirements scripts/onprem/requirements-verify.txt python -m unittest discover -s scripts/onprem -p 'test_*.py' -v
           uv run --no-project --with-requirements scripts/onprem/requirements-verify.txt python -m unittest discover -s .github/scripts -p test_onprem_public.py -v
@@ -95,10 +110,18 @@ jobs:
           LOCAL_WHISPER_CONTAINER_IMAGE=videoq-local-whisper:onprem-ci uv run --locked pytest -q tests/test_real_container.py
       - name: Build production on-prem images
         id: images
-        run: |
-          docker build -t videoq-api:onprem-ci -f apps/api/Dockerfile .
-          docker build -t videoq-worker:onprem-ci -f apps/worker/Dockerfile.onprem apps/worker
-          docker build -t videoq-web:onprem-ci -f apps/web/Dockerfile .
+        env:
+          BUILD_PARALLELISM: ${{ inputs.build_parallelism }}
+          BUILD_REPETITIONS: ${{ inputs.build_repetitions }}
+        run: python3 .github/scripts/build-onprem-measured.py --parallelism "$BUILD_PARALLELISM" --repetitions "$BUILD_REPETITIONS"
+      - name: Retain comparable image-build timing and identities
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: onprem-build-${{ github.sha }}-${{ inputs.build_parallelism }}-${{ inputs.build_evidence_suffix }}
+          path: artifacts/onprem-build/
+          if-no-files-found: error
+          retention-days: 30
       - name: Install pinned K3s operator tools
         if: inputs.validate_lifecycle
         run: bash scripts/onprem/install-tools.sh
@@ -122,7 +145,16 @@ jobs:
         timeout-minutes: 15
         env:
           VIDEOQ_ONPREM_ACCEPTANCE: '1'
+          VIDEOQ_ONPREM_DIAGNOSTICS: ${{ runner.temp }}/installer-diagnostics
         run: python3 -m unittest discover -s scripts/onprem -p test_acceptance.py -v
+      - name: Retain sanitized installer lifecycle diagnostics
+        if: ${{ !cancelled() && inputs.validate_lifecycle }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installer-diagnostics-${{ github.sha }}
+          path: ${{ runner.temp }}/installer-diagnostics/*.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Exercise production API image over HTTP
         working-directory: apps/api
         run: node scripts/smoke-node.mjs videoq-api:onprem-ci
@@ -181,7 +213,7 @@ jobs:
         if: ${{ !cancelled() && steps.images.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: onprem-sbom-${{ github.sha }}
+          name: onprem-sbom-${{ github.sha }}-${{ inputs.build_parallelism }}-${{ inputs.build_evidence_suffix }}
           path: |
             sbom/*.cdx.json
             *-security.json*
@@ -221,10 +253,12 @@ jobs:
           npm ci --ignore-scripts --workspace @videoq/api --workspace @videoq/web
           node node_modules/playwright/cli.js install --with-deps chromium
       - name: Exercise source builds with real CPU models and blocked public egress
+        id: real_cpu
         if: inputs.validate_lifecycle && inputs.validate_real_cpu
         env:
           HELM_BIN: ${{ runner.temp }}/helm/helm
         run: |
+          echo "started=true" >> "$GITHUB_OUTPUT"
           export PATH="$RUNNER_TEMP:$PATH"
           df -h "$RUNNER_TEMP"
           python3 - <<'PY'
@@ -241,7 +275,7 @@ jobs:
           acceptance.release.write_atomic(output/'result.json', result)
           PY
       - name: Retain real CPU source-build evidence
-        if: ${{ !cancelled() && inputs.validate_lifecycle && inputs.validate_real_cpu }}
+        if: ${{ !cancelled() && steps.real_cpu.outputs.started == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: onprem-cpu-preflight-${{ github.sha }}
@@ -250,6 +284,7 @@ jobs:
             ${{ runner.temp }}/cpu-preflight/real-ai-result.json
             ${{ runner.temp }}/cpu-preflight/playback.json
             ${{ runner.temp }}/cpu-preflight/diagnostics.json
+            ${{ runner.temp }}/cpu-preflight/request-stages.json
           if-no-files-found: error
           retention-days: 30
 
@@ -266,7 +301,7 @@ jobs:
       matrix:
         engine: [llamacpp, whispercpp]
         architecture: [amd64, arm64]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.engine == 'whispercpp' && matrix.architecture == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -297,32 +332,33 @@ jobs:
           if (!/^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$/.test(reference)) throw new Error('An exact upstream CPU image digest is required');
           appendFileSync(process.env.GITHUB_ENV, `UPSTREAM_CPU_IMAGE=${reference}\n`);
           JS
-      - name: Verify the exact whisper.cpp header-only image inventory
-        id: header_inventory
+      - name: Verify exact minimal whisper runtime provenance and native inference
+        id: minimal_runtime
         if: matrix.engine == 'whispercpp'
         env:
           ARCHITECTURE: ${{ matrix.architecture }}
         run: |
           docker pull --platform "linux/$ARCHITECTURE" "$UPSTREAM_CPU_IMAGE"
-          python3 .github/scripts/check-upstream-header-image.py "$UPSTREAM_CPU_IMAGE" "$ARCHITECTURE" \
-            --approved apps/inference/whispercpp/security/header-image-inventory.json > header-inventory.json
+          python3 apps/inference/whispercpp/verify_runtime.py --candidate "$UPSTREAM_CPU_IMAGE" \
+            --architecture "$ARCHITECTURE" --receipt minimal-runtime.json
       # Select the manifest explicitly; scanning ARM packages requires no emulation.
       # Use the registry so a cached amd64 Docker image cannot shadow arm64.
       - name: Scan upstream CPU images including unfixed vulnerabilities
-        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.minimal_runtime.outcome == 'success') }}
         timeout-minutes: 15
         uses: ./.github/actions/scan-image
         with:
           source: registry:${{ env.UPSTREAM_CPU_IMAGE }}
           output: upstream-cpu-security.json
-          gate: assess
-          security-config: ${{ matrix.engine == 'whispercpp' && 'apps/inference/whispercpp/security/grype.json' || '' }}
+          gate: ${{ matrix.engine == 'whispercpp' && 'strict' || 'assess' }}
+          # The minimal whisper runtime has no VEX or runtime exceptions.
+          security-config: ''
           platform: linux/${{ matrix.architecture }}
       - name: Install pinned Helm for the runtime assessment
-        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.minimal_runtime.outcome == 'success') }}
         run: HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
       - name: Assess the upstream inference runtime findings
-        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.header_inventory.outcome == 'success') }}
+        if: ${{ !cancelled() && steps.cpu_image.outcome == 'success' && (matrix.engine != 'whispercpp' || steps.minimal_runtime.outcome == 'success') }}
         env:
           HELM_BIN: ${{ runner.temp }}/helm/helm
         run: node .github/scripts/onprem-upstream-security.cjs upstream-cpu-security.json ${{ matrix.architecture }} upstream-cpu-assessed.json ${{ matrix.engine }}
@@ -353,7 +389,8 @@ jobs:
             upstream-cpu.cdx.json
             upstream-cpu-assessed.json
             apps/inference/llamacpp/security/
-            header-inventory.json
+            minimal-runtime.json
+            .github/whisper-runtime-pins.json
             apps/inference/whispercpp/security/
           retention-days: 30
           if-no-files-found: error

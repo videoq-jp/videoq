@@ -1,0 +1,41 @@
+{
+  "ordering": "Actual mutation deleted video2, then deliberate stale real-vector upsert, ANN query, then repeated authenticated scoped search",
+  "ann": {
+    "count": 1,
+    "matches": [
+      {
+        "id": "448f0a8cb566a4674d9d7af3856067a98446d4e7f93b3a7424dcd8d56cfb60b9",
+        "score": 0.9999987,
+        "metadata": {
+          "revision": "8d5b46ff-7198-404b-b7ed-79e00e5910df",
+          "scene_id": "8d5b46ff-7198-404b-b7ed-79e00e5910df:0",
+          "user_id": "owner",
+          "vector_id": "448f0a8cb566a4674d9d7af3856067a98446d4e7f93b3a7424dcd8d56cfb60b9",
+          "video_id": 2
+        }
+      }
+    ]
+  },
+  "firstDeletion": {
+    "status": 200,
+    "data": {
+      "deleted": true,
+      "retainedStaleVectors": 1,
+      "visibleAfterDelete": 0,
+      "deletionDenied": true
+    }
+  },
+  "afterStaleAnn": {
+    "status": 200,
+    "data": {
+      "deleted": false,
+      "retainedStaleVectors": 0,
+      "visibleAfterDelete": 0,
+      "deletionDenied": true
+    }
+  },
+  "upsertReceipt": {
+    "index": "videoq-acceptance-20261125-c33d",
+    "count": 1
+  }
+}

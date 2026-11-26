@@ -3,6 +3,8 @@ import { adminInputSchemas } from "../inputs/admin";
 import { outputSchemas } from "../outputs";
 
 export const adminRouter = t.router({
+  inspectSearchRecovery: adminProcedure.input(adminInputSchemas['admin.inspectSearchRecovery']).output(outputSchemas['admin.inspectSearchRecovery']).query(({ctx,input})=>ctx.call('admin.inspectSearchRecovery',input)),
+  restartSearchWorkflow: adminProcedure.input(adminInputSchemas['admin.restartSearchWorkflow']).output(outputSchemas['admin.restartSearchWorkflow']).mutation(({ctx,input})=>ctx.call('admin.restartSearchWorkflow',input)),
   createUser: adminProcedure.input(adminInputSchemas["admin.createUser"]).output(outputSchemas["admin.createUser"])
     .mutation(({ ctx, input }) => ctx.call("admin.createUser", input)),
   resetAccess: adminProcedure.input(adminInputSchemas["admin.resetAccess"]).output(outputSchemas["admin.resetAccess"])

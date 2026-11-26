@@ -108,3 +108,40 @@ def test_guard_hash_mismatch_fails_before_install(tmp_path):
     with pytest.raises(ValueError, match='guard'):
         audio.provision(manifest, cache, destination)
     assert not destination.exists()
+
+
+def test_only_exact_patched_av_asset_is_allowed_and_companions_stay_pypi(tmp_path):
+    path, _, _, _ = fixture(tmp_path)
+    original = json.loads(path.read_text())
+    audio.validate_manifest(original)
+    for mutate in [lambda p: p.update(url=p['url'].replace('videoq-jp/videoq', 'attacker/other')),
+                   lambda p: p.update(url=p['url'].replace('20261126-v1', '20261126-v2')),
+                   lambda p: p.update(url=p['url'] + '?download=1'),
+                   lambda p: p.update(url=p['url'] + '#alternate'),
+                   lambda p: p.update(url='https://files.pythonhosted.org/' + p['filename']),
+                   lambda p: p.update(ffmpegVersion='9.0.2'),
+                   lambda p: p.pop('ffmpegVersion'),
+                   lambda p: p.update(filename='av-19.0.2-cp313-abi3-manylinux_2_28_x86_64.whl')]:
+        value = json.loads(json.dumps(original))
+        mutate(value['packages'][0])
+        with pytest.raises(ValueError, match='exact reviewed'):
+            audio.validate_manifest(value)
+    value = json.loads(json.dumps(original))
+    value['packages'][1]['url'] = audio.PATCHED_AV_URL
+    with pytest.raises(ValueError, match='Companion'):
+        audio.validate_manifest(value)
+
+
+def test_same_filename_old_av_cache_cannot_satisfy_new_locked_bytes(tmp_path, monkeypatch):
+    package = {'filename': audio.PATCHED_AV_FILENAME, 'url': audio.PATCHED_AV_URL,
+               'sha256': hashlib.sha256(b'patched-9.1').hexdigest(), 'size': len(b'patched-9.1')}
+    old = tmp_path / 'old-lock'
+    old.mkdir()
+    (old / package['filename']).write_bytes(b'old-pypi-9.0.2')
+    new = tmp_path / 'new-lock'
+    with pytest.raises(ValueError, match='Missing or corrupt'):
+        audio.cached_wheel(package, new, False)
+    monkeypatch.setattr(audio.urllib.request, 'urlopen', lambda *a, **kw: io.BytesIO(b'patched-9.1'))
+    assert audio.cached_wheel(package, new, True).read_bytes() == b'patched-9.1'
+    monkeypatch.setattr(audio.urllib.request, 'urlopen', lambda *a, **kw: pytest.fail('offline restart downloaded'))
+    assert audio.cached_wheel(package, new, False).read_bytes() == b'patched-9.1'

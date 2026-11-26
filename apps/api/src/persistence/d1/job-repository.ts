@@ -1,3 +1,5 @@
+import { safeJobRepository } from '../job-failure';
+import { safeJobFailureCode } from '../../application/job-failure';
 import { and, eq, ne, or, isNull, sql } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { jobExecutions } from "../../db/schema/sqlite";
@@ -9,7 +11,7 @@ export function createD1JobRepository(database: D1Database): JobRepository {
   const leaseUntil = sql<string>`strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ${`+${JOB_LEASE_SECONDS} seconds`})`;
   const owns = (jobId: string, token: string) => and(eq(jobExecutions.jobId, jobId),
     eq(jobExecutions.status, "running"), eq(jobExecutions.leaseToken, token));
-  return {
+  return safeJobRepository({
     async claim(input) {
       validateJobIdentity(input);
       const leaseToken = crypto.randomUUID();
@@ -35,7 +37,7 @@ export function createD1JobRepository(database: D1Database): JobRepository {
     },
     async fail(jobId, token, errorCode) {
       const rows = await db.update(jobExecutions).set({ status: "failed", leaseToken: null, leaseUntil: null,
-        lastError: errorCode.slice(0, 2000), updatedAt: now }).where(owns(jobId, token)).returning({ id: jobExecutions.jobId });
+        lastError: safeJobFailureCode(errorCode), updatedAt: now }).where(owns(jobId, token)).returning({ id: jobExecutions.jobId });
       return rows.length > 0;
     },
     async heartbeat(jobId, token) {
@@ -43,5 +45,5 @@ export function createD1JobRepository(database: D1Database): JobRepository {
         .where(and(owns(jobId, token), sql`${jobExecutions.leaseUntil} > ${now}`)).returning({ id: jobExecutions.jobId });
       return rows.length > 0;
     },
-  };
+  });
 }

@@ -1,3 +1,4 @@
+import { EmbeddingCompatibilityError, assertEmbeddingFingerprint } from "../../lib/embedding-contract";
 import {
   and,
   eq,
@@ -172,6 +173,9 @@ export function enqueueStagedSceneDeletes(
 
 export function createD1SceneIndexWriter(
   database: D1Database,
+  fingerprint?: string,
+  identity?: string,
+  expectedDimensions?: 768 | 1536,
 ): SceneIndexWriter {
   const db = createD1Connection(database),
     r = sceneIndexRuns,
@@ -190,7 +194,7 @@ export function createD1SceneIndexWriter(
   const current = (userId: string) =>
     sceneRunCurrent(
       {
-        owner: and(eq(r.userId, userId), eq(videos.userId, r.userId))!,
+        owner: and(eq(r.userId, userId), eq(videos.userId, r.userId), fingerprint ? eq(r.embeddingFingerprint, fingerprint) : undefined)!,
         source: eq(versions.revision, r.sourceRevision),
         head: and(
           eq(heads.runId, r.id),
@@ -251,6 +255,8 @@ export function createD1SceneIndexWriter(
     },
     async start(input: SceneIndexRunInput) {
       validateSceneIndexRun(input);
+      if (fingerprint) assertEmbeddingFingerprint(input.embeddingFingerprint, fingerprint);
+      if (expectedDimensions !== undefined && input.dimensions !== expectedDimensions) throw new EmbeddingCompatibilityError();
       const token = crypto.randomUUID();
       const result = await db.batch([
         db
@@ -264,6 +270,8 @@ export function createD1SceneIndexWriter(
                   userId: videos.userId,
                   sourceRevision: versions.revision,
                   dimensions: sql`${input.dimensions}`,
+                  embeddingIdentity: sql`${identity ?? null}`,
+                  embeddingFingerprint: sql`${input.embeddingFingerprint ?? null}`,
                   expectedScenes: sql`${input.expectedScenes}`,
                 }),
               )
@@ -369,6 +377,7 @@ export function createD1SceneIndexWriter(
             eq(r.videoId, input.videoId),
             eq(r.dimensions, input.dimensions),
             eq(r.expectedScenes, input.expectedScenes),
+            fingerprint ? eq(r.embeddingFingerprint, fingerprint) : undefined,
             eq(r.sourceRevision, input.sourceRevision),
           ),
         ),
@@ -380,11 +389,13 @@ export function createD1SceneIndexWriter(
       if (input.length > 20)
         throw new Error("Stage at most 20 scenes per request");
       const run = await db
-        .select({ dimensions: r.dimensions, videoId: r.videoId })
+        .select({ dimensions: r.dimensions, videoId: r.videoId, embeddingFingerprint: r.embeddingFingerprint })
         .from(r)
         .where(and(eq(r.id, runId), eq(r.userId, userId)))
         .get();
       if (!run) return false;
+      if (fingerprint) assertEmbeddingFingerprint(run.embeddingFingerprint, fingerprint);
+      if (expectedDimensions !== undefined && run.dimensions !== expectedDimensions) throw new EmbeddingCompatibilityError();
       const ids = new Set<string>();
       let size = 0;
       const encoded = [];
@@ -493,11 +504,13 @@ export function createD1SceneIndexWriter(
     },
     async publish(runId, userId) {
       const run = await db
-        .select({ videoId: r.videoId, dimensions: r.dimensions })
+        .select({ videoId: r.videoId, dimensions: r.dimensions, embeddingFingerprint: r.embeddingFingerprint })
         .from(r)
         .where(and(eq(r.id, runId), eq(r.userId, userId)))
         .get();
       if (!run) return false;
+      if (fingerprint) assertEmbeddingFingerprint(run.embeddingFingerprint, fingerprint);
+      if (expectedDimensions !== undefined && run.dimensions !== expectedDimensions) throw new EmbeddingCompatibilityError();
       const token = crypto.randomUUID(),
         count = db
           .select({ count: sql<number>`count(*)` })
@@ -613,6 +626,7 @@ export async function readD1WorkerSceneSource(
 export async function finishD1WorkerSceneIndex(
   database: D1Database,
   input: import("../contracts/scene-index").FinishSceneIndexInput,
+  fingerprint?: string,
 ): Promise<import("../contracts/scene-index").FinishSceneIndexResult> {
   const db = createD1Connection(database),
     r = sceneIndexRuns,
@@ -635,6 +649,7 @@ export async function finishD1WorkerSceneIndex(
           eq(heads.videoId, videos.id),
           eq(heads.dimensions, input.dimensions),
           eq(r.status, "published"),
+          fingerprint ? eq(r.embeddingFingerprint, fingerprint) : undefined,
           eq(r.sourceRevision, versions.revision),
           eq(r.userId, videos.userId),
         ),

@@ -126,3 +126,63 @@ fresh file and runtime verification before updating the assessment.
 
 The inspection results and actual GPU checks are tracked in
 [the verification record](../../../../docs/verification/upstream-vllm-inspection.json).
+
+## 2026-11-26 exact kernel implementation review
+
+`kernel-20261126-review.json` retains 75 complete primary Linux CNA records at
+CVEProject commit `7e4de3c1bcb5d5a1818ac5b96c2cf5370cad98b8`, their individual
+SHA-256 hashes, affected source paths and the exact 990-file native inventory.
+The new group requires the exact CVE, image, package version, normalized PURL
+and scanner locations. Original Grype PURLs including `upstream=linux` are
+retained separately from the normalized compatibility representation.
+Every listed affected path is kernel implementation or an internal header,
+absent from this user-space package; internal `include/net/mptcp.h` is distinct
+from exported `/usr/include/linux/mptcp.h`. There is no wildcard kernel-CVE rule.
+Changes to the evidence, contents, paths, modes, commands or security contexts
+invalidate acceptance. The native collector rejects symlinks, executable files,
+ELF and modules; the evaluator verifies the complete hashed inventory.
+
+The review retains the existing owner, expiry and serving restrictions. It is
+neither a patched-image claim nor a host-kernel assessment. At that initial
+header review, 22 new FFmpeg image/overlay findings remained blocking and
+required separate review. A retained
+same-image artifact can test this evaluator; final acceptance still requires a
+fresh native probe and full unsuppressed scan of the immutable serving image
+and audio overlay with all ten rendered workload configurations checked.
+
+## 2026-11-26 exact masked image-library findings
+
+`masked-ffmpeg-20261126-review.json` retains the 11 pinned primary CNA records
+and their hashes, exact FFmpeg 8.1.1 image tuples and 26 locations, plus the
+reviewed native inventory and complete check set from artifact `15080457487`
+(run `45738439321`, source `1fbedd44`, merge `1d3a54b3`, immutable amd64 image
+unchanged). This explicitly replaces the old 9.0.2 overlay proof; that complete
+old proof is retained as a non-executable historical test fixture. The evaluator requires
+this evidence for these exact CVEs; aliases, other versions, locations and
+platforms cannot extend it. All raw HIGH/CRITICAL findings remain visible.
+
+The observed four empty read-only masks, absent executable module imports,
+26 denied absolute native loads, blocked TorchCodec decoder/core imports and
+seven exact hash-verified overlay ELF mappings establish physical exclusion
+of these image copies in the reviewed workloads. Every staged import/serving
+mapping and normalized automatic waveform/reference check is bound to the
+reviewed receipt. The existing owner, expiry, ten rendered profile gates and
+kernel inventory checks remain unchanged. An incomplete or changed proof,
+probe source, model command, mount or dependency requires fresh review.
+
+The check-set comparison now pins published PyAV 19.0.2 / FFmpeg 9.1 wheel
+`75fd08d2`, all 227 members, probe `ac0c165d`, lock `d3cac735` and guard
+`bb523747`. All 14 native checks passed; the observed whole job still failed
+at assessment because it used the previous proof. With this proposed proof,
+local evaluation of that retained artifact and all ten rendered profiles accepts
+979 reviewed image findings with no unassessed image finding. The audio scan
+contains zero raw matches and zero ignored findings: no new audio waiver is
+introduced. Historical positive/hostile tests stay isolated; the real active
+evaluator rejects the old receipt and mutated current evidence. Another wheel,
+probe, adapter or dependency change still requires a fresh native receipt and
+explicit review. These 11 image assessments never approve overlay findings.
+`nativeFilterTraceComplete=false` remains explicit: this is physical code
+exclusion, not complete native filter tracing or an upstream patch claim.
+The proof covers CPU imports/preprocessing, not GPU/full-model execution or the
+host kernel. JSON equality is not artifact authentication: the caller must use
+the protected trusted native workflow and verify its source/run provenance.

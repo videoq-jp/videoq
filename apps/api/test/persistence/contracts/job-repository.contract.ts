@@ -3,6 +3,7 @@ import type { JobRepository } from "../../../src/persistence/contracts/job-repos
 
 export interface JobFixture {
   repository: JobRepository;
+  lastError(jobId: string): Promise<unknown>;
   expireLease(jobId: string): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -54,6 +55,15 @@ export function jobRepositoryContract(backend: string, createFixture: () => Prom
       expect(await repository.fail(identity.jobId, "wrong-token", "FAILED")).toBe(false);
       expect(await repository.fail(identity.jobId, first.leaseToken, "FAILED")).toBe(true);
       expect((await repository.claim(identity)).status).toBe("claimed");
+    });
+    it("persists only safe allowlisted failure codes", async () => {
+      const {repository,lastError}=current();
+      for(const [jobId,error,expected] of [['safe','PROVIDER_RATE_LIMITED','PROVIDER_RATE_LIMITED'],['unsafe','private SQL token=secret','WORKER_EXECUTION_FAILED']]){
+        const claim=await repository.claim({...identity,jobId});
+        if(claim.status!=='claimed')throw new Error('Expected lease');
+        await repository.fail(jobId,claim.leaseToken,error);
+        expect(await lastError(jobId)).toBe(expected);
+      }
     });
     it("rejects invalid job identities before persistence", async () => {
       await expect(current().repository.claim({ ...identity, payloadSha256: "invalid" })).rejects.toThrow("Invalid job identity");

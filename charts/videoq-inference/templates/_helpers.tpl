@@ -128,4 +128,5 @@ capabilities:
 - { name: unused-native, mountPath: /usr/local/lib/python3.12/dist-packages/PyNvVideoCodec, readOnly: true }
 - { name: unused-native, mountPath: /usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs, readOnly: true }
 - { name: unused-native, mountPath: /usr/local/lib/python3.12/dist-packages/mooncake, readOnly: true }
+- { name: unused-native, mountPath: /usr/local/lib/python3.12/dist-packages/torchcodec, readOnly: true }
 {{- end -}}

@@ -1,0 +1,30 @@
+{
+  "run": 45550358482,
+  "job": 138989816969,
+  "jobConclusion": "success",
+  "workflowConclusion": "pending at capture; no whole-workflow success claim",
+  "headSource": "9fdd869001d356cc2463611bd24ccfe3d85f2d86",
+  "testedMerge": "d4812309a1259494ccf3f69a856a1d0875410eba",
+  "artifact": {
+    "id": 14993144080,
+    "sha256": "92a5e2605d2748b444754fa9a9d30ec69f2d0a03c953739350531ab022b5b6e0"
+  },
+  "files": {
+    "release-compatibility.json": "a9b7bbf5b857e79a335fc2a69ecee04cf61abd648e6b34a532a8d9f0a6df6155",
+    "cors-browser.json": "aaeac93716a6071985a76e3fbf7665e4441dd11733fa27a1ff9d7168627b79fb"
+  },
+  "browserScope": "Actual Hono CORS middleware and Garage storage adapters; synthetic cookie/challenge routes, not full Better Auth/OAuth or production TLS acceptance",
+  "compatibilityScope": "Successful cloud deployment receipts, not proof of customer on-prem installation or current live runtime revision",
+  "checks": {
+    "actualBrowserAllowed": 10,
+    "actualBrowserDenied": 5,
+    "serverNoBody": {
+      "deniedApiPostAbsent": true,
+      "deniedStoragePutAbsent": true,
+      "deniedStoragePreflightObserved": true
+    },
+    "oldNewProducerConsumerCombinations": 16,
+    "casesPerCombination": 58
+  },
+  "remaining": "Final API/lifecycle/realCPU and whole required CI; paired build shortening remains separate frozen-source experiment."
+}

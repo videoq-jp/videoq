@@ -23,12 +23,34 @@ CLUSTER = "videoq-onprem-lab"
 NAMESPACE = "videoq-validation"
 
 
+def locked_embedding_identity(defaults):
+    """Identity of the exact GGUF served from this chart's verified model mount."""
+    model=defaults['servers']['embedding']
+    if not re.fullmatch(r'[0-9a-f]{40}',model['modelRevision']) or not re.fullmatch(r'[0-9a-f]{64}',model['modelSha256']):
+        raise ValueError('Invalid locked served embedding weights identity')
+    if not isinstance(model.get('servedModel'), str) or not model['servedModel'].strip():
+        raise ValueError('Missing served embedding model alias')
+    return {'embeddingModel':model['servedModel'], 'embeddingRevision':model['modelRevision']+':sha256:'+model['modelSha256'],
+            'embeddingPreprocessing':'raw-text-v1'}
+
+
+def real_model_values(defaults):
+    values=lab_values()
+    values['networkPolicy']={'localEgressOnly':True}
+    values['ai'].update(locked_embedding_identity(defaults))
+    values['ai'].update({'openaiBaseUrl':'http://videoq-inference-chat:8000/v1','llmModel':'videoq-chat',
+                         'embeddingBaseUrl':'http://videoq-inference-embedding:8000/v1',
+                         'separateToolSchema':True,'reasoningEffort':'none','requestTimeoutMs':600000,'streamTimeoutMs':600000,
+                         'whisperLocalUrl':'http://videoq-inference-whisper:8080/v1','whisperChunkSeconds':30})
+    return values
+
+
 def lab_values():
     return {"fullnameOverride":"videoq", "publicUrl":"http://127.0.0.1:18787", "storage":{"endpoint":"http://127.0.0.1:19000","internalEndpoint":"http://garage:3900","bucket":"videoq-media","region":"garage"},
             "queue":{"url":"http://queue:9324/000000000000/videoq-jobs",
                      "searchUrl":"http://queue:9324/000000000000/videoq-search",
                      "accountUrl":"http://queue:9324/000000000000/videoq-account"},
-            "ai":{"openaiBaseUrl":"http://inference:8080/v1","llmModel":"lab-model","whisperBackend":"local","whisperLocalUrl":"http://inference:8080/v1"},
+            "ai":{"openaiBaseUrl":"http://inference:8080/v1","llmModel":"lab-model","embeddingRevision":"sha256:"+hashlib.sha256((ROOT/".github/onprem-lab/inference.mjs").read_bytes()).hexdigest(),"embeddingPreprocessing":"raw-text-v1","whisperBackend":"local","whisperLocalUrl":"http://inference:8080/v1"},
             "config":{"videoVisualEnabled":False}}
 
 
@@ -153,11 +175,8 @@ def main():
         apply_secret()
     values = lab_values()
     if args.real_models:
-        values["networkPolicy"] = {"localEgressOnly":True}
-        values["ai"].update({"openaiBaseUrl":"http://videoq-inference-chat:8000/v1", "llmModel":"videoq-chat",
-                            "embeddingBaseUrl":"http://videoq-inference-embedding:8000/v1", "embeddingModel":"gte-qwen2-1.5b-q4km-124fbdad",
-                            "separateToolSchema":True, "reasoningEffort":"none", "requestTimeoutMs":600000, "streamTimeoutMs":600000,
-                            "whisperLocalUrl":"http://videoq-inference-whisper:8080/v1", "whisperChunkSeconds":30})
+        inference_defaults = json.loads(run(["node", "--input-type=module", "-e", "import {parse} from 'yaml'; import {readFileSync} from 'node:fs'; console.log(JSON.stringify(parse(readFileSync(0,'utf8'))))"], data=run([helm,"show","values",str(args.inference_chart)])))
+        values = real_model_values(inference_defaults)
         resources = []
         inference_values = {"downloadModels":False, "networkPolicy":{"clientNamespace":NAMESPACE,"clientRelease":"videoq","denyEgress":True},
                             "whisper":{"image":{"repository":"videoq-whisper","tag":args.image_tag,"digest":"","pullPolicy":"Never"}},

@@ -1,0 +1,39 @@
+{
+  "nativeVectorize": {
+    "name": "Error",
+    "message": "VECTOR_QUERY_ERROR (code = 40001): invalid metadata filters: the compact JSON representation of the filter must not exceed 2048 bytes"
+  },
+  "notification": {
+    "name": "TypeError",
+    "message": "Invalid redirect value, must be one of \"follow\" or \"manual\" (\"error\" won't be implemented since it does not make sense at the edge; use \"manual\" and check the response status code)."
+  },
+  "inList": {
+    "code": 40029,
+    "observedAtProbeCount": 200,
+    "compactFilterBytes": 732,
+    "message": "When using $in and $nin filter clauses, the length of the filter list must not exceed 100",
+    "source": "Follow-up official Wrangler REST query stderr; no raw SQL/credentials"
+  },
+  "cleanup": [
+    {
+      "stage": "retire classes",
+      "code": 11001,
+      "message": "Queue handler is missing",
+      "resolution": "Retry-only handler retained until consumer detach"
+    },
+    {
+      "stage": "delete worker without force",
+      "status": 403,
+      "code": 10064,
+      "message": "Cannot delete this Worker as it is a consumer for a Queue",
+      "resolution": "Detached only this fixture consumer, retained force=false"
+    },
+    {
+      "stage": "verify deleted index",
+      "status": 410,
+      "code": 3005,
+      "message": "vectorize.index.deleted",
+      "resolution": "Classified explicit deletion tombstone, not generic API failure"
+    }
+  ]
+}

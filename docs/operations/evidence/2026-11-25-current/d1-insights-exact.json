@@ -1,0 +1,354 @@
+{
+  "observedAt": "2026-11-25T03:25:25.786Z",
+  "account": "12daec56fdba43f677f2766ee26a5a39",
+  "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+  "dataset": "d1QueriesAdaptiveGroups",
+  "filter": {
+    "AND": [
+      {
+        "datetimeHour_geq": "2026-11-25T02:00:00Z",
+        "datetimeHour_leq": "2026-11-25T03:00:00Z",
+        "databaseId": "ca70322e-c692-44b2-9052-de5d01a60e61"
+      }
+    ]
+  },
+  "querySha256": "093cf73a8682621afa370addaef5ab9c834424cb92498bb9cf236a763ca51a4a",
+  "orderBy": "sum_queryDurationMs_DESC",
+  "limit": 20,
+  "rows": [
+    {
+      "sqlSha256": "6de2fc3aded8b22831831c1da7a84d9593560ef9cd26cb93153d665a74a6cca0",
+      "count": 300,
+      "sum": {
+        "queryDurationMs": 103.89830000000002,
+        "rowsRead": 72310,
+        "rowsReturned": 62,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.34632766666666676,
+        "rowsRead": 241,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+      "count": 269,
+      "sum": {
+        "queryDurationMs": 55.081300000000006,
+        "rowsRead": 269,
+        "rowsReturned": 269,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.20476319702602233,
+        "rowsRead": 1,
+        "rowsReturned": 1,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "4010135965ded9f6bbe693e30975e972cffd14aac9e973b2d388d1100c2f0edd",
+      "count": 60,
+      "sum": {
+        "queryDurationMs": 43.595699999999994,
+        "rowsRead": 596,
+        "rowsReturned": 60,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.7265949999999999,
+        "rowsRead": 9,
+        "rowsReturned": 1,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "7cd543b3c061d6704359ba1769eddd3e95e11e362888c06f824d4d87422cc0ec",
+      "count": 117,
+      "sum": {
+        "queryDurationMs": 40.2008,
+        "rowsRead": 477,
+        "rowsReturned": 117,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.3435965811965812,
+        "rowsRead": 4,
+        "rowsReturned": 1,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+      "count": 303,
+      "sum": {
+        "queryDurationMs": 36.8085,
+        "rowsRead": 303,
+        "rowsReturned": 303,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.12148019801980199,
+        "rowsRead": 1,
+        "rowsReturned": 1,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "2fbcaea58ec937e6345d23f4f0eb4d12da3d795839383711711bbb91100071ef",
+      "count": 89,
+      "sum": {
+        "queryDurationMs": 28.4011,
+        "rowsRead": 630,
+        "rowsReturned": 4,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.3191134831460674,
+        "rowsRead": 7,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "2d65b3dfce5046c8b0e74a73d50fe76aff3b9289aabbd4eba68d6b09333c7322",
+      "count": 83,
+      "sum": {
+        "queryDurationMs": 27.816599999999998,
+        "rowsRead": 415,
+        "rowsReturned": 4,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.33513975903614457,
+        "rowsRead": 5,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "284bd6dbd51006b4acef705d88b84e56914e0fe603e6c8a99a4a2fb8e9a49a28",
+      "count": 38,
+      "sum": {
+        "queryDurationMs": 24.965999999999998,
+        "rowsRead": 152,
+        "rowsReturned": 38,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.6569999999999999,
+        "rowsRead": 4,
+        "rowsReturned": 1,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "699b002efcd1541d2ebfb832b6650312dea759c7ade26eec52e3dd832d4f5607",
+      "count": 72,
+      "sum": {
+        "queryDurationMs": 23.832300000000004,
+        "rowsRead": 360,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.3310041666666667,
+        "rowsRead": 5,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "bb253cd1e6843b2cbb3f75c72314c8524a51f1a77a38644134afcd817db44cdf",
+      "count": 39,
+      "sum": {
+        "queryDurationMs": 23.2281,
+        "rowsRead": 156,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.5955923076923078,
+        "rowsRead": 4,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "4b5495c89c5dbfb6236d65ccfdd6bcdf9b94a004319a3e5c7ea3c6030e491894",
+      "count": 149,
+      "sum": {
+        "queryDurationMs": 22.3376,
+        "rowsRead": 149,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.14991677852348992,
+        "rowsRead": 1,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "45f24ed4472a368e7d50ddebfd6bf7c8bf83eec68b9bf74db2e8c2ac89ea4c88",
+      "count": 78,
+      "sum": {
+        "queryDurationMs": 20.4482,
+        "rowsRead": 406,
+        "rowsReturned": 45,
+        "rowsWritten": 45
+      },
+      "avg": {
+        "queryDurationMs": 0.26215641025641023,
+        "rowsRead": 5,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "686dc15d6aa2ddf0965b1d9f4f8441f89e248edad754fc8b1d901bc837eabf25",
+      "count": 6,
+      "sum": {
+        "queryDurationMs": 17.1792,
+        "rowsRead": 5046,
+        "rowsReturned": 0,
+        "rowsWritten": 420
+      },
+      "avg": {
+        "queryDurationMs": 2.8632000000000004,
+        "rowsRead": 841,
+        "rowsReturned": 0,
+        "rowsWritten": 70
+      }
+    },
+    {
+      "sqlSha256": "7824163f8971c7aea587c895f9552a382a8150361e21448763542adbae3372f1",
+      "count": 132,
+      "sum": {
+        "queryDurationMs": 16.7697,
+        "rowsRead": 528,
+        "rowsReturned": 264,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.12704318181818183,
+        "rowsRead": 4,
+        "rowsReturned": 2,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "0caced20e4c0f8a7c0d46226fd914c643d739a4b9c94b896dbcb1f70bb0e49da",
+      "count": 61,
+      "sum": {
+        "queryDurationMs": 16.5274,
+        "rowsRead": 122,
+        "rowsReturned": 61,
+        "rowsWritten": 122
+      },
+      "avg": {
+        "queryDurationMs": 0.2709409836065574,
+        "rowsRead": 2,
+        "rowsReturned": 1,
+        "rowsWritten": 2
+      }
+    },
+    {
+      "sqlSha256": "06a62485e14847e46858860b2dd34f2a1c89c28623435a1d751c92a3493cc15a",
+      "count": 70,
+      "sum": {
+        "queryDurationMs": 15.0224,
+        "rowsRead": 210,
+        "rowsReturned": 4,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.2146057142857143,
+        "rowsRead": 3,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "1a22b58ed1c9804af9d43a6a31e2c9404332aceb62fa07b2b88a670afe78432c",
+      "count": 69,
+      "sum": {
+        "queryDurationMs": 12.4875,
+        "rowsRead": 138,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.18097826086956523,
+        "rowsRead": 2,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "461cb34dc3cce81c852d2e08b5079f58c668938161ca63ecd4575eb9edc634d9",
+      "count": 55,
+      "sum": {
+        "queryDurationMs": 11.4276,
+        "rowsRead": 165,
+        "rowsReturned": 55,
+        "rowsWritten": 0
+      },
+      "avg": {
+        "queryDurationMs": 0.20777454545454546,
+        "rowsRead": 3,
+        "rowsReturned": 1,
+        "rowsWritten": 0
+      }
+    },
+    {
+      "sqlSha256": "bd3386c78269d4598aa8d263aac844539d16bd6c06757217e95e4effacb4f64d",
+      "count": 6,
+      "sum": {
+        "queryDurationMs": 10.8474,
+        "rowsRead": 1362,
+        "rowsReturned": 0,
+        "rowsWritten": 6
+      },
+      "avg": {
+        "queryDurationMs": 1.8079,
+        "rowsRead": 227,
+        "rowsReturned": 0,
+        "rowsWritten": 1
+      }
+    },
+    {
+      "sqlSha256": "98f9ef60e7389c4c48cdc098299052dda5af04788b9fcecac6049c7162ad2f78",
+      "count": 44,
+      "sum": {
+        "queryDurationMs": 10.744399999999999,
+        "rowsRead": 252,
+        "rowsReturned": 38,
+        "rowsWritten": 38
+      },
+      "avg": {
+        "queryDurationMs": 0.24419090909090907,
+        "rowsRead": 5,
+        "rowsReturned": 0,
+        "rowsWritten": 0
+      }
+    }
+  ],
+  "coverage": {
+    "sqlGroups": 20,
+    "providerReportedExecutions": 2040,
+    "providerReportedRowsReadInSelectedGroups": 84046,
+    "allDatabaseRowsRead": null,
+    "perRagRequestRowsRead": null
+  },
+  "limits": [
+    "Two requested hourly buckets02/03UTC;03bucket contains only available events as of observedAt",
+    "Top20SQL groups include setup, recovery, auth, maintenance and RAG, not exclusively requests",
+    "Adaptive analytics/provider-reported aggregates, not an exact unsampled per-request trace",
+    "No overall database read total or fraction inferred from selected groups",
+    "Raw SQL/bound literals withheld; hashes may differ from application SQL normalization"
+  ]
+}

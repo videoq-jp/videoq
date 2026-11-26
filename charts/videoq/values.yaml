@@ -77,6 +77,9 @@ ai:
   embeddingBaseUrl: ""
   embeddingModel: text-embedding-3-small
   embeddingProfile: openai
+  # Private endpoints require operator-supplied immutable weights identity.
+  embeddingRevision: ""
+  embeddingPreprocessing: ""
   whisperBackend: openai
   # CPU overlay reduces this to 30; hosted/NVIDIA profiles use 300.
   whisperChunkSeconds: 300

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import math
@@ -20,6 +21,16 @@ class EmbeddingConfig:
     provider: str
     model: str
     profile: str = "openai"
+    revision: str = "provider-managed"
+    preprocessing: str = "raw-text-v1"
+
+    @property
+    def fingerprint(self) -> str:
+        gemma = self.profile == "embeddinggemma2"
+        identity = ["videoq-embedding-v1", self.provider, self.model, self.revision, self.profile, self.dimensions,
+                    "task: search result | query: " if gemma else "", "title: none | text: " if gemma else "",
+                    self.preprocessing, "float32-nonzero-v1", "preserve-newlines"]
+        return hashlib.sha256(json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
 
     @property
     def dimensions(self) -> int:
@@ -48,6 +59,8 @@ class EmbeddingContractError(RuntimeError):
 
 def resolve_embedding_config(environ: Mapping[str, str] | None = None) -> EmbeddingConfig:
     env = os.environ if environ is None else environ
+    revision = env.get("EMBEDDING_REVISION", "").strip() or "provider-managed"
+    preprocessing = env.get("EMBEDDING_PREPROCESSING", "").strip() or "raw-text-v1"
     profile = env.get("EMBEDDING_PROFILE", "").strip() or "openai"
     if profile not in {"openai", "embeddinggemma2"}:
         raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "EMBEDDING_PROFILE must be openai or embeddinggemma2.")
@@ -58,11 +71,11 @@ def resolve_embedding_config(environ: Mapping[str, str] | None = None) -> Embedd
         model = env.get("EMBEDDING_MODEL", "").strip() or "@cf/google/embeddinggemma-2"
         if profile != "embeddinggemma2" or model != "@cf/google/embeddinggemma-2":
             raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "Workers AI embeddings require the embeddinggemma2 profile and @cf/google/embeddinggemma-2 model.")
-        return EmbeddingConfig(provider, model, profile)
+        return EmbeddingConfig(provider, model, profile, revision, preprocessing)
     if profile == "embeddinggemma2" and not (env.get("EMBEDDING_MODEL", "").strip() and env.get("EMBEDDING_BASE_URL", "").strip()):
         raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "EmbeddingGemma 2 requires EMBEDDING_MODEL and a dedicated EMBEDDING_BASE_URL.")
     model = env.get("EMBEDDING_MODEL", "").strip() or "text-embedding-3-small"
-    return EmbeddingConfig("openai", model, profile)
+    return EmbeddingConfig("openai", model, profile, revision, preprocessing)
 
 
 def invalid_output(config: EmbeddingConfig) -> EmbeddingContractError:

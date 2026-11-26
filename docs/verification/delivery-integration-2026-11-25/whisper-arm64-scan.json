@@ -1,0 +1,501 @@
+{
+  "SchemaVersion": 2,
+  "Scanner": "Grype",
+  "ArtifactType": "container_image",
+  "ArtifactName": "ghcr.io/videoq-jp/videoq-whispercpp-candidate",
+  "Metadata": {
+    "RepoDigests": [
+      "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d"
+    ],
+    "OS": {
+      "Family": "wolfi",
+      "Name": "20230201"
+    },
+    "ImageConfig": {
+      "architecture": "arm64",
+      "author": "github.com/chainguard-dev/apko",
+      "config": {
+        "User": "10001:10001",
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin",
+          "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt",
+          "LD_LIBRARY_PATH=/app/build/bin"
+        ],
+        "Entrypoint": [
+          "/app/build/bin/whisper-server"
+        ],
+        "Cmd": [
+          "--help"
+        ],
+        "WorkingDir": "/app",
+        "Labels": {
+          "dev.chainguard.image.title": "wolfi-base",
+          "dev.chainguard.package.main": "",
+          "io.videoq.whisper.upstream.image": "ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0",
+          "org.opencontainers.image.authors": "Chainguard Team https://www.chainguard.dev/",
+          "org.opencontainers.image.created": "2026-11-23T14:24:12Z",
+          "org.opencontainers.image.revision": "48d69177d7dfc675c13870457ad172b90c907529",
+          "org.opencontainers.image.source": "https://github.com/videoq-jp/videoq",
+          "org.opencontainers.image.title": "wolfi-base",
+          "org.opencontainers.image.url": "https://images.chainguard.dev/directory/image/wolfi-base/overview",
+          "org.opencontainers.image.vendor": "Chainguard"
+        },
+        "ArgsEscaped": true
+      },
+      "created": "2026-11-25T03:12:21.043827365Z",
+      "history": [
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-25T03:12:12.908102328Z",
+          "created_by": "ARG TARGETARCH=arm64",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:12:12.908102328Z",
+          "created_by": "ARG UPSTREAM_IMAGE=ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:12:12.908102328Z",
+          "created_by": "RUN |2 TARGETARCH=arm64 UPSTREAM_IMAGE=ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0 /bin/sh -c case \"$TARGETARCH:$UPSTREAM_IMAGE\" in       amd64:ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73|      arm64:ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0) ;;       *) echo 'Unapproved upstream platform/digest' >&2; exit 1 ;;     esac     && apk add --no-cache wolfi-baselayout glibc libstdc++ libgomp # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:12:20.876948056Z",
+          "created_by": "COPY /app/build/bin/whisper-server /app/build/bin/whisper-server # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:12:20.915036356Z",
+          "created_by": "COPY /app/build/bin/*.so* /app/build/bin/ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:12:20.923750877Z",
+          "created_by": "COPY /app/LICENSE /usr/share/licenses/whispercpp/LICENSE # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:12:20.931299711Z",
+          "created_by": "COPY apps/inference/whispercpp/provenance.json /usr/share/doc/videoq-whispercpp/provenance.json # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:12:20.931299711Z",
+          "created_by": "ENV LD_LIBRARY_PATH=/app/build/bin",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:12:20.97886017Z",
+          "created_by": "RUN |2 TARGETARCH=arm64 UPSTREAM_IMAGE=ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0 /bin/sh -c mkdir -p /usr/share/doc/videoq-whispercpp     && LD_TRACE_LOADED_OBJECTS=1 /app/build/bin/whisper-server > /usr/share/doc/videoq-whispercpp/linked-libraries.txt     && ! grep -q 'not found' /usr/share/doc/videoq-whispercpp/linked-libraries.txt     && /app/build/bin/whisper-server --help > /usr/share/doc/videoq-whispercpp/help.txt 2>&1     && grep -q -- '--model' /usr/share/doc/videoq-whispercpp/help.txt # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:12:20.97886017Z",
+          "created_by": "ARG UPSTREAM_IMAGE=ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:12:20.97886017Z",
+          "created_by": "LABEL org.opencontainers.image.source=https://github.com/videoq-jp/videoq io.videoq.whisper.upstream.image=ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:12:21.035368596Z",
+          "created_by": "RUN |2 TARGETARCH=arm64 UPSTREAM_IMAGE=ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0 /bin/sh -c mkdir /tmp/runtime-cleanup     && cp \"$(command -v busybox)\" /tmp/runtime-cleanup/busybox     && mv /etc/apk/commit_hooks.d/ldconfig-commit.sh /tmp/runtime-cleanup/ldconfig-commit.sh     && apk del --purge wolfi-base busybox apk-tools     && /tmp/runtime-cleanup/busybox sh /tmp/runtime-cleanup/ldconfig-commit.sh post-commit     && /tmp/runtime-cleanup/busybox mv /tmp/runtime-cleanup/ldconfig-commit.sh /etc/apk/commit_hooks.d/ldconfig-commit.sh     && /tmp/runtime-cleanup/busybox rm -rf /usr/bin/apk /sbin/apk /bin/sh /bin/ash /bin/bash /bin/busybox /usr/bin/busybox /tmp/runtime-cleanup # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:12:21.043827365Z",
+          "created_by": "WORKDIR /app",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:12:21.043827365Z",
+          "created_by": "USER 10001:10001",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:12:21.043827365Z",
+          "created_by": "ENTRYPOINT [\"/app/build/bin/whisper-server\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:12:21.043827365Z",
+          "created_by": "CMD [\"--help\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:3a45993e04db84df3623dbfd6091d99e0f4af3ec200d30c7ddd60e9f89d2b228",
+          "sha256:79de9110b9fc3ad39a97184fcaf73b98fd0dcff83a3c17d7dd38ca570a575bdd",
+          "sha256:479169a034bf3d41396151e5f00e36af1fa653b17d788bf5cf563f33e20a85f0",
+          "sha256:28bc89e78e1a141a81c53dbc5682658a2f83aa8f8a6cc71b31f03969bf5690b6",
+          "sha256:92110685528026bb500e773fcb3fdacbe0b2fe50b688a93e3834b21fa91d492c",
+          "sha256:c5471213d9cae38ebec5eb6c01c0a5b9e1f4a9dc3f5bd974907ac124461296e4",
+          "sha256:8cd7fa54a06afd356f0e452b3694154e15eee0d532a2fb0246d20db1ed5f9241",
+          "sha256:c50006d4a4bd46ec1d337c25d7fbce4fdefc76d2a499e8aa332aeb514b232501",
+          "sha256:6acd1b3ac040f6bf773b9f311ef6f6f2a81c90ed01e40aa3288bb5975354d0bf",
+          "sha256:295b341cb31aa1ea8a8b0b88556fbc8d6f3fe2289990f459a4888f8b59a13fcf",
+          "sha256:c7552764869df2acf619d0ad0a86189d4d2b8efa402cf63d0e2f8e4e0fe31279",
+          "sha256:d74b7fe2d97ac90e035c641393a27b1b69e4fa7eb4a8a732a93159f025406d26",
+          "sha256:1ccc7733f78e967739b4a8422ca60ce4621cae9138a646b3c5bd35d8073529e1",
+          "sha256:edc0e801ee8150c5a3330017f840ea525a9c439f4facda69af47ec9828dfa2ba",
+          "sha256:8f4f26938b74442a2e8bd46678500068513042913b45cdb44f2e7e4ef1af8288",
+          "sha256:601c6974693398084d753916f95134bcadc0170aa55b8f81d70f578cbbcefd0f",
+          "sha256:da8d56b478b599d3bdf8a58131e28e7d74b2e20467616627fadcc0e767431af2",
+          "sha256:fec51489b3d2b77393d56a33ac99c0cb58d137cee35735700d0459fc48de5cee",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        ]
+      }
+    }
+  },
+  "Results": [
+    {
+      "Class": "os-pkgs",
+      "Type": "wolfi",
+      "Packages": [
+        {
+          "Name": "ca-certificates-bundle",
+          "Version": "20261020-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/ca-certificates-bundle@20261020-r1?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "glibc-2.44",
+          "Version": "2.44-r24",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "glibc-2.44-locale-posix",
+          "Version": "2.44-r24",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44-locale-posix@2.44-r24?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ld-linux-2.44",
+          "Version": "2.44-r24",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/ld-linux-2.44@2.44-r24?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbrotlicommon1",
+          "Version": "1.2.1-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libbrotlicommon1@1.2.1-r4?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbrotlidec1",
+          "Version": "1.2.1-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libbrotlidec1@1.2.1-r4?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbrotlienc1",
+          "Version": "1.2.1-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libbrotlienc1@1.2.1-r4?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libcrypt1-2.44",
+          "Version": "2.44-r24",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libcrypt1-2.44@2.44-r24?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libgcc",
+          "Version": "16.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libgcc@16.2.0-r5?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libgomp",
+          "Version": "16.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libgomp@16.2.0-r5?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libstdc++",
+          "Version": "16.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libstdc%2B%2B@16.2.0-r5?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxcrypt",
+          "Version": "4.5.2-r8",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libxcrypt@4.5.2-r8?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "openssl-4.0-libcrypto",
+          "Version": "4.0.3-r8",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/openssl-4.0-libcrypto@4.0.3-r8?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "openssl-4.0-libssl",
+          "Version": "4.0.3-r8",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/openssl-4.0-libssl@4.0.3-r8?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "openssl-provider-legacy-allowed",
+          "Version": "4.1.0-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/openssl-provider-legacy-allowed@4.1.0-r1?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "wolfi-baselayout",
+          "Version": "20230201-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/wolfi-baselayout@20230201-r31?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "wolfi-keys",
+          "Version": "1-r15",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/wolfi-keys@1-r15?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "zlib",
+          "Version": "1.4-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/zlib@1.4-r0?arch=aarch64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "glibc-2.44",
+          "InstalledVersion": "2.44-r24",
+          "VulnerabilityID": "CVE-2026-121758",
+          "Aliases": [
+            "CVE-2026-121758"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=aarch64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "glibc-2.44",
+          "InstalledVersion": "2.44-r24",
+          "VulnerabilityID": "CVE-2026-124024",
+          "Aliases": [
+            "CVE-2026-124024"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=aarch64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "glibc-2.44",
+          "InstalledVersion": "2.44-r24",
+          "VulnerabilityID": "CVE-2026-115819",
+          "Aliases": [
+            "CVE-2026-115819"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=aarch64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "LOW",
+          "PkgName": "glibc-2.44",
+          "InstalledVersion": "2.44-r24",
+          "VulnerabilityID": "CVE-2026-100290",
+          "Aliases": [
+            "CVE-2026-100290"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=aarch64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        }
+      ]
+    }
+  ]
+}

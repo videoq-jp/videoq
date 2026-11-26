@@ -1,0 +1,14 @@
+{
+  "issue": 1676,
+  "synthetic": true,
+  "production_mutations": false,
+  "node": "26.13.1",
+  "persistence": "isolated PostgreSQL 17",
+  "unknown_generation_blocked_before_listener": true,
+  "paused_rebuild_completed": true,
+  "resume_preflight_passed": true,
+  "same_model_dimensions_changed_revision_blocked": true,
+  "compatible_http_health_passed": true,
+  "synthetic_model_calls": 1,
+  "vectors": 1
+}

@@ -1,3 +1,4 @@
+import { embeddingFingerprint, resolveEmbeddingConfig } from "../src/lib/embedding-contract";
 import { requestBodyText } from "./helpers/request-body";
 import { chatCompletionResponse } from "./helpers/chat-completion-response";
 import { plainChatAnswer, applyChatPart, type ChatAnswer, type ModelAnswer } from "@videoq/trpc/chat";
@@ -97,6 +98,7 @@ const defaultRows = (sql: MatchableSql, args: unknown[] = []): Record<string, un
       { column_name: "video_id", data_type: "bigint" },
       { column_name: "langchain_metadata", data_type: "json" },
     ];
+  if (sql.includes("IS DISTINCT FROM") && sql.includes("embedding_fingerprint")) return [];
   if (sql.includes("scene_embeddings"))
     return [
       {
@@ -618,11 +620,12 @@ describe("POST /messages（非ストリーミング）", () => {
     });
 
     const search = calls.find(
-      (call) => call.sql.includes("scene_embeddings") && call.sql.includes("SELECT"),
+      (call) => call.sql.includes("scene_embeddings") && call.sql.includes("SELECT") && !call.sql.includes("IS DISTINCT FROM"),
     )!;
     expect(search.args).toEqual([
       "00000000-0000-4000-8000-000000000005",
       [60, 61],
+      await embeddingFingerprint(resolveEmbeddingConfig({})),
       JSON.stringify(testEmbedding(0.1, 0.2)),
       20,
     ]);

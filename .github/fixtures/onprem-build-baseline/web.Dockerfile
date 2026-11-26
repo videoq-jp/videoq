@@ -1,0 +1,93 @@
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS build
+
+# BEGIN managed npm
+ARG NPM_VERSION=12.2.3
+ARG NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.3.tgz
+ARG NPM_INTEGRITY=sha512-ovmNRRe76Jvcp1E6iOePQ6H9Zr4XMOrqgfaeGNhtRvP3XSl2Lo/a9C1N5/jRlLLrsqCem/omgGdZHpZ5a6yn1Q==
+RUN node --input-type=module -e 'import {createHash} from "node:crypto"; import {writeFileSync} from "node:fs"; const r=await fetch(process.env.NPM_URL); if(!r.ok) throw new Error("npm download failed"); const b=Buffer.from(await r.arrayBuffer()); if("sha512-"+createHash("sha512").update(b).digest("base64")!==process.env.NPM_INTEGRITY) throw new Error("npm integrity mismatch"); writeFileSync("/tmp/npm.tgz",b)' \
+    && mkdir -p /opt/verified-npm \
+    && tar -xzf /tmp/npm.tgz -C /opt/verified-npm --strip-components=1 \
+    && ln -sf /opt/verified-npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf /opt/verified-npm/bin/npx-cli.js /usr/local/bin/npx \
+    && rm /tmp/npm.tgz \
+    && test "$(npm --version)" = "$NPM_VERSION"
+# END managed npm
+
+WORKDIR /workspace
+
+ARG VITE_DEPLOYMENT_EDITION=onprem
+ENV VITE_DEPLOYMENT_EDITION=${VITE_DEPLOYMENT_EDITION}
+
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=${VITE_API_URL}
+ARG VITE_USE_S3_STORAGE=true
+ENV VITE_USE_S3_STORAGE=${VITE_USE_S3_STORAGE}
+ARG VITE_MAX_VIDEO_UPLOAD_SIZE_MB=500
+ENV VITE_MAX_VIDEO_UPLOAD_SIZE_MB=${VITE_MAX_VIDEO_UPLOAD_SIZE_MB}
+ARG VITE_OPERATOR_NAME=""
+ENV VITE_OPERATOR_NAME=${VITE_OPERATOR_NAME}
+ARG VITE_OPERATOR_REPRESENTATIVE=""
+ENV VITE_OPERATOR_REPRESENTATIVE=${VITE_OPERATOR_REPRESENTATIVE}
+ARG VITE_OPERATOR_EMAIL=""
+ENV VITE_OPERATOR_EMAIL=${VITE_OPERATOR_EMAIL}
+ARG VITE_OPERATOR_ADDRESS=""
+ENV VITE_OPERATOR_ADDRESS=${VITE_OPERATOR_ADDRESS}
+ARG VITE_OPERATOR_PHONE=""
+ENV VITE_OPERATOR_PHONE=${VITE_OPERATOR_PHONE}
+
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/docs/package.json apps/docs/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/trpc/package.json packages/trpc/package.json
+COPY packages/domain/package.json packages/domain/package.json
+RUN npm ci --ignore-scripts --workspace @videoq/web --workspace @videoq/api
+
+COPY apps/web apps/web
+COPY apps/api apps/api
+COPY packages/trpc packages/trpc
+COPY packages/domain packages/domain
+RUN npm run build --workspace @videoq/web
+RUN if [ "$VITE_DEPLOYMENT_EDITION" = onprem ]; then node apps/web/scripts/check-onprem-build.mjs apps/web/dist; fi
+RUN node apps/web/scripts/nginx-headers.mjs /tmp/security-headers.inc.template
+
+
+FROM build AS openssl-security
+# Compile checksum-pinned upstream fixes until Alpine publishes these backports.
+RUN apk add --no-cache abuild build-base perl linux-headers
+COPY apps/security/openssl /build/openssl
+WORKDIR /build/openssl
+RUN abuild-keygen -a -n \
+    && cp /root/.abuild/*.pub /etc/apk/keys/ \
+    && MAKEFLAGS=-j4 abuild -F -d -r \
+    && mkdir /security-packages \
+    && find /root/packages -name 'libssl3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+    && find /root/packages -name 'libcrypto3-3.5.9-r100.apk' -exec cp {} /security-packages/ \; \
+    && cp /root/.abuild/*.pub /security-packages/ \
+    && test -f /security-packages/libssl3-3.5.9-r100.apk \
+    && test -f /security-packages/libcrypto3-3.5.9-r100.apk
+
+FROM nginx:alpine@sha256:fb4658584bd9a916ffb6f6e365f97c25cfdb2923801f551ea08356e695f14ff7 AS runtime
+
+# Refresh the pinned base's Brotli, curl, Expat and libxslt security fixes.
+RUN apk add --no-cache --upgrade 'brotli-libs>=1.2.1-r0' 'curl>=8.23.0-r0' 'libcurl>=8.23.0-r0' 'libexpat>=2.10.0-r0' 'libxslt>=1.1.43-r4'
+# Alpine stable still ships OpenSSL 3.5.9-r0. The official r1 backports fix
+# CVE-2026-88823, CVE-2026-95691, CVE-2026-95692 and CVE-2026-107496.
+RUN apk add --no-cache --upgrade \
+    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
+    'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
+
+COPY --from=openssl-security /security-packages /tmp/security-packages
+RUN cp /tmp/security-packages/*.pub /etc/apk/keys/ \
+    && apk add --no-network /tmp/security-packages/libcrypto3-3.5.9-r100.apk /tmp/security-packages/libssl3-3.5.9-r100.apk \
+    && rm -rf /tmp/security-packages
+
+COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /tmp/security-headers.inc.template /etc/nginx/templates/security-headers.inc.template
+COPY --chmod=755 apps/web/scripts/15-videoq-csp.envsh /docker-entrypoint.d/15-videoq-csp.envsh
+ENV VIDEOQ_CSP_STORAGE_ORIGINS=""
+
+COPY --from=build /workspace/apps/web/dist /usr/share/nginx/html
+COPY LICENSE /usr/share/licenses/videoq/LICENSE
+
+EXPOSE 80

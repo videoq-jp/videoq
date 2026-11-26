@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import ssl
@@ -24,6 +25,37 @@ spec = importlib.util.spec_from_file_location("videoq", Path(__file__).with_name
 videoq = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(videoq)
 REGISTRY = "registry:3@sha256:d4032d4cc323c1731c707931ecada07a53076eac38e3b61ae57533f170f2c6c3"
+
+
+def safe_container_states(rows):
+    # Never retain container environment, health output, URLs or arbitrary logs.
+    result=[]
+    for row in rows:
+        if not isinstance(row,dict):
+            continue
+        result.append({
+            'Service':row.get('Service') if row.get('Service') in ['api','web','worker','background-worker','scheduler','postgres','garage','queue','gateway','migrate','inference','storage-init'] else 'unknown',
+            'State':row.get('State') if row.get('State') in ['running','exited','created','restarting','paused','dead','removing'] else 'unknown',
+            'Health':row.get('Health') if row.get('Health') in ['healthy','unhealthy','starting',''] else 'unknown',
+            'ExitCode':row.get('ExitCode') if type(row.get('ExitCode')) is int else None})
+    return result
+
+
+def retain_startup_diagnostics(directory):
+    destination = os.environ.get('VIDEOQ_ONPREM_DIAGNOSTICS')
+    if not destination:
+        return
+    output=Path(destination); output.mkdir(parents=True,exist_ok=True)
+    report={'installation':directory.name}
+    try:
+        result=videoq.docker(directory,'ps','--all','--format','json',capture_output=True,text=True)
+        rows=json.loads(result.stdout) if result.stdout.lstrip().startswith('[') else [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+        report['containers']=safe_container_states(rows)
+        logs=videoq.docker(directory,'logs','--no-color','--tail','100','api',capture_output=True,text=True)
+        report['apiAdmissionCodes']=sorted(set(re.findall(r'\bEMBEDDING_[A-Z_]+\b',logs.stdout+logs.stderr)))
+    except (OSError,ValueError,subprocess.CalledProcessError) as error:
+        report['diagnosticErrorType']=type(error).__name__
+    (output/(directory.name+'.json')).write_text(json.dumps(report,indent=2)+'\n')
 
 
 @unittest.skipUnless(os.environ.get("VIDEOQ_ONPREM_ACCEPTANCE") == "1", "opt-in registry/video acceptance")
@@ -108,9 +140,12 @@ class AcceptanceTest(unittest.TestCase):
                 values = {c: publish(sources[c], c, "initial") for c in sources}
                 images = root / "initial.json"
                 images.write_text(json.dumps(values))
+                fixture_source = videoq.ROOT / ".github/onprem-lab/inference.mjs"
+                embedding_revision = "sha256:" + hashlib.sha256(fixture_source.read_bytes()).hexdigest()
                 args = argparse.Namespace(directory=str(server), images=str(images), url="http://localhost:18090",
                                           storage_url="http://localhost:18091", ai="local-gpu", chat_url="http://inference:8080/v1",
-                                          embedding_url="http://inference:8080/v1", transcription_url="http://inference:8080/v1", offline=True)
+                                          embedding_url="http://inference:8080/v1", transcription_url="http://inference:8080/v1", offline=True,
+                                          embedding_revision=embedding_revision, embedding_preprocessing="raw-text-v1", embedding_model="lab-deterministic-1536")
                 videoq.initialize(args)
                 config_path = server / "compose.json"
                 config = json.loads(config_path.read_text())
@@ -172,6 +207,8 @@ class AcceptanceTest(unittest.TestCase):
                     "--images", str(root / "upgrade.json"), "--url", "http://localhost:18090",
                     "--storage-url", "http://localhost:18091", "--bind-address", "127.0.0.1", "--ai", "local-gpu",
                     "--chat-url", "http://inference:8080/v1", "--embedding-url", "http://inference:8080/v1",
+                    "--embedding-revision", embedding_revision, "--embedding-preprocessing", "raw-text-v1",
+                    "--embedding-model", "lab-deterministic-1536",
                     "--transcription-url", "http://inference:8080/v1", "--username", "fresh_admin", "--email", "fresh-admin@example.com",
                 ], check=True, capture_output=True, text=True, timeout=240)
                 account = json.loads(installed.stdout.strip().splitlines()[-1])
@@ -181,6 +218,7 @@ class AcceptanceTest(unittest.TestCase):
             finally:
                 for directory in (fresh, recovered, server):
                     if (directory / "compose.json").exists():
+                        retain_startup_diagnostics(directory)
                         videoq.docker(directory, "down", "--timeout", "30", "--volumes", "--remove-orphans")
                 subprocess.run([*videoq.docker_command(), "rm", "-f", registry_name], check=False, stdout=subprocess.DEVNULL)
                 if tags:

@@ -1,0 +1,1007 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-25T03:42:09.509430+00:00",
+  "method": "Independent read-only GitHub API receipt/archive hash capture and anonymous pull-scope public registry manifest/config GET; no Docker, rebuild, registry/cloud write or deployment.",
+  "repository": "videoq-jp/videoq",
+  "publicationRun": {
+    "id": 45540057431,
+    "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431",
+    "event": "workflow_dispatch",
+    "path": ".github/workflows/ci.yml",
+    "head_branch": "videoq-whisper-candidate-publisher-20261125-v1",
+    "head_sha": "e5eab1ca07b674dfb58fb9c2ceb1b75025ce0807",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-25T03:27:05Z",
+    "updated_at": "2026-11-25T03:32:17Z"
+  },
+  "tag": {
+    "ref": "refs/tags/videoq-whisper-candidate-publisher-20261125-v1",
+    "objectType": "commit",
+    "sha": "e5eab1ca07b674dfb58fb9c2ceb1b75025ce0807",
+    "workflowSha": "e5eab1ca07b674dfb58fb9c2ceb1b75025ce0807",
+    "guardEvidence": [
+      {
+        "id": 138956121481,
+        "name": "whisper-candidate-dispatch",
+        "run_attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-25T03:27:08Z",
+        "completed_at": "2026-11-25T03:27:10Z",
+        "runner_name": "GitHub Actions 1000049826",
+        "runner_group_name": "GitHub Actions",
+        "labels": [
+          "ubuntu-24.04"
+        ],
+        "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431/job/138956121481",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Reject isolated mode outside its uniquely reviewed tag",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 138956145440,
+        "name": "whisper-candidate-publish / source",
+        "run_attempt": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-25T03:27:12Z",
+        "completed_at": "2026-11-25T03:27:20Z",
+        "runner_name": "GitHub Actions 1000049827",
+        "runner_group_name": "GitHub Actions",
+        "labels": [
+          "ubuntu-24.04"
+        ],
+        "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431/job/138956145440",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require the uniquely reviewed dispatch tag and exact workflow revision",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Authorize the fixed successful native run and immutable artifact IDs",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "trustedPublisherToolingSha": "ae96bf7ea3db11be1aeb68963e0f9b32265bd428",
+  "runtimeVerifierSha": "83aa79e99b14cbdd15d2647a724b5f2c221f26e3",
+  "historicalNativeRun": {
+    "id": 45538276974,
+    "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45538276974",
+    "event": "pull_request",
+    "path": ".github/workflows/whisper-runtime-candidate.yml",
+    "head_sha": "83aa79e99b14cbdd15d2647a724b5f2c221f26e3",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "builtMergeSource": "48d69177d7dfc675c13870457ad172b90c907529",
+  "currentPackageVisibility": {
+    "name": "videoq-whispercpp-candidate",
+    "visibility": "public"
+  },
+  "architectures": [
+    {
+      "architecture": "amd64",
+      "publishedReference": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:8a0500db924c9974e02cc1ace538743cb86101784b961a564c27c401859435f3",
+      "manifestDigest": "sha256:8a0500db924c9974e02cc1ace538743cb86101784b961a564c27c401859435f3",
+      "configDigest": "sha256:3c19002c29d3a7dbdf90cef48d1208e5adcebee57960dbf7ce61c6aa0320b1e5",
+      "originalImageArtifact": {
+        "id": 14987837441,
+        "name": "whisper-runtime-image-amd64-48d69177d7dfc675c13870457ad172b90c907529-1",
+        "digest": "sha256:c8ee13a996d27a91c773baf9f639b5627a98fadc811c4f2ad1d2426c4165b7c7",
+        "size_in_bytes": 13834702
+      },
+      "artifacts": [
+        {
+          "id": 14988971725,
+          "name": "whisper-published-amd64-45540057431-1",
+          "size_in_bytes": 1455,
+          "digest": "sha256:46bf283967b2a31935bfc757ffd8176b7d3dc308acf047a42721677694155335",
+          "expired": false,
+          "archiveSha256Verified": true,
+          "files": {
+            "package-visibility.json": {
+              "sha256": "sha256:4160cce9d6b4efa8968943aa43df3a48a5d6ba7d00ccc89daea9a401ffe89b6f",
+              "bytes": 61
+            },
+            "publication.json": {
+              "sha256": "sha256:9b3c379f217687d0617b8c1dce7ed628284b7e677fe27400a22cc7da82d4cb43",
+              "bytes": 2200
+            }
+          }
+        },
+        {
+          "id": 14988204734,
+          "name": "whisper-independent-readback-amd64-45540057431-1",
+          "size_in_bytes": 46116,
+          "digest": "sha256:5fbd140457df48eef5fdc2511058e1cb7a80c22b6dab54085a23206713e1c486",
+          "expired": false,
+          "archiveSha256Verified": true,
+          "files": {
+            "runtime.json": {
+              "sha256": "sha256:69ab7d6fbcd0d50c809e0ae1dc54c5bd43a16cc3f1bd55b96f4da40874eda1a1",
+              "bytes": 3150
+            },
+            "security.json": {
+              "sha256": "sha256:4b6387e3d169cfcdf592c9d1bd322ced4f44f11fc86d5350956f6fa16dcabc15",
+              "bytes": 19228
+            },
+            "security.json.grype.json": {
+              "sha256": "sha256:27e98c7de6f0986dd3af40fad4afe2431cd1bd40131fe05ea8d01b49a12cd3fd",
+              "bytes": 43001
+            },
+            "security.json.scanner.yaml": {
+              "sha256": "sha256:995aabf59c362d124c773dae6dd53299fa7ddc3dc9f091bb5cde2f35449bef20",
+              "bytes": 47
+            },
+            "security.json.syft.json": {
+              "sha256": "sha256:7cc5b8cae68d6b2b6f2fccdf6b9166dba898ca463ad321b35ef1dd35d7c71db9",
+              "bytes": 162560
+            }
+          }
+        },
+        {
+          "id": 14987949535,
+          "name": "whisper-publication-authorization-amd64-45540057431-1",
+          "size_in_bytes": 1258,
+          "digest": "sha256:249067d386f0aa269f6b69d08819dc18cba00c7e19d991da9e8d02d55f87c574",
+          "expired": false,
+          "archiveSha256Verified": true,
+          "files": {
+            "authorization.json": {
+              "sha256": "sha256:9b3c379f217687d0617b8c1dce7ed628284b7e677fe27400a22cc7da82d4cb43",
+              "bytes": 2200
+            }
+          }
+        },
+        {
+          "id": 14987912247,
+          "name": "whisper-runtime-evidence-amd64-48d69177d7dfc675c13870457ad172b90c907529-1",
+          "size_in_bytes": 47449,
+          "digest": "sha256:56fc38b2f4d31024d69d1aab8a7c7f04f6434623a446a94340012f8d8f48c9da",
+          "expired": false,
+          "archiveSha256Verified": true,
+          "files": {
+            "identity.json": {
+              "sha256": "sha256:9ba5b110f98a59c3329e6913632e55e0460befef1375208d845d03318a514543",
+              "bytes": 1827
+            },
+            "runtime-receipt.json": {
+              "sha256": "sha256:69ab7d6fbcd0d50c809e0ae1dc54c5bd43a16cc3f1bd55b96f4da40874eda1a1",
+              "bytes": 3150
+            },
+            "security.json": {
+              "sha256": "sha256:520491bbbba71a48f5e9ba3f3c470b0d9250713bf483867281a6343bd62bd03c",
+              "bytes": 19066
+            },
+            "security.json.grype.json": {
+              "sha256": "sha256:979f0ec0fba33797f87f4bc5e2f73d25198518442b2ef97a92af9529d9b95178",
+              "bytes": 42779
+            },
+            "security.json.scanner.yaml": {
+              "sha256": "sha256:995aabf59c362d124c773dae6dd53299fa7ddc3dc9f091bb5cde2f35449bef20",
+              "bytes": 47
+            },
+            "security.json.syft.json": {
+              "sha256": "sha256:5b4a16bceb8a554d008404a3e51a37198ce8aa4c36b9b5dacd029d48d0f5626d",
+              "bytes": 162307
+            },
+            "source.txt": {
+              "sha256": "sha256:d6175ecbae2f693265c7ba66446f6516527466e91b30ecda70323b5e4616c386",
+              "bytes": 41
+            },
+            "upstream.txt": {
+              "sha256": "sha256:6a571465b36cd7d57de8103daaac7f916eeb23df54c9436e1a8d10438a02022e",
+              "bytes": 101
+            }
+          }
+        }
+      ],
+      "publicationAndReadbackJobs": [
+        {
+          "id": 138956205079,
+          "name": "whisper-candidate-publish / validate (amd64, 14987837441, sha256:c8ee13a996d27a91c773baf9f639b5627a98fadc811c4f2ad1d2426c4165...",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-25T03:27:22Z",
+          "completed_at": "2026-11-25T03:27:31Z",
+          "runner_name": "GitHub Actions 1000049829",
+          "runner_group_name": "GitHub Actions",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431/job/138956205079",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Revalidate complete OCI content and bind native and scanner receipts before any writer",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 138956275284,
+          "name": "whisper-candidate-publish / publish (amd64, 14987837441, sha256:c8ee13a996d27a91c773baf9f639b5627a98fadc811c4f2ad1d2426c4165b...",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-25T03:27:33Z",
+          "completed_at": "2026-11-25T03:27:58Z",
+          "runner_name": "GitHub Actions 1000049835",
+          "runner_group_name": "GitHub Actions",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431/job/138956275284",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Recheck authorization with immutable trusted code",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run oras-project/setup-oras@ac735097e22fe643015b0d19645f7c9a69942128",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Copy only the verified OCI graph into the isolated candidate package",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Remove the isolated registry login",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 138956447654,
+          "name": "whisper-candidate-publish / independent-readback (amd64, 14987837441, sha256:c8ee13a996d27a91c773baf9f639b5627a98fadc811c4f2a...",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-25T03:29:06Z",
+          "completed_at": "2026-11-25T03:30:52Z",
+          "runner_name": "GitHub Actions 1000049852",
+          "runner_group_name": "GitHub Actions",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431/job/138956447654",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Pull the exact published digest anonymously and verify native runtime",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Independently scan the exact public registry digest without waivers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ],
+      "historicalNativeJob": [
+        {
+          "id": 138950189219,
+          "name": "Native runtime amd64",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-25T03:11:56Z",
+          "completed_at": "2026-11-25T03:13:55Z",
+          "runner_name": "GitHub Actions 1000049686",
+          "runner_group_name": "GitHub Actions",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45538276974/job/138950189219",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Configure this disposable runner",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Build one native image with loaded and immutable OCI exports",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Verify native ELF provenance and isolated non-root server health",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Scan the full exact candidate including unfixed vulnerabilities",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Retain identity and available runtime or scan findings on failure",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Export only the verified artifact for a future isolated publisher",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ],
+      "identityChecks": {
+        "originalNativeManifestConfigAndRootfsMatchPublication": true,
+        "authorizationEqualsPublication": true,
+        "registryManifestAndConfigBytesHashedIndependently": true,
+        "anonymousRegistryPullScopeTokenOnly": true,
+        "registryConfigArchitectureAndDiffIdsMatchNative": true,
+        "nativeAndRegistryRuntimeConfigMatch": true,
+        "nativeAndRegistryUpstreamElfHashesAndModelHashMatch": true
+      },
+      "runtimeReadback": {
+        "architecture": "amd64",
+        "candidateConfigDigest": "sha256:3c19002c29d3a7dbdf90cef48d1208e5adcebee57960dbf7ce61c6aa0320b1e5",
+        "upstreamImage": "ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73",
+        "syntheticProbeModelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+        "nonRootReadOnlyNoEgressServerHealth": true,
+        "syntheticWavInference": true,
+        "exactUpstreamElfHashes": {
+          "libggml-base.so": "e9fa08f8615d121b82338835d3636b1f50671925b88bbf99b6f69eec67bc781b",
+          "libggml-base.so.0": "e9fa08f8615d121b82338835d3636b1f50671925b88bbf99b6f69eec67bc781b",
+          "libggml-base.so.0.28.0": "e9fa08f8615d121b82338835d3636b1f50671925b88bbf99b6f69eec67bc781b",
+          "libggml-cpu.so": "2b9c65027c99890eb44ba726364fac95ba0ca2d53819aed46a30abf9a42ddfb0",
+          "libggml-cpu.so.0": "2b9c65027c99890eb44ba726364fac95ba0ca2d53819aed46a30abf9a42ddfb0",
+          "libggml-cpu.so.0.28.0": "2b9c65027c99890eb44ba726364fac95ba0ca2d53819aed46a30abf9a42ddfb0",
+          "libggml.so": "b83584c385972643a522a93e0293abcdd1e265cc9de0b449afd86614a6cb6732",
+          "libggml.so.0": "b83584c385972643a522a93e0293abcdd1e265cc9de0b449afd86614a6cb6732",
+          "libggml.so.0.28.0": "b83584c385972643a522a93e0293abcdd1e265cc9de0b449afd86614a6cb6732",
+          "libparakeet.so": "82c12c4dc8ccd3cd7c5ae5ee25416ada7ff50a24bd5616983a779b248d463b40",
+          "libparakeet.so.1": "82c12c4dc8ccd3cd7c5ae5ee25416ada7ff50a24bd5616983a779b248d463b40",
+          "libparakeet.so.1.9.5": "82c12c4dc8ccd3cd7c5ae5ee25416ada7ff50a24bd5616983a779b248d463b40",
+          "libwhisper.so": "3dfc6802ff8025cc7418f3678e58e4e840eadd1d06e8ab0bba66e6edccb54353",
+          "libwhisper.so.1": "3dfc6802ff8025cc7418f3678e58e4e840eadd1d06e8ab0bba66e6edccb54353",
+          "libwhisper.so.1.9.5": "3dfc6802ff8025cc7418f3678e58e4e840eadd1d06e8ab0bba66e6edccb54353",
+          "whisper-server": "67d7fcc30d92eaa6bad09f9f04a0a85d91d398d3abeb38dddefe9bfa3441f00f"
+        }
+      },
+      "strictRegistryScan": {
+        "scanner": "grype",
+        "version": "0.122.0",
+        "source": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:8a0500db924c9974e02cc1ace538743cb86101784b961a564c27c401859435f3",
+        "manifestDigest": "sha256:8a0500db924c9974e02cc1ace538743cb86101784b961a564c27c401859435f3",
+        "configDigest": "sha256:3c19002c29d3a7dbdf90cef48d1208e5adcebee57960dbf7ce61c6aa0320b1e5",
+        "databaseValid": true,
+        "databaseBuilt": "2026-11-24T06:22:05Z",
+        "severityCounts": {
+          "CRITICAL": 0,
+          "HIGH": 0,
+          "MEDIUM": 3,
+          "LOW": 1,
+          "NEGLIGIBLE": 0,
+          "UNKNOWN": 0
+        },
+        "ignoredMatches": 0,
+        "ignoreRules": [],
+        "vexDocuments": [],
+        "onlyFixed": false,
+        "unfixedIncluded": true,
+        "policyExceptionsUsed": false
+      },
+      "packageVisibilityAtPublication": {
+        "name": "videoq-whispercpp-candidate",
+        "visibility": "public"
+      }
+    },
+    {
+      "architecture": "arm64",
+      "publishedReference": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d",
+      "manifestDigest": "sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d",
+      "configDigest": "sha256:04bce07c1315adf7637a4bdd9c7bd5e9a5c926fe39fc5db8a058e2d236571927",
+      "originalImageArtifact": {
+        "id": 14988555960,
+        "name": "whisper-runtime-image-arm64-48d69177d7dfc675c13870457ad172b90c907529-1",
+        "digest": "sha256:fb411fd3cca8181cd50a5d8e2d82a1a07cb487dbe61f7ee854bc80e8cb17e0c0",
+        "size_in_bytes": 12326803
+      },
+      "artifacts": [
+        {
+          "id": 14988807443,
+          "name": "whisper-published-arm64-45540057431-1",
+          "size_in_bytes": 1458,
+          "digest": "sha256:918c7503d219169c4331ba0fcb95e9cd1b8280a24dd2f5ecd061d1069cb86a8b",
+          "expired": false,
+          "archiveSha256Verified": true,
+          "files": {
+            "package-visibility.json": {
+              "sha256": "sha256:4160cce9d6b4efa8968943aa43df3a48a5d6ba7d00ccc89daea9a401ffe89b6f",
+              "bytes": 61
+            },
+            "publication.json": {
+              "sha256": "sha256:255ef293eb1229f07c5eb3831b9c134a0c6799e146fd757cd221e3946f1784eb",
+              "bytes": 2200
+            }
+          }
+        },
+        {
+          "id": 14988608549,
+          "name": "whisper-publication-authorization-arm64-45540057431-1",
+          "size_in_bytes": 1261,
+          "digest": "sha256:8522b8533eb245e469ca427c3a9886c5ce0883ac29c36b568574ca9257e117a6",
+          "expired": false,
+          "archiveSha256Verified": true,
+          "files": {
+            "authorization.json": {
+              "sha256": "sha256:255ef293eb1229f07c5eb3831b9c134a0c6799e146fd757cd221e3946f1784eb",
+              "bytes": 2200
+            }
+          }
+        },
+        {
+          "id": 14988428820,
+          "name": "whisper-independent-readback-arm64-45540057431-1",
+          "size_in_bytes": 46162,
+          "digest": "sha256:c984ec9113b3bcbc3bf12547d65bfea012cd7ab2328fb42dfd38b82352ee2fb7",
+          "expired": false,
+          "archiveSha256Verified": true,
+          "files": {
+            "runtime.json": {
+              "sha256": "sha256:8d7c9b548522b7026d5f1fa20a629bef1daffc05b0d64ac444973838641755d2",
+              "bytes": 3149
+            },
+            "security.json": {
+              "sha256": "sha256:521ef898263cdc3cdc142803fc19a40f7cb74ffce48b29f35f46f011355fa3d5",
+              "bytes": 19248
+            },
+            "security.json.grype.json": {
+              "sha256": "sha256:65b50ea44ea8e1b3d6c3bf3a144407a71ad52c370dbf6b4fbb5d1f4985cdaece",
+              "bytes": 43009
+            },
+            "security.json.scanner.yaml": {
+              "sha256": "sha256:995aabf59c362d124c773dae6dd53299fa7ddc3dc9f091bb5cde2f35449bef20",
+              "bytes": 47
+            },
+            "security.json.syft.json": {
+              "sha256": "sha256:27c482d25a635e5efff60ee35081cecbbe882b7b210f7073aa81b421d6f8e587",
+              "bytes": 163899
+            }
+          }
+        },
+        {
+          "id": 14988660741,
+          "name": "whisper-runtime-evidence-arm64-48d69177d7dfc675c13870457ad172b90c907529-1",
+          "size_in_bytes": 47489,
+          "digest": "sha256:085e464f8cfbfb577ddc0a69ee61787eb6b7c9050776d8d5ec93ded2a87c913d",
+          "expired": false,
+          "archiveSha256Verified": true,
+          "files": {
+            "identity.json": {
+              "sha256": "sha256:56126b2710a4896d5cfbace82fb78d26ee6d4bbc0e61b18d5ca94e43f278b589",
+              "bytes": 1827
+            },
+            "runtime-receipt.json": {
+              "sha256": "sha256:8d7c9b548522b7026d5f1fa20a629bef1daffc05b0d64ac444973838641755d2",
+              "bytes": 3149
+            },
+            "security.json": {
+              "sha256": "sha256:b577fa6fa8637d9fe00dae588ca06de44d94b9ab8904cd80e24e59bceeefed8e",
+              "bytes": 19086
+            },
+            "security.json.grype.json": {
+              "sha256": "sha256:57fdbb149d137980860a8389659247120a6e2dd46337fe62e73fd5eb1bc32086",
+              "bytes": 42787
+            },
+            "security.json.scanner.yaml": {
+              "sha256": "sha256:995aabf59c362d124c773dae6dd53299fa7ddc3dc9f091bb5cde2f35449bef20",
+              "bytes": 47
+            },
+            "security.json.syft.json": {
+              "sha256": "sha256:db29c486f1ba17eba1ba2286b1e3303810d55374822d83e2ef11b938ffa8768a",
+              "bytes": 163646
+            },
+            "source.txt": {
+              "sha256": "sha256:d6175ecbae2f693265c7ba66446f6516527466e91b30ecda70323b5e4616c386",
+              "bytes": 41
+            },
+            "upstream.txt": {
+              "sha256": "sha256:1ba6d84073e33da1df17b33126166665149999533a4b536d07cadb5c3b92ebc6",
+              "bytes": 101
+            }
+          }
+        }
+      ],
+      "publicationAndReadbackJobs": [
+        {
+          "id": 138956205108,
+          "name": "whisper-candidate-publish / validate (arm64, 14988555960, sha256:fb411fd3cca8181cd50a5d8e2d82a1a07cb487dbe61f7ee854bc80e8cb17...",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-25T03:27:22Z",
+          "completed_at": "2026-11-25T03:27:29Z",
+          "runner_name": "GitHub Actions 1000049828",
+          "runner_group_name": "GitHub Actions",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431/job/138956205108",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Revalidate complete OCI content and bind native and scanner receipts before any writer",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 138956275368,
+          "name": "whisper-candidate-publish / publish (arm64, 14988555960, sha256:fb411fd3cca8181cd50a5d8e2d82a1a07cb487dbe61f7ee854bc80e8cb17e...",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-25T03:27:33Z",
+          "completed_at": "2026-11-25T03:27:58Z",
+          "runner_name": "GitHub Actions 1000049836",
+          "runner_group_name": "GitHub Actions",
+          "labels": [
+            "ubuntu-24.04"
+          ],
+          "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431/job/138956275368",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Recheck authorization with immutable trusted code",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run oras-project/setup-oras@ac735097e22fe643015b0d19645f7c9a69942128",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Copy only the verified OCI graph into the isolated candidate package",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Remove the isolated registry login",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 138956447631,
+          "name": "whisper-candidate-publish / independent-readback (arm64, 14988555960, sha256:fb411fd3cca8181cd50a5d8e2d82a1a07cb487dbe61f7ee8...",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-25T03:29:47Z",
+          "completed_at": "2026-11-25T03:32:16Z",
+          "runner_name": "GitHub Actions 1000049860",
+          "runner_group_name": "GitHub Actions",
+          "labels": [
+            "ubuntu-24.04-arm"
+          ],
+          "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45540057431/job/138956447631",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Pull the exact published digest anonymously and verify native runtime",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Independently scan the exact public registry digest without waivers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ],
+      "historicalNativeJob": [
+        {
+          "id": 138950189428,
+          "name": "Native runtime arm64",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-25T03:11:57Z",
+          "completed_at": "2026-11-25T03:14:37Z",
+          "runner_name": "GitHub Actions 1000049687",
+          "runner_group_name": "GitHub Actions",
+          "labels": [
+            "ubuntu-24.04-arm"
+          ],
+          "html_url": "https://github.com/videoq-jp/videoq/actions/runs/45538276974/job/138950189428",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Configure this disposable runner",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Build one native image with loaded and immutable OCI exports",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Verify native ELF provenance and isolated non-root server health",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Scan the full exact candidate including unfixed vulnerabilities",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Retain identity and available runtime or scan findings on failure",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Export only the verified artifact for a future isolated publisher",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ],
+      "identityChecks": {
+        "originalNativeManifestConfigAndRootfsMatchPublication": true,
+        "authorizationEqualsPublication": true,
+        "registryManifestAndConfigBytesHashedIndependently": true,
+        "anonymousRegistryPullScopeTokenOnly": true,
+        "registryConfigArchitectureAndDiffIdsMatchNative": true,
+        "nativeAndRegistryRuntimeConfigMatch": true,
+        "nativeAndRegistryUpstreamElfHashesAndModelHashMatch": true
+      },
+      "runtimeReadback": {
+        "architecture": "arm64",
+        "candidateConfigDigest": "sha256:04bce07c1315adf7637a4bdd9c7bd5e9a5c926fe39fc5db8a058e2d236571927",
+        "upstreamImage": "ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0",
+        "syntheticProbeModelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+        "nonRootReadOnlyNoEgressServerHealth": true,
+        "syntheticWavInference": true,
+        "exactUpstreamElfHashes": {
+          "libggml-base.so": "c8755df6eff9fe442585d305301bd9538eaf9970ce0d3af9d62e34dcafba6ed2",
+          "libggml-base.so.0": "c8755df6eff9fe442585d305301bd9538eaf9970ce0d3af9d62e34dcafba6ed2",
+          "libggml-base.so.0.28.0": "c8755df6eff9fe442585d305301bd9538eaf9970ce0d3af9d62e34dcafba6ed2",
+          "libggml-cpu.so": "b909be55bdd8648f88c0fcc8b41659b56e395d271371fa1ea5283f9a3d19d7f5",
+          "libggml-cpu.so.0": "b909be55bdd8648f88c0fcc8b41659b56e395d271371fa1ea5283f9a3d19d7f5",
+          "libggml-cpu.so.0.28.0": "b909be55bdd8648f88c0fcc8b41659b56e395d271371fa1ea5283f9a3d19d7f5",
+          "libggml.so": "d7ed1eaf0df6a0c87612f3b03f3d3d3a86086183cc1311dd6668e0230456ffc0",
+          "libggml.so.0": "d7ed1eaf0df6a0c87612f3b03f3d3d3a86086183cc1311dd6668e0230456ffc0",
+          "libggml.so.0.28.0": "d7ed1eaf0df6a0c87612f3b03f3d3d3a86086183cc1311dd6668e0230456ffc0",
+          "libparakeet.so": "c62fa633e5275b1ff5c845a6e417cbb3e91d7fc1c11cfc84f670c79808c3011c",
+          "libparakeet.so.1": "c62fa633e5275b1ff5c845a6e417cbb3e91d7fc1c11cfc84f670c79808c3011c",
+          "libparakeet.so.1.9.5": "c62fa633e5275b1ff5c845a6e417cbb3e91d7fc1c11cfc84f670c79808c3011c",
+          "libwhisper.so": "d78fe143ad158399e60a062abef125614e5bc3a27674050b92c6c8fb4b80198b",
+          "libwhisper.so.1": "d78fe143ad158399e60a062abef125614e5bc3a27674050b92c6c8fb4b80198b",
+          "libwhisper.so.1.9.5": "d78fe143ad158399e60a062abef125614e5bc3a27674050b92c6c8fb4b80198b",
+          "whisper-server": "200312d184356546b378459e375dd713ec6ec2db3a4bd0dd58201b4b2a04a833"
+        }
+      },
+      "strictRegistryScan": {
+        "scanner": "grype",
+        "version": "0.122.0",
+        "source": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d",
+        "manifestDigest": "sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d",
+        "configDigest": "sha256:04bce07c1315adf7637a4bdd9c7bd5e9a5c926fe39fc5db8a058e2d236571927",
+        "databaseValid": true,
+        "databaseBuilt": "2026-11-24T06:22:05Z",
+        "severityCounts": {
+          "CRITICAL": 0,
+          "HIGH": 0,
+          "MEDIUM": 3,
+          "LOW": 1,
+          "NEGLIGIBLE": 0,
+          "UNKNOWN": 0
+        },
+        "ignoredMatches": 0,
+        "ignoreRules": [],
+        "vexDocuments": [],
+        "onlyFixed": false,
+        "unfixedIncluded": true,
+        "policyExceptionsUsed": false
+      },
+      "packageVisibilityAtPublication": {
+        "name": "videoq-whispercpp-candidate",
+        "visibility": "public"
+      }
+    }
+  ],
+  "limits": [
+    "Historical native source/build evidence and independent public registry readback are separate executions; no rebuild during publication.",
+    "Observer downloaded only small receipt/security archives; original OCI image archives not downloaded again and layer contents not rehashed locally; successful read-only validator jobs attest their validation.",
+    "Observer independently hashes registry manifest/config only; CI native readback actually pulled full image and ran non-root/read-only/no-egress model health, WAV inference and full strict scan.",
+    "Runtime receipt published:false is the generic verifier flag, not evidence of failed publication; registry publication and anonymous readback are evidenced separately.",
+    "Medium/Low findings remain and are counted, with unfixed findings included and no waivers; this is not a zero-vulnerability claim.",
+    "Public candidate package publication is not production deployment, consumer rollout or issue-wide acceptance."
+  ]
+}

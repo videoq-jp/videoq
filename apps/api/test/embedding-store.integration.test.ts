@@ -5,7 +5,7 @@ import { Pool } from "pg";
 import { HNSWIndex, PGEngine, PGVectorStore } from "@videoq-jp/langchainjs-postgres";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assertEmbeddingSchema } from "../src/lib/embedding-schema";
-import { resolveEmbeddingConfig } from "../src/lib/embedding-contract";
+import { embeddingFingerprint, embeddingIdentity, resolveEmbeddingConfig } from "../src/lib/embedding-contract";
 import { openSceneSearch } from "../src/repositories/vector-repository";
 import type { Bindings } from "../src/types/bindings";
 import { embedding } from "./helpers/embedding";
@@ -36,13 +36,15 @@ afterEach(() => vi.unstubAllGlobals());
       pool.on("error", () => {});
       await migrate(drizzle(pool), { migrationsFolder: migrations });
       await assertEmbeddingSchema(pool, resolveEmbeddingConfig(settings));
+      const config = resolveEmbeddingConfig(settings);
+      const provenance = { fingerprint: await embeddingFingerprint(config), identity: embeddingIdentity(config) };
       const transcript = "1\n00:00:00,000 --> 00:00:05,000\nWater evaporates when heated.\n";
       for (const [owner, videoId] of [["allowed-owner", 60], ["other-owner", 61], ["allowed-owner", 62]] as const) {
         await pool.query(`INSERT INTO users (id,email,username,max_video_upload_size_mb,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes)
           VALUES ($1,$2,$3,100,false,0,0,0) ON CONFLICT (id) DO NOTHING`, [owner, `${owner}@example.invalid`, owner]);
         await pool.query(`INSERT INTO videos (id,user_id,title,transcript,status,file,description,uploaded_at,error_message,source_type,source_url,youtube_video_id)
           VALUES ($1,$2,$3,$4,'completed','','',NOW(),'','uploaded','','')`, [videoId, owner, `Video ${videoId}`, transcript]);
-        expect(await replacePostgresTranscriptIndex(pool, { table, dimensions }, {videoId,userId:owner,transcript}, parseSearchScenes(transcript), [vector()])).toBe(1);
+        expect(await replacePostgresTranscriptIndex(pool, { table, dimensions, ...provenance }, {videoId,userId:owner,transcript}, parseSearchScenes(transcript), [vector()])).toBe(1);
       }
       const env = { HYPERDRIVE: { connectionString: url.toString() }, OPENAI_API_KEY: "test-key", ...settings } as Bindings;
       const fetch = vi.fn(async () => Response.json({ data: [{ index: 0, embedding: vector() }] }));

@@ -1,0 +1,266 @@
+import copy
+import contextlib
+import importlib.util
+import json
+import io
+from pathlib import Path
+import tempfile
+import subprocess
+import unittest
+import urllib.error
+from unittest.mock import patch
+import zipfile
+
+SPEC = importlib.util.spec_from_file_location('publication', Path(__file__).with_name('audio-wheel-publication.py'))
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+class AudioPublicationTest(unittest.TestCase):
+    def fixture(self):
+        policy = json.loads(MODULE.POLICY.read_text())
+        policy.update(status='reviewed-corrected-native-proof', run=123, attempt=1, artifact=456,
+                      head='a' * 40, source='b' * 40, publishedTagCommit='a' * 40, archiveSha256='c' * 64,
+                      wheelSha256=MODULE.sha(b'exact tested wheel'), wheelSize=len(b'exact tested wheel'),
+                      evidenceHashes={name: 'd' * 64 for name in MODULE.EVIDENCE})
+        run = {'id': 123, 'head_sha': policy['head'], 'run_attempt': 1, 'status': 'completed',
+               'conclusion': 'success', 'event': 'pull_request',
+               'path': '.github/workflows/patched-audio-candidate.yml',
+               'head_repository': {'full_name': MODULE.REPOSITORY}}
+        jobs = [{'name': 'native-source', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
+                 'steps': [{'name': name, 'conclusion': 'success'} for name in MODULE.GATES]}]
+        artifacts = [{'id': 456, 'expired': False, 'digest': 'sha256:' + policy['archiveSha256'],
+                      'name': f"patched-audio-candidate-{policy['source']}-1"}]
+        return policy, run, jobs, artifacts
+
+    def test_unconfigured_policy_cannot_publish(self):
+        with self.assertRaisesRegex(ValueError, 'disabled'):
+            MODULE.approved(dict(json.loads(MODULE.POLICY.read_text()), status='awaiting-corrected-native-proof'))
+        policy, *_ = self.fixture()
+        for key, value in [('repository', 'other/repo'), ('releaseTag', 'existing-release'),
+                           ('wheelSha256', None), ('attempt', 0), ('evidenceHashes', {})]:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.approved(dict(policy, **{key: value}))
+
+    def test_every_gate_attempt_and_artifact_must_match(self):
+        MODULE.validate_run(*self.fixture())
+        for control in ['failed-run', 'wrong-head', 'wrong-attempt', 'wrong-workflow',
+                        'skipped-step', 'missing-step', 'duplicate-job', 'expired', 'wrong-digest']:
+            policy, run, jobs, artifacts = copy.deepcopy(self.fixture())
+            if control == 'failed-run':
+                run['conclusion'] = 'failure'
+            elif control == 'wrong-head':
+                run['head_sha'] = 'e' * 40
+            elif control == 'wrong-attempt':
+                jobs[0]['run_attempt'] = 2
+            elif control == 'wrong-workflow':
+                run['event'] = 'workflow_run'
+            elif control == 'skipped-step':
+                jobs[0]['steps'][4]['conclusion'] = 'skipped'
+            elif control == 'missing-step':
+                jobs[0]['steps'].pop()
+            elif control == 'duplicate-job':
+                jobs.append(copy.deepcopy(jobs[0]))
+            elif control == 'expired':
+                artifacts[0]['expired'] = True
+            else:
+                artifacts[0]['digest'] = 'sha256:' + '0' * 64
+            with self.subTest(control=control), self.assertRaises(ValueError):
+                MODULE.validate_run(policy, run, jobs, artifacts)
+
+    def test_collision_and_operational_error_never_authorize_replacement(self):
+        for code in [403, 429, 500]:
+            error = urllib.error.HTTPError('https://api.github.com', code, 'failure', {}, None)
+            with patch.object(MODULE.urllib.request, 'urlopen', side_effect=error), self.assertRaises(urllib.error.HTTPError):
+                MODULE.require_absent('releases/tags/' + MODULE.RELEASE_TAG)
+        error = urllib.error.HTTPError('https://api.github.com', 404, 'missing', {}, None)
+        with patch.object(MODULE.urllib.request, 'urlopen', side_effect=error):
+            MODULE.require_absent('releases/tags/' + MODULE.RELEASE_TAG)
+        with patch.object(MODULE.urllib.request, 'urlopen'), self.assertRaisesRegex(ValueError, 'already exists'):
+            MODULE.require_absent('releases/tags/' + MODULE.RELEASE_TAG)
+
+    def test_writer_only_executes_reviewed_workflow_source_after_read_only_validation(self):
+        workflow = (MODULE.POLICY.parents[1] / 'workflows/audio-wheel-publish.yml').read_text()
+        self.assertNotIn('pull_request_target', workflow)
+        self.assertNotIn('packages: write', workflow)
+        self.assertIn('needs: validate', workflow)
+        self.assertIn("github.ref == 'refs/tags/" + MODULE.PUBLISHER_TAG + "'", workflow)
+        self.assertEqual(workflow.count('ref: ${{ github.workflow_sha }}'), 3)
+        self.assertEqual(workflow.count('contents: write'), 1)
+
+    def ref(self, name, revision):
+        return {'ref': 'refs/tags/' + name, 'object': {'sha': revision, 'type': 'commit',
+                'url': f'https://api.github.com/repos/{MODULE.REPOSITORY}/git/commits/{revision}'}}
+
+    def test_atomic_tag_collision_wrong_ref_and_latest_controls(self):
+        policy, *_ = self.fixture()
+        revision = 'a' * 40
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            with patch.object(MODULE.subprocess, 'run') as run, self.assertRaisesRegex(ValueError, 'Historical'):
+                MODULE.publish_release(policy, b'exact tested wheel', 'f' * 40)
+            run.assert_not_called()
+            collision = subprocess.CalledProcessError(1, ['gh', 'api'], stderr='HTTP 422 Reference already exists')
+            with patch.object(MODULE.subprocess, 'run', side_effect=collision) as run, self.assertRaises(subprocess.CalledProcessError):
+                MODULE.publish_release(policy, b'exact tested wheel', revision)
+            self.assertEqual(run.call_count, 1)
+            self.assertFalse(Path(MODULE.ASSET).exists())
+            with patch.object(MODULE.subprocess, 'run') as run, patch.object(
+                    MODULE, 'gh_api', return_value=self.ref(MODULE.RELEASE_TAG, 'b' * 40)), self.assertRaises(ValueError):
+                MODULE.publish_release(policy, b'exact tested wheel', revision)
+            self.assertEqual(run.call_count, 1)
+            self.assertFalse(Path(MODULE.ASSET).exists())
+            with patch.object(MODULE.subprocess, 'run') as run, patch.object(
+                    MODULE, 'gh_api', return_value=self.ref(MODULE.RELEASE_TAG, revision)):
+                MODULE.publish_release(policy, b'exact tested wheel', revision)
+            create_ref, release = run.call_args_list
+            self.assertEqual(json.loads(create_ref.kwargs['input']),
+                             {'ref': 'refs/tags/' + MODULE.RELEASE_TAG, 'sha': revision})
+            self.assertIn('--method', create_ref.args[0])
+            self.assertIn('POST', create_ref.args[0])
+            self.assertIn('--verify-tag', release.args[0])
+            self.assertIn('--latest=false', release.args[0])
+            self.assertIn('--prerelease', release.args[0])
+            self.assertEqual(Path(MODULE.ASSET).read_bytes(), b'exact tested wheel')
+
+    def test_anonymous_readback_rejects_ref_release_asset_and_byte_drift(self):
+        policy, *_ = self.fixture()
+        revision = 'a' * 40
+        url = f'https://github.com/{MODULE.REPOSITORY}/releases/download/{MODULE.RELEASE_TAG}/{MODULE.ASSET}'
+        release = {'id': 12, 'tag_name': MODULE.RELEASE_TAG, 'target_commitish': revision,
+                   'draft': False, 'prerelease': True,
+                   'html_url': f'https://github.com/{MODULE.REPOSITORY}/releases/tag/{MODULE.RELEASE_TAG}',
+                   'assets': [{'id': 34, 'name': MODULE.ASSET, 'state': 'uploaded', 'size': policy['wheelSize'],
+                               'browser_download_url': url, 'digest': 'sha256:' + policy['wheelSha256']}]}
+        for control in ['valid', 'stable-release', 'wrong-tag', 'extra-asset', 'ref-drift', 'asset-drift', 'wrong-bytes']:
+            calls = {'ref': 0, 'release': 0}
+
+            def api(path):
+                if path.startswith('git/ref/'):
+                    calls['ref'] += 1
+                    return self.ref(MODULE.RELEASE_TAG, 'b' * 40 if control == 'ref-drift' and calls['ref'] == 2 else revision)
+                calls['release'] += 1
+                value = copy.deepcopy(release)
+                if control == 'stable-release':
+                    value['prerelease'] = False
+                elif control == 'wrong-tag':
+                    value['tag_name'] = 'other'
+                elif control == 'extra-asset':
+                    value['assets'].append(copy.deepcopy(value['assets'][0]))
+                elif control == 'asset-drift' and calls['release'] == 2:
+                    value['assets'][0]['id'] = 99
+                # An anonymous download legitimately increments this operational field.
+                value['assets'][0]['download_count'] = calls['release']
+                return value
+
+            with self.subTest(control=control), patch.object(MODULE, 'gh_api', side_effect=api), patch.object(
+                    MODULE.urllib.request, 'urlopen') as download:
+                download.return_value.__enter__.return_value.read.return_value = (
+                    b'changed wheel' if control == 'wrong-bytes' else b'exact tested wheel')
+                if control == 'valid':
+                    result = MODULE.readback_release(policy, 'f' * 40)
+                    self.assertTrue(result['anonymous'])
+                    self.assertEqual(result['tagCommit'], revision)
+                    self.assertEqual(result['validatorCommit'], 'f' * 40)
+                    download.assert_called_once_with(url, timeout=60)
+                else:
+                    with self.assertRaises(ValueError):
+                        MODULE.readback_release(policy, revision)
+
+    def native_fixture(self):
+        content = {'av/__init__.py': b'# fixture', 'av.libs/libavcodec-test.so.63': b'ELF fixture',
+                   'av-19.0.2.dist-info/METADATA': b'Name: av'}
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, 'w') as wheel:
+            wheel.writestr('av/', b'')
+            for name, data in content.items():
+                wheel.writestr(name, data)
+        members = {name: MODULE.sha(data) for name, data in content.items()}
+        installed = {name: digest for name, digest in members.items() if name.startswith(('av/', 'av.libs/'))}
+        native = {'status': 'passed', 'ffmpegVersion': '9.1', 'pyavVersion': '19.0.2',
+                  'installedMemberCount': len(installed),
+                  'compiledFilters': ['abuffer', 'abuffersink', 'aformat', 'aresample', 'buffer', 'buffersink'],
+                  'compiledDecoders': ['flac', 'mp3', 'mp3float', 'pcm_s16le'], 'compiledEncoders': [],
+                  'nativeMuxers': [], 'nativeProtocols': {'0': ['file', 'pipe'], '1': ['file', 'pipe']},
+                  'loadedCandidateElfs': ['/opt/videoq-audio/av.libs/libavcodec-test.so.63']}
+        names = ['pcm16-16k-mono', 'pcm16-48k-stereo', 'extra_overread.mp3', 'luckynight.flac']
+        native['decodeResample'] = [{'fixture': name, 'samples16kMono': 1600} for name in names]
+        native['whisperPreprocessing'] = [{'fixture': name, 'samples': 1600, 'duration': 0.1} for name in names]
+        native['decodeResample'][2]['samples16kMono'] = 160079
+        native['whisperPreprocessing'][2].update(samples=159887, duration=9.9929375)
+        return stream.getvalue(), {'wheel': {'members': members}}, native, {'overlayFiles': installed}
+
+    def test_wheel_members_installed_subset_and_native_semantics_bound_separately(self):
+        MODULE.validate_members_and_native(*self.native_fixture())
+        for control in ['member', 'installed', 'count', 'loaded', 'filters', 'short-pcm', 'empty-serving']:
+            wheel, provenance, native, identity = copy.deepcopy(self.native_fixture())
+            if control == 'member':
+                provenance['wheel']['members']['av/__init__.py'] = '0' * 64
+            elif control == 'installed':
+                identity['overlayFiles'].clear()
+            elif control == 'count':
+                native['installedMemberCount'] = len(provenance['wheel']['members'])
+            elif control == 'loaded':
+                native['loadedCandidateElfs'] = ['/usr/lib/libavcodec.so']
+            elif control == 'filters':
+                native['compiledFilters'].append('azmq')
+            elif control == 'short-pcm':
+                native['whisperPreprocessing'][1]['samples'] = 1584
+            else:
+                native['whisperPreprocessing'] = []
+            with self.subTest(control=control), self.assertRaises(ValueError):
+                MODULE.validate_members_and_native(wheel, provenance, native, identity)
+
+    def test_exact_archive_and_actual_native_receipt_are_required(self):
+        policy, *_ = self.fixture()
+        files = {name: b'{}' for name in MODULE.EVIDENCE}
+        files['audio-evidence/source.json'] = json.dumps({'source': policy['source'], 'run': '123',
+                                                        'attempt': '1', 'architecture': 'x86_64'}).encode()
+        wheel, provenance, native, identity = self.native_fixture()
+        policy['wheelSha256'] = MODULE.sha(wheel)
+        policy['wheelSize'] = len(wheel)
+        files['audio-native/native-smoke.json'] = json.dumps(native).encode()
+        files['audio-evidence/identity.json'] = json.dumps(identity).encode()
+        files['audio-evidence/security.json.grype.json'] = json.dumps({
+            'matches': [], 'ignoredMatches': [], 'descriptor': {'db': {'status': {'valid': True}}}}).encode()
+        provenance['wheel'].update(sha256=policy['wheelSha256'], filename=MODULE.ASSET)
+        files['audio-candidate/provenance.json'] = json.dumps(provenance).encode()
+        files['audio-candidate/wheels/' + MODULE.ASSET] = wheel
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / 'candidate.zip'
+
+            def write():
+                with zipfile.ZipFile(archive, 'w') as bundle:
+                    for name, value in files.items():
+                        bundle.writestr(name, value)
+                policy['archiveSha256'] = MODULE.sha(archive.read_bytes())
+                policy['evidenceHashes'] = {name: MODULE.sha(files[name]) for name in MODULE.EVIDENCE if name in files}
+
+            write()
+            self.assertEqual(MODULE.artifact_bytes(policy, archive), wheel)
+            original = dict(files)
+            for control in ['missing-native', 'failed-native', 'scan-findings', 'ignored-findings',
+                            'invalid-db', 'changed-wheel', 'traversal']:
+                files.clear()
+                files.update(original)
+                if control == 'missing-native':
+                    del files['audio-native/native-smoke.json']
+                elif control == 'failed-native':
+                    files['audio-native/native-smoke.json'] = b'{"status":"failed"}'
+                elif control in ['scan-findings', 'ignored-findings', 'invalid-db']:
+                    scan = json.loads(files['audio-evidence/security.json.grype.json'])
+                    if control == 'invalid-db':
+                        scan['descriptor']['db']['status']['valid'] = False
+                    else:
+                        scan['matches' if control == 'scan-findings' else 'ignoredMatches'] = [{}]
+                    files['audio-evidence/security.json.grype.json'] = json.dumps(scan).encode()
+                elif control == 'changed-wheel':
+                    files['audio-candidate/wheels/' + MODULE.ASSET] = b'rebuilt wheel'
+                else:
+                    files['../escape'] = b'hostile'
+                write()
+                with self.subTest(control=control), self.assertRaises(ValueError):
+                    MODULE.artifact_bytes(policy, archive)
+
+
+if __name__ == '__main__':
+    unittest.main()

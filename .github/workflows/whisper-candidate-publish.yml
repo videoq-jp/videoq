@@ -1,0 +1,177 @@
+name: Publish Reviewed Whisper Candidate
+on:
+  workflow_call:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  source:
+    if: github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      matrix: ${{ steps.authorize.outputs.matrix }}
+    steps:
+      - name: Require the uniquely reviewed dispatch tag and exact workflow revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEWED_REVISION: ${{ github.event.inputs.reviewed_revision }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          [[ "$REVIEWED_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$REVIEWED_REVISION" = "$GITHUB_SHA"
+          test "$REVIEWED_REVISION" = "$WORKFLOW_SHA"
+          actual=$(gh api repos/videoq-jp/videoq/git/ref/tags/videoq-whisper-candidate-publisher-20261125-v1 --jq '.object.type+" "+.object.sha')
+          test "$actual" = "commit $REVIEWED_REVISION"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ae96bf7ea3db11be1aeb68963e0f9b32265bd428
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Authorize the fixed successful native run and immutable artifact IDs
+        id: authorize
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          matrix=$(python3 .github/scripts/whisper-candidate-publication.py --run)
+          echo "matrix={\"include\":$matrix}" >> "$GITHUB_OUTPUT"
+  validate:
+    needs: source
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.source.outputs.matrix) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ae96bf7ea3db11be1aeb68963e0f9b32265bd428
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45538276974
+          artifact-ids: ${{ matrix.artifact }}
+          path: candidate
+          merge-multiple: true
+      - name: Revalidate complete OCI content and bind native and scanner receipts before any writer
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: python3 .github/scripts/whisper-candidate-publication.py --directory candidate --architecture "$ARCH" > authorization.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: whisper-publication-authorization-${{ matrix.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: authorization.json
+          if-no-files-found: error
+          retention-days: 30
+  publish:
+    # Every architecture has passed the read-only validator before either writer starts.
+    needs: [source, validate]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.source.outputs.matrix) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    steps:
+      # Never check out or execute the candidate application/PR source in this job.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ae96bf7ea3db11be1aeb68963e0f9b32265bd428
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          github-token: ${{ github.token }}
+          run-id: 45538276974
+          artifact-ids: ${{ matrix.artifact }}
+          path: candidate
+          merge-multiple: true
+      - name: Recheck authorization with immutable trusted code
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          python3 .github/scripts/whisper-candidate-publication.py --run > reviewed-run.json
+          python3 .github/scripts/whisper-candidate-publication.py --directory candidate --architecture "$ARCH" > publication.json
+      - uses: oras-project/setup-oras@ac735097e22fe643015b0d19645f7c9a69942128 # v2
+        with:
+          url: https://github.com/oras-project/oras/releases/download/v1.3.6/oras_1.3.6_linux_amd64.tar.gz
+          checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0
+          token: ''
+      - name: Copy only the verified OCI graph into the isolated candidate package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          repository=ghcr.io/videoq-jp/videoq-whispercpp-candidate
+          digest=$(python3 -c 'import json; print(json.load(open("publication.json"))["manifestDigest"])')
+          tag="$repository:48d69177d7dfc675c13870457ad172b90c907529-$ARCH-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          umask 077
+          mkdir -p "$RUNNER_TEMP/whisper-registry"
+          printf '%s' "$GH_TOKEN" | oras login --registry-config "$RUNNER_TEMP/whisper-registry/config.json" ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          oras cp --from-oci-layout --to-registry-config "$RUNNER_TEMP/whisper-registry/config.json" "candidate/image@$digest" "$tag"
+          test "$(oras resolve --registry-config "$RUNNER_TEMP/whisper-registry/config.json" "$tag")" = "$digest"
+          gh api orgs/videoq-jp/packages/container/videoq-whispercpp-candidate --jq '{name,visibility}' > package-visibility.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: whisper-published-${{ matrix.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            publication.json
+            package-visibility.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Remove the isolated registry login
+        if: always()
+        run: |
+          oras logout --registry-config "$RUNNER_TEMP/whisper-registry/config.json" ghcr.io || test ! -f "$RUNNER_TEMP/whisper-registry/config.json"
+  independent-readback:
+    needs: [source, publish]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.source.outputs.matrix) }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Reviewed native source, containing only the runtime verification interface.
+          ref: 83aa79e99b14cbdd15d2647a724b5f2c221f26e3
+          persist-credentials: false
+      - name: Pull the exact published digest anonymously and verify native runtime
+        env:
+          ARCH: ${{ matrix.arch }}
+          DIGEST: ${{ matrix.manifest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/anonymous-docker" evidence
+          export DOCKER_CONFIG="$RUNNER_TEMP/anonymous-docker"
+          image="ghcr.io/videoq-jp/videoq-whispercpp-candidate@$DIGEST"
+          docker pull --platform "linux/$ARCH" "$image"
+          python3 apps/inference/whispercpp/verify_runtime.py --candidate "$image" --architecture "$ARCH" --receipt evidence/runtime.json
+      - name: Independently scan the exact public registry digest without waivers
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/anonymous-docker
+        uses: ./.github/actions/scan-image
+        with:
+          source: registry:ghcr.io/videoq-jp/videoq-whispercpp-candidate@${{ matrix.manifest }}
+          output: evidence/security.json
+          platform: linux/${{ matrix.arch }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: whisper-independent-readback-${{ matrix.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 90

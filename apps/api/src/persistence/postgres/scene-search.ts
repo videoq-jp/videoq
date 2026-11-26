@@ -5,7 +5,7 @@ import type { EmbeddingsInterface } from "@langchain/core/embeddings";
 import pg from "pg";
 import { databaseConnectionString } from "../../db/pool";
 import { embedQuery } from "../../lib/embeddings";
-import { embeddingDimensions, embeddingTable, resolveEmbeddingConfig } from "../../lib/embedding-contract";
+import { EmbeddingCompatibilityError, embeddingFingerprint, embeddingDimensions, embeddingTable, resolveEmbeddingConfig } from "../../lib/embedding-contract";
 import { assertEmbeddingSchema } from "../../lib/embedding-schema";
 import type { Bindings } from "../../types/bindings";
 import type { UsageRecorder } from "../../tools/usage";
@@ -106,6 +106,7 @@ export type SceneSearch = {
 export function createPostgresSceneSearchRepository(
   store: Pick<PGVectorStore, "similaritySearchVectorWithScore">,
   dimensions: 768 | 1536,
+  fingerprint?: string,
 ): SceneSearchRepository {
   return {
     async search({ queryEmbedding, userId, videoIds, limit }) {
@@ -117,7 +118,7 @@ export function createPostgresSceneSearchRepository(
       const selected = [...new Set(videoIds)];
       if (!selected.length) return [];
       const hits = await store.similaritySearchVectorWithScore(queryEmbedding, limit, {
-        user_id: userId, video_id: { $in: selected },
+        user_id: userId, video_id: { $in: selected }, ...(fingerprint ? { embedding_fingerprint: fingerprint } : {}),
       });
       return hits.map(([doc]) => ({
         content: doc.pageContent ?? "",
@@ -141,6 +142,7 @@ export async function openPostgresEmbeddingSceneSearch(
   if (options.snapshot !== undefined) validateReadSnapshot(options.snapshot);
   const table = resolveVectorTable(env);
   const config = resolveEmbeddingConfig(env);
+  const fingerprint = await embeddingFingerprint(config);
   const pool = withMetadataParsing(new pg.Pool({
     connectionString: databaseConnectionString(env), connectionTimeoutMillis: 10_000, max: 1,
     ...(options.snapshot !== undefined ? { idleTimeoutMillis: 0 } : {}),
@@ -169,11 +171,12 @@ export async function openPostgresEmbeddingSceneSearch(
     });
     signal?.throwIfAborted();
     assertSnapshot();
-    const repository = createPostgresSceneSearchRepository(store, embeddingDimensions(config) as 768 | 1536);
+    const repository = createPostgresSceneSearchRepository(store, embeddingDimensions(config) as 768 | 1536, fingerprint);
     return {
       async search(params) {
         signal?.throwIfAborted();
         assertSnapshot();
+        await assertPostgresEmbeddingProvenance(pool, table, params, fingerprint);
         const hits = await repository.search(params);
         signal?.throwIfAborted();
         assertSnapshot();
@@ -209,4 +212,16 @@ export async function openPostgresSceneSearch(
     },
     close: () => repository.close(),
   };
+}
+
+/** Explicit schema supports real isolated persistence experiments. */
+export async function assertPostgresEmbeddingProvenance(
+  client: Pick<pg.Pool, "query">, table: string,
+  params: { userId: string; videoIds: readonly number[] }, fingerprint: string, schema = "public",
+): Promise<void> {
+  if (!ALLOWED_TABLES.has(table)) throw new Error("Invalid embedding table");
+  if (!params.videoIds.length) return;
+  const quote = (value: string) => '"' + value.replaceAll('"', '""') + '"';
+  const provenance = await client.query(`SELECT 1 FROM ${quote(schema)}.${quote(table)} WHERE user_id=$1 AND video_id=ANY($2::bigint[]) AND (langchain_metadata->>'embedding_fingerprint') IS DISTINCT FROM $3 LIMIT 1`, [params.userId, [...params.videoIds], fingerprint]);
+  if (provenance.rows.length) throw new EmbeddingCompatibilityError();
 }

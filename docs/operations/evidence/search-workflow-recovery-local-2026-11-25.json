@@ -1,0 +1,44 @@
+{
+  "scope": "isolated local workerd, actual SearchIndexWorkflow/D1/R2 and actual recovery implementation; deterministic embedding fixture",
+  "date": "2026-11-25",
+  "runtime": "Node 26.12.0",
+  "command": "cd apps/api && /opt/homebrew/bin/node ../../node_modules/vitest/vitest.mjs run test/persistence/search-workflow-recovery.integration.test.ts test/search-recovery-authorization.test.ts",
+  "result": {
+    "files_passed": 2,
+    "tests_passed": 5
+  },
+  "assertions": [
+    "terminal failure after stage and terminated instance restart",
+    "stale inspection denied",
+    "ledger completed",
+    "one published index head",
+    "work artifacts removed",
+    "content-free recovery audit retained",
+    "anonymous/non-admin denied",
+    "invalid digest denied"
+  ],
+  "production_mutations": false,
+  "remote_cloud_recovery_verified": false,
+  "latest_validation": {
+    "runtime": "Node 26.13.1",
+    "focused_test_files_passed": 14,
+    "focused_tests_passed": 137,
+    "postgres": "isolated local PostgreSQL 55439 (synthetic only), shared SQL job contract plus real refused connection",
+    "typecheck": "PATH=/Users/yukiharada/.nvm/versions/node/v26.13.1/bin:$PATH npm run typecheck (apps/api): passed",
+    "assertions": [
+      "real terminal stage failure and termination restart",
+      "real provider429 and invalid transcript classification across Workflow RPC",
+      "provider spoof/unknown markers remain generic",
+      "changed source/artifacts/model/origin and active/completed/conflicting ledger denied",
+      "release failure sidecar and original restart outcome preserved",
+      "shared D1/PostgreSQL allowlisted persisted errors",
+      "SQS simultaneous processing and visibility failure without ACK or secret output"
+    ],
+    "lint": "PATH=/Users/yukiharada/.nvm/versions/node/v26.13.1/bin:$PATH npm run lint (apps/api): passed",
+    "final_real_workflow_recheck": {
+      "files_passed": 1,
+      "tests_passed": 6,
+      "command": "cd apps/api && /Users/yukiharada/.nvm/versions/node/v26.13.1/bin/node ../../node_modules/vitest/vitest.mjs run test/persistence/search-workflow-recovery.integration.test.ts"
+    }
+  }
+}

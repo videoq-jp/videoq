@@ -37,14 +37,14 @@ def _embed_workers_ai(texts: list[str], config: EmbeddingConfig, *, input_type: 
         try:
             result = call_internal_api("embeddings/generate", {
                 "model": config.model, "profile": config.profile, "dimensions": config.dimensions,
-                "inputType": input_type, "texts": batch,
+                "inputType": input_type, "texts": batch, "fingerprint": config.fingerprint,
             })
         except InternalApiError as exc:
             if exc.status is not None and 400 <= exc.status < 500 and exc.status not in {408, 429}:
                 raise EmbeddingContractError("EMBEDDING_CONFIG_INVALID", "Worker embedding API rejected the request. Check embedding settings on API and worker.", config) from None
             raise
         data = result.get("embeddings")
-        if (result.get("model") != config.model or result.get("profile") != config.profile
+        if (result.get("fingerprint") != config.fingerprint or result.get("model") != config.model or result.get("profile") != config.profile
                 or type(result.get("dimensions")) is not int or result["dimensions"] != config.dimensions
                 or not isinstance(data, list) or len(data) != len(batch)):
             raise invalid_output(config)

@@ -1,0 +1,81 @@
+{
+  "at": "2026-11-25T03:25:42.466Z",
+  "account": "12daec56fdba43f677f2766ee26a5a39",
+  "namespace": "videoq-acceptance-20261125-c33d",
+  "results": {
+    "database": {
+      "status": 404,
+      "absent": true,
+      "errors": [
+        {
+          "code": 7404,
+          "message": "The database ca70322e-c692-44b2-9052-de5d01a60e61 could not be found"
+        }
+      ]
+    },
+    "bucket": {
+      "status": 404,
+      "absent": true,
+      "errors": [
+        {
+          "code": 10006,
+          "message": "The specified bucket does not exist."
+        }
+      ]
+    },
+    "index": {
+      "status": 410,
+      "absent": true,
+      "errors": [
+        {
+          "code": 3005,
+          "message": "vectorize.index.deleted - Index name \"videoq-acceptance-20261125-c33d\""
+        }
+      ]
+    },
+    "workflow": {
+      "status": 404,
+      "absent": true,
+      "errors": [
+        {
+          "code": 10200,
+          "message": "workflows.api.error.workflow.not_found"
+        }
+      ]
+    },
+    "worker": {
+      "status": 404,
+      "absent": true,
+      "errors": [
+        {
+          "code": 10090,
+          "message": "This Worker does not exist on this account."
+        }
+      ]
+    },
+    "sink": {
+      "status": 404,
+      "absent": true,
+      "errors": [
+        {
+          "code": 10090,
+          "message": "This Worker does not exist on this account."
+        }
+      ]
+    },
+    "videoq-acceptance-20261125-c33d": {
+      "absent": true,
+      "matching": 0
+    },
+    "videoq-acceptance-20261125-c33d-dlq": {
+      "absent": true,
+      "matching": 0
+    },
+    "durableObjects": {
+      "absent": true,
+      "matching": []
+    }
+  },
+  "allAbsent": true,
+  "productionModified": false
+}

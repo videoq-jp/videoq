@@ -33,10 +33,10 @@ test('management read is fixed, credential-scoped, bounded and fail-closed',asyn
  await assert.rejects(protect(target,env,async()=>new Response('x'.repeat(1024*1024+1))),/UNAVAILABLE/);
  await assert.rejects(protect(target,{...env,CLOUDFLARE_ACCOUNT_ID:'invalid'},async()=>{throw Error('must not fetch');}),/UNAVAILABLE/);
 });
-test('the credentialed API upload checks deployed state immediately before Terraform',()=>{
+test('the credentialed API upload checks handoff, deployed state and embedding provenance before Terraform',()=>{
  const source=require('node:fs').readFileSync('.github/workflows/cd.yml','utf8');
  const api=source.slice(source.indexOf('  api-deploy:'),source.indexOf('  db-migrate:'));
- assert.match(api,/node \.github\/scripts\/protect-api-deployment\.cjs deployment\.json\s+node \.github\/scripts\/terraform-cloudflare-release\.cjs api deployment\.json/);
+ assert.match(api,/node \.github\/scripts\/d1-resource-deployment-config\.cjs deployment\.json\s+node \.github\/scripts\/protect-api-deployment\.cjs deployment\.json\s+node \.github\/scripts\/embedding-release-preflight\.cjs deployment\.json\s+node \.github\/scripts\/terraform-cloudflare-release\.cjs api deployment\.json/);
 });
 
 test('retired 768 binding may be absent on both sides without allowing additions or removal of active indexes',()=>{

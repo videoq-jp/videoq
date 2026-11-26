@@ -1,0 +1,278 @@
+{
+  "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+  "paused": {
+    "command": "pause",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "82510f3a0796496b27d00aba4aee52ef5a3f8f0377e6bab6e99471acd03320b6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:54:02.479Z",
+    "result": {
+      "queuePaused": true,
+      "pauseReceiptSha256": "0de1383be49df2cf146ce875fd52ab203b764517061e542b9b2b0f2c349045ad",
+      "newTrafficStatus": 503,
+      "activeWorkflows": 0,
+      "workerVersion": "41f63474-c46a-4d85-9c84-b9586539f80d"
+    }
+  },
+  "drain": {
+    "command": "drain",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "82510f3a0796496b27d00aba4aee52ef5a3f8f0377e6bab6e99471acd03320b6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:54:03.238Z",
+    "result": {
+      "activeLeases": {
+        "jobs": 0,
+        "outbox": 0,
+        "indexes": 0
+      },
+      "drainObservedAt": "2026-11-25T02:54:03.237Z",
+      "limit": "fixture producers stopped; managed in-flight delivery count not exported"
+    }
+  },
+  "snapshot": {
+    "command": "snapshot",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "82510f3a0796496b27d00aba4aee52ef5a3f8f0377e6bab6e99471acd03320b6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:54:15.164Z",
+    "result": {
+      "status": 200,
+      "data": {
+        "objects": 8,
+        "vectors": 2,
+        "dimensions": [
+          768,
+          768
+        ]
+      }
+    }
+  },
+  "export": {
+    "command": "export",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "82510f3a0796496b27d00aba4aee52ef5a3f8f0377e6bab6e99471acd03320b6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:54:19.550Z",
+    "result": {
+      "sqlSha256": "7a2eaaee04d5843efa117ed4101c866b5640abab9aacdddc36d5b0f7412fb501",
+      "bytes": 509590
+    }
+  },
+  "bookmark": {
+    "command": "bookmark",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "82510f3a0796496b27d00aba4aee52ef5a3f8f0377e6bab6e99471acd03320b6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:54:21.152Z",
+    "result": {
+      "bookmark": "00000008-0000008a-0000512e-87ec1db6c418bf42026fd823ece3f258",
+      "snapshotAt": 1795575261151
+    }
+  },
+  "restore": {
+    "command": "restore-db",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "82510f3a0796496b27d00aba4aee52ef5a3f8f0377e6bab6e99471acd03320b6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:54:35.907Z",
+    "result": {
+      "restored": {
+        "bookmark": "00000008-0000008a-0000512e-87ec1db6c418bf42026fd823ece3f258",
+        "previous_bookmark": "00000008-ffffffff-0000512e-b0277e0fc2add862b10143f63689489b",
+        "message": "Resetting Durable Object to restore database to bookmark: 00000008-0000008a-0000512e-87ec1db6c418bf42026fd823ece3f258"
+      },
+      "elapsedMs": 2082,
+      "syntheticLossWindowMs": 12227
+    }
+  },
+  "reconciled": {
+    "command": "reconcile",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "82510f3a0796496b27d00aba4aee52ef5a3f8f0377e6bab6e99471acd03320b6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:54:52.951Z",
+    "result": {
+      "status": 200,
+      "data": {
+        "objectsEqual": true,
+        "vectorsEqual": true,
+        "snapshotObjects": 8,
+        "snapshotVectors": 2,
+        "postSnapshotMarkerLost": true,
+        "corruptionReverted": true
+      }
+    }
+  },
+  "resume": {
+    "command": "resume",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "82510f3a0796496b27d00aba4aee52ef5a3f8f0377e6bab6e99471acd03320b6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:55:55.406Z",
+    "result": {
+      "reconciliation": {
+        "objectsEqual": true,
+        "vectorsEqual": true,
+        "snapshotObjects": 8,
+        "snapshotVectors": 2,
+        "postSnapshotMarkerLost": true,
+        "corruptionReverted": true
+      },
+      "provenance": {
+        "serving": true,
+        "dimensions": 768,
+        "fingerprint": "0a375ebc476e05bc175924a26d7e36a0558ffe2b3a40cdbd9467eb505c012f9d"
+      },
+      "queueResumed": true,
+      "workerVersion": "e824661f-794f-41c3-937f-5050690ba976",
+      "restoreToResumeMs": 81581
+    }
+  },
+  "firstRealModelReadiness": {
+    "command": "real-provenance",
+    "identity": {
+      "sourceSha": "99ba6fbe955f78b7e2022a58f9930c5e0790ddd1",
+      "configSha256": "ff7d558dce46f5d3509505080cfa07e0a04ae3690fa9d03c12d55e3449bba7a6",
+      "workerSourceSha256": "3ed16c69a14726cfdaefd08821ded9849b1688bfd8e6155b4bacfd41f0f2ed09",
+      "account": "12daec56fdba43f677f2766ee26a5a39",
+      "worker": "videoq-acceptance-20261125-c33d",
+      "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+      "index": "videoq-acceptance-20261125-c33d",
+      "bucket": "videoq-acceptance-20261125-c33d",
+      "workflow": "videoq-acceptance-20261125-c33d",
+      "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+      "model": "@cf/google/embeddinggemma-2",
+      "dimensions": 768,
+      "productionModified": false
+    },
+    "at": "2026-11-25T02:58:55.173Z",
+    "result": {
+      "status": 200,
+      "data": {
+        "passed": true,
+        "currentScenes": 2,
+        "verifiedScenes": 2,
+        "checks": [
+          {
+            "valueHashMatches": true,
+            "annMatches": true
+          },
+          {
+            "valueHashMatches": true,
+            "annMatches": true
+          }
+        ],
+        "model": "@cf/google/embeddinggemma-2",
+        "fingerprint": "0a375ebc476e05bc175924a26d7e36a0558ffe2b3a40cdbd9467eb505c012f9d",
+        "syntheticEmbedding": false
+      }
+    }
+  },
+  "restoreStartedAt": 1795575273825,
+  "restoreToFirstObservedRealModelReadinessMs": 261348,
+  "approvedProductionRpoMs": null,
+  "approvedProductionRtoMs": null,
+  "limits": [
+    "Same managed Queue/Workflow state retained, not portable checkpoint/message export",
+    "Operator elapsed time and provider propagation included in readiness observation",
+    "One new synthetic outbox intent lost and one corruption write reverted; two known post-snapshot writes",
+    "8 synthetic objects and2current768vectors; not production-volume evidence"
+  ]
+}

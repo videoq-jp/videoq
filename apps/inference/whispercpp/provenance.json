@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "method": "Copy exact existing upstream server and shared ELF libraries; do not recompile or copy its operating system",
+  "upstreamRepository": "https://github.com/ggml-org/whisper.cpp",
+  "upstreamDockerfileReviewed": "c1a24047871444999b79f5e8612828f45881ae12:.devops/main.Dockerfile",
+  "upstreamSourceCommitAttested": false,
+  "binarySourceImages": {
+    "amd64": "ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73",
+    "arm64": "ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0"
+  },
+  "runtimeBase": "cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b",
+  "runtimePackages": ["wolfi-baselayout", "glibc", "libstdc++", "libgomp"],
+  "runtimeExecutable": "/app/build/bin/whisper-server",
+  "runtimeIdentity": "10001:10001",
+  "verificationRequired": ["native amd64 and arm64", "exact server and shared-library hashes", "dynamic loader dependency closure", "non-root server execution", "no development/header/tool packages", "full final-image security scans without VEX or waivers", "immutable published digest before consumer pin change"]
+}

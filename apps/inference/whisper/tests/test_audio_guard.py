@@ -38,12 +38,39 @@ def test_network_paths_and_custom_io_fail_before_decoder_or_network(monkeypatch,
     assert calls == []
 
 
-def test_unsupported_wav_codec_is_closed_before_decode(monkeypatch):
-    closed = []
-    container = SimpleNamespace(streams=[SimpleNamespace(type='audio',codec_context=SimpleNamespace(name='pcm_bluray'))],close=lambda:closed.append(True))
-    av = SimpleNamespace(open=lambda *a, **kw:container)
-    monkeypatch.setitem(sys.modules,'av',av)
+@pytest.mark.parametrize('streams', [
+    [],
+    [SimpleNamespace(type='audio', codec_context=None)],
+    [SimpleNamespace(type='audio', codec_context=SimpleNamespace(name='pcm_alaw'))],
+    [SimpleNamespace(type='audio', codec_context=SimpleNamespace(name='pcm_bluray'))],
+    [SimpleNamespace(type='video', codec_context=None)],
+    [SimpleNamespace(type='audio', codec_context=SimpleNamespace(name='pcm_s16le')),
+     SimpleNamespace(type='video', codec_context=SimpleNamespace(name='h264'))],
+    [SimpleNamespace(type='audio', codec_context=SimpleNamespace(name='flac')),
+     SimpleNamespace(type='audio', codec_context=None)],
+])
+def test_unavailable_unsupported_or_non_audio_stream_is_closed_before_decode(monkeypatch, streams):
+    from unittest.mock import Mock
+    container = SimpleNamespace(streams=streams, close=Mock(), decode=Mock())
+    av = SimpleNamespace(open=lambda *args, **kwargs: container)
+    monkeypatch.setitem(sys.modules, 'av', av)
     runpy.run_path(str(Path(__file__).parents[1] / 'audio_guard.py'))
-    with pytest.raises(ValueError,match='unsupported audio codecs'):
-        av.open(io.BytesIO(b'wav'))
-    assert closed == [True]
+    with pytest.raises(ValueError, match='unsupported audio codecs'):
+        # If admission returns, downstream callers would begin native decoding.
+        av.open(io.BytesIO(b'wav')).decode(audio=0)
+    container.close.assert_called_once_with()
+    container.decode.assert_not_called()
+
+
+@pytest.mark.parametrize('codecs', [['mp3'], ['mp3float'], ['pcm_s16le'], ['flac'],
+                                  ['pcm_s16le', 'flac']])
+def test_supported_audio_contexts_remain_admitted_without_early_close(monkeypatch, codecs):
+    from unittest.mock import Mock
+    streams = [SimpleNamespace(type='audio', codec_context=SimpleNamespace(name=name)) for name in codecs]
+    container = SimpleNamespace(streams=streams, close=Mock(), decode=Mock())
+    av = SimpleNamespace(open=lambda *args, **kwargs: container)
+    monkeypatch.setitem(sys.modules, 'av', av)
+    runpy.run_path(str(Path(__file__).parents[1] / 'audio_guard.py'))
+    assert av.open(io.BytesIO(b'audio')) is container
+    container.close.assert_not_called()
+    container.decode.assert_not_called()

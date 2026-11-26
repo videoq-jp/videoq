@@ -11,11 +11,11 @@ function step(name) {
   assert.ok(block, name);
   return block.split(/\n      - (?:name|uses|run):/)[0];
 }
-function enabled(name, lifecycle, upstream = false, realCpu = false) {
+function enabled(name, lifecycle, upstream = false, realCpu = false, execution = {}) {
   const condition = step(name).match(/^        if: (.+)$/m)?.[1] ?? 'true';
   return runInNewContext(condition.replace(/^\$\{\{ | \}\}$/g, ''), {
     inputs: {validate_lifecycle: lifecycle, scan_upstream_images: upstream, validate_real_cpu: realCpu},
-    steps: {images: {outcome: 'success'}}, cancelled: () => false,
+    steps: {images: {outcome: 'success'}, real_cpu: {outcome: execution.outcome ?? (lifecycle && realCpu ? 'success' : 'skipped'), outputs: {started: execution.started ?? (lifecycle && realCpu ? 'true' : '')}}}, cancelled: () => execution.cancelled ?? false,
   });
 }
 const rehearsals = [
@@ -28,6 +28,31 @@ const rehearsals = [
   'Install checksum-pinned kind',
   'Exercise Kubernetes install, processing, restore, upgrade and rollback',
 ];
+test('only the complete real CPU lifecycle receives its bounded 120-minute job budget', () => {
+  const job = source.split('\n  onprem:\n')[1].split('\n  whisper-nvidia-image:\n')[0];
+  const expression = job.match(/^    timeout-minutes: \$\{\{ (.+) \}\}$/m)?.[1];
+  assert.ok(expression, 'onprem job must declare an explicit conditional budget');
+  for (const lifecycle of [false, true]) for (const realCpu of [false, true]) {
+    assert.equal(runInNewContext(expression, {inputs: {validate_lifecycle: lifecycle, validate_real_cpu: realCpu}}),
+      lifecycle && realCpu ? 120 : 90);
+  }
+  const e2e = readFileSync(join(__dirname, '../onprem-lab/e2e.mjs'), 'utf8');
+  // Each of upload, restored upgrade and rollback still executes both requests;
+  // the outer job budget must not be implemented by extending either request.
+  assert.equal((e2e.match(/AbortSignal\.timeout\(600000\)/g) ?? []).length, 2);
+  assert.match(e2e, /labStage\('chat\.send', \(\) => rpc\('chat\.send'/);
+  assert.match(e2e, /labStage\('chat\.stream', async \(\) =>/);
+  assert.equal((e2e.match(/await answer\(/g) ?? []).length, 2);
+  const lab = readFileSync(join(__dirname, 'onprem-lab.py'), 'utf8');
+  for (const mode of ['upload', 'restore-and-upgrade', 'rollback']) {
+    assert.ok(lab.includes(`e2e("${mode}")`), `mandatory ${mode} acceptance`);
+  }
+  assert.match(e2e, /assert\(events\.some\(e=>e\.type==='done'\)\)/);
+  assert.match(e2e, /assert\(!events\.some\(e=>e\.type==='error'\)/);
+  for (const name of rehearsals) assert.ok(step(name), name);
+  for (const component of ['API', 'worker', 'web']) assert.ok(step(`Scan the ${component} image including unfixed vulnerabilities`));
+  assert.match(step('Retain real CPU source-build evidence'), /request-stages\.json/);
+});
 test('image-only CI skips all inference-container and data-recovery rehearsals', () => {
   for (const name of rehearsals) {
     assert.equal(enabled(name, false), false, name);
@@ -104,4 +129,20 @@ test('both validation modes install uv before the unconditional installer tests'
     assert.equal(enabled('Validate public downloads, signature policy and shared lifecycle helpers', lifecycle), true);
   }
   assert.ok(source.indexOf('- name: Install checksum-pinned uv') < source.indexOf('- name: Validate public downloads, signature policy and shared lifecycle helpers'));
+});
+
+
+test('real CPU evidence follows actual admission and retains genuine failure diagnostics', () => {
+  const name='Retain real CPU source-build evidence';
+  for (const execution of [
+    {started:'true',outcome:'success',expected:true},
+    {started:'true',outcome:'failure',expected:true},
+    {started:'',outcome:'skipped',expected:false},
+    {started:'false',outcome:'skipped',expected:false},
+    {started:'true',outcome:'failure',cancelled:true,expected:false},
+  ]) assert.equal(Boolean(enabled(name,true,false,true,execution)),execution.expected,JSON.stringify(execution));
+  assert.match(step('Exercise source builds with real CPU models and blocked public egress'), /id: real_cpu/);
+  assert.match(step('Exercise source builds with real CPU models and blocked public egress'), /echo "started=true" >> "\$GITHUB_OUTPUT"/);
+  assert.match(step(name), /diagnostics\.json/);
+  assert.match(step(name), /if-no-files-found: error/);
 });

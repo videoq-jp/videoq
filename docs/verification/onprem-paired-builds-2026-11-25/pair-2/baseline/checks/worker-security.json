@@ -1,0 +1,1146 @@
+{
+  "SchemaVersion": 2,
+  "Scanner": "Grype",
+  "ArtifactType": "container_image",
+  "ArtifactName": "videoq-worker",
+  "Metadata": {
+    "RepoDigests": [],
+    "OS": {
+      "Family": "wolfi",
+      "Name": "20230201"
+    },
+    "ImageConfig": {
+      "architecture": "amd64",
+      "author": "github.com/chainguard-dev/apko",
+      "config": {
+        "User": "10001:10001",
+        "Env": [
+          "PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin",
+          "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt",
+          "DEPLOYMENT_EDITION=onprem",
+          "PYTHONUNBUFFERED=1",
+          "PYTHONDONTWRITEBYTECODE=1"
+        ],
+        "Cmd": [
+          "python",
+          "scripts/run_worker.py"
+        ],
+        "WorkingDir": "/app",
+        "Labels": {
+          "dev.chainguard.image.title": "wolfi-base",
+          "dev.chainguard.package.main": "",
+          "org.opencontainers.image.authors": "Chainguard Team https://www.chainguard.dev/",
+          "org.opencontainers.image.created": "2026-11-23T14:24:12Z",
+          "org.opencontainers.image.source": "https://github.com/chainguard-images/images/tree/main/images/wolfi-base",
+          "org.opencontainers.image.title": "wolfi-base",
+          "org.opencontainers.image.url": "https://images.chainguard.dev/directory/image/wolfi-base/overview",
+          "org.opencontainers.image.vendor": "Chainguard"
+        },
+        "ArgsEscaped": true
+      },
+      "created": "2026-11-25T04:47:18.072220323Z",
+      "history": [
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-23T14:24:12Z",
+          "created_by": "apko",
+          "author": "apko",
+          "comment": "wolfi-base by Chainguard"
+        },
+        {
+          "created": "2026-11-25T04:40:58.288758136Z",
+          "created_by": "ARG PYTHON_VERSION=3.14.10",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T04:40:58.288758136Z",
+          "created_by": "RUN |1 PYTHON_VERSION=3.14.10 /bin/sh -c apk add --no-cache python-3.14 zlib sqlite-libs libstdc++ lame-libs     && mkdir -p /usr/local/bin     && ln -s /usr/bin/python3.14 /usr/local/bin/python     && ln -s /usr/bin/python3.14 /usr/local/bin/python3     && ln -s /usr/bin/python3.14 /usr/local/bin/python3.14     && python -c \"import platform; assert platform.python_version() == '${PYTHON_VERSION}'\"     && adduser -D -u 10001 worker # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:59.268364622Z",
+          "created_by": "COPY /opt/venv /opt/venv # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:17.478486372Z",
+          "created_by": "COPY /opt/ffmpeg/bin/ /usr/local/bin/ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:17.489197714Z",
+          "created_by": "COPY /opt/ffmpeg/share/doc/ /usr/share/doc/videoq-ffmpeg/ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:17.497170702Z",
+          "created_by": "WORKDIR /app",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:17.511988391Z",
+          "created_by": "COPY worker_python ./worker_python # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:17.520886979Z",
+          "created_by": "COPY scripts/run_worker.py ./scripts/run_worker.py # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:17.528648247Z",
+          "created_by": "COPY security/verify_ffmpeg.py /app/verify_ffmpeg.py # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:17.537207451Z",
+          "created_by": "COPY LICENSE /usr/share/licenses/videoq/LICENSE # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:17.537207451Z",
+          "created_by": "USER 10001:10001",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T04:47:17.537207451Z",
+          "created_by": "ENV DEPLOYMENT_EDITION=onprem",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T04:47:17.537207451Z",
+          "created_by": "ENV PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T04:47:17.68123734Z",
+          "created_by": "RUN |1 PYTHON_VERSION=3.14.10 python /app/verify_ffmpeg.py # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:18.072220323Z",
+          "created_by": "RUN |1 PYTHON_VERSION=3.14.10 python -c import ssl, sqlite3, worker_python.lambda_handler; assert sqlite3.sqlite_version == '3.54.1' # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:47:18.072220323Z",
+          "created_by": "CMD [\"python\" \"scripts/run_worker.py\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:8413582468eb8c123bc331df291011fc0987cd258ada01aef14a8afa3f30d831",
+          "sha256:81ac36f4bee4102128a3f1f63d1a2a057922351d656f4a4fcdb1b92cd28a95f2",
+          "sha256:966b3c97a0506258779b9d0f271429eea02de730c5ce948ab59a157df572cf2b",
+          "sha256:78294ca27c817795e707089ce7ffbb1fa86b73684d718754f292d51ef63c6f7f",
+          "sha256:3994149e60e03259157af3fdaa68a3cf0283cf562bf47872e263a5e62b638b58",
+          "sha256:9a5af3c2653f7d6d3a12beb2f639b46246b03c9def6fbf03653bcdc2fbf769be",
+          "sha256:c77049249d91fe78f3e8aebf20efb151aa6ff5a0d3dd938af712a4aa6e8eee6c",
+          "sha256:9d1c9722a32dfefe8d5f2da19145bffb5ef101766874b306036cfcd2b2c5a162",
+          "sha256:c2b5f94a1b32fea8cac7541419cf215af66dd0f4e0f27d0622747d654c077591",
+          "sha256:b2fef7a0915305751dbde5c6c12939c144a02b70f506d12b174492160de4b65e",
+          "sha256:3a79f73d988d010af6744abc34cdedda03c83dc7b14fe40f4b321f6702c9ec48",
+          "sha256:98559e10432f86d9b65e619fe9a60d6ebf1117b35c3c0a46e4cfbadfcd0f8b7e",
+          "sha256:2f0bc9798d4069657386b76a26255f984a13e246422b16f728e2e70586dd43c4",
+          "sha256:05427ab3835d8af6f8b9d4129f910bf4bdc44540ae0b76b4911a5be43c026755",
+          "sha256:db62b865763e6fb0797d5aeb60c2a591f4f3c0957446dffb51aed7c481ee0c8a",
+          "sha256:5e2647829b670b0bc08e36f88762be6c406cd7c549b3293858b446cff772861f",
+          "sha256:2952f88c360c5186c321a54aca526450eb665b58b1d4f13d0d9f6312b35e64a8",
+          "sha256:9a8ffbffea1df3437b5dc835e62256e04c2dc24cc4a2c6371d3457d28d3a7980",
+          "sha256:fdccc7e0c8e4f0fb40fcd9bcca35b608efc92a389a1d17019f6aca7c628fb541",
+          "sha256:7bc5137ed9d2735c2e7bcecb48e19b80fb22e7c43b816acc23f1a7cf1632b478",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        ]
+      }
+    }
+  },
+  "Results": [
+    {
+      "Class": "lang-pkgs",
+      "Type": "python-pkg",
+      "Packages": [
+        {
+          "Name": "annotated-types",
+          "Version": "0.8.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/annotated-types@0.8.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/annotated_types-0.8.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/annotated_types-0.8.0.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "anyio",
+          "Version": "4.14.2",
+          "Identifier": {
+            "PURL": "pkg:pypi/anyio@4.14.2"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/anyio-4.14.2.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/anyio-4.14.2.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/anyio-4.14.2.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "boto3",
+          "Version": "1.44.4",
+          "Identifier": {
+            "PURL": "pkg:pypi/boto3@1.44.4"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/boto3-1.44.4.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/boto3-1.44.4.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/boto3-1.44.4.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "botocore",
+          "Version": "1.44.5",
+          "Identifier": {
+            "PURL": "pkg:pypi/botocore@1.44.5"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/botocore-1.44.5.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/botocore-1.44.5.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/botocore-1.44.5.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "cffi",
+          "Version": "2.1.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/cffi@2.1.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/cffi-2.1.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/cffi-2.1.0.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/cffi-2.1.0.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "cryptography",
+          "Version": "50.0.2",
+          "Identifier": {
+            "PURL": "pkg:pypi/cryptography@50.0.2"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/cryptography-50.0.2.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/cryptography-50.0.2.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "h11",
+          "Version": "0.16.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/h11@0.16.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/h11-0.16.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/h11-0.16.0.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/h11-0.16.0.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "httpcore2",
+          "Version": "2.13.1",
+          "Identifier": {
+            "PURL": "pkg:pypi/httpcore2@2.13.1"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/httpcore2-2.13.1.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/httpcore2-2.13.1.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "httpx2",
+          "Version": "2.13.1",
+          "Identifier": {
+            "PURL": "pkg:pypi/httpx2@2.13.1"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/httpx2-2.13.1.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/httpx2-2.13.1.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "idna",
+          "Version": "3.18",
+          "Identifier": {
+            "PURL": "pkg:pypi/idna@3.18"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/idna-3.18.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/idna-3.18.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "jiter",
+          "Version": "0.17.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/jiter@0.17.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/jiter-0.17.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/jiter-0.17.0.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "jmespath",
+          "Version": "1.1.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/jmespath@1.1.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/jmespath-1.1.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/jmespath-1.1.0.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/jmespath-1.1.0.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "numpy",
+          "Version": "2.5.5",
+          "Identifier": {
+            "PURL": "pkg:pypi/numpy@2.5.5"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/numpy-2.5.5.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/numpy-2.5.5.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "openai",
+          "Version": "3.52.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/openai@3.52.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/openai-3.52.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/openai-3.52.0.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "psycopg",
+          "Version": "3.3.4",
+          "Identifier": {
+            "PURL": "pkg:pypi/psycopg@3.3.4"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/psycopg-3.3.4.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/psycopg-3.3.4.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/psycopg-3.3.4.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "psycopg-binary",
+          "Version": "3.3.4",
+          "Identifier": {
+            "PURL": "pkg:pypi/psycopg-binary@3.3.4"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/psycopg_binary-3.3.4.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/psycopg_binary-3.3.4.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/psycopg_binary-3.3.4.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "pycparser",
+          "Version": "3.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/pycparser@3.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/pycparser-3.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/pycparser-3.0.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/pycparser-3.0.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "pydantic",
+          "Version": "2.13.4",
+          "Identifier": {
+            "PURL": "pkg:pypi/pydantic@2.13.4"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/pydantic-2.13.4.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/pydantic-2.13.4.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "pydantic-core",
+          "Version": "2.46.4",
+          "Identifier": {
+            "PURL": "pkg:pypi/pydantic-core@2.46.4"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/pydantic_core-2.46.4.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/pydantic_core-2.46.4.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "python-dateutil",
+          "Version": "2.9.0.post0",
+          "Identifier": {
+            "PURL": "pkg:pypi/python-dateutil@2.9.0.post0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/python_dateutil-2.9.0.post0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/python_dateutil-2.9.0.post0.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/python_dateutil-2.9.0.post0.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "s3transfer",
+          "Version": "0.19.2",
+          "Identifier": {
+            "PURL": "pkg:pypi/s3transfer@0.19.2"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/s3transfer-0.19.2.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/s3transfer-0.19.2.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/s3transfer-0.19.2.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "six",
+          "Version": "1.17.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/six@1.17.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/six-1.17.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/six-1.17.0.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/six-1.17.0.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "sniffio",
+          "Version": "1.3.1",
+          "Identifier": {
+            "PURL": "pkg:pypi/sniffio@1.3.1"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/sniffio-1.3.1.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/sniffio-1.3.1.dist-info/RECORD",
+            "/opt/venv/lib/python3.14/site-packages/sniffio-1.3.1.dist-info/top_level.txt"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "truststore",
+          "Version": "0.10.4",
+          "Identifier": {
+            "PURL": "pkg:pypi/truststore@0.10.4"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/truststore-0.10.4.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/truststore-0.10.4.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "typing-extensions",
+          "Version": "4.16.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/typing-extensions@4.16.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/typing_extensions-4.16.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/typing_extensions-4.16.0.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "typing-inspection",
+          "Version": "0.4.2",
+          "Identifier": {
+            "PURL": "pkg:pypi/typing-inspection@0.4.2"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/typing_inspection-0.4.2.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/typing_inspection-0.4.2.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        },
+        {
+          "Name": "urllib3",
+          "Version": "2.8.0",
+          "Identifier": {
+            "PURL": "pkg:pypi/urllib3@2.8.0"
+          },
+          "Locations": [
+            "/opt/venv/lib/python3.14/site-packages/urllib3-2.8.0.dist-info/METADATA",
+            "/opt/venv/lib/python3.14/site-packages/urllib3-2.8.0.dist-info/RECORD"
+          ],
+          "AnalyzedBy": "python-installed-package-cataloger"
+        }
+      ],
+      "Vulnerabilities": []
+    },
+    {
+      "Class": "os-pkgs",
+      "Type": "wolfi",
+      "Packages": [
+        {
+          "Name": "apk-tools",
+          "Version": "2.14.13-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/apk-tools@2.14.13-r1?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "busybox",
+          "Version": "1.38.0-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/busybox@1.38.0-r4?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ca-certificates-bundle",
+          "Version": "20261020-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/ca-certificates-bundle@20261020-r1?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "gdbm",
+          "Version": "1.26-r10",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/gdbm@1.26-r10?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "glibc-2.44",
+          "Version": "2.44-r24",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "glibc-2.44-locale-posix",
+          "Version": "2.44-r24",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44-locale-posix@2.44-r24?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "lame-libs",
+          "Version": "4.0-r3",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/lame-libs@4.0-r3?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ld-linux-2.44",
+          "Version": "2.44-r24",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/ld-linux-2.44@2.44-r24?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbrotlicommon1",
+          "Version": "1.2.1-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libbrotlicommon1@1.2.1-r4?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbrotlidec1",
+          "Version": "1.2.1-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libbrotlidec1@1.2.1-r4?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbrotlienc1",
+          "Version": "1.2.1-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libbrotlienc1@1.2.1-r4?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbz2-1",
+          "Version": "1.0.8-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libbz2-1@1.0.8-r31?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libcrypt1-2.44",
+          "Version": "2.44-r24",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libcrypt1-2.44@2.44-r24?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libexpat1",
+          "Version": "2.11.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libexpat1@2.11.0-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libffi",
+          "Version": "3.8.1-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libffi@3.8.1-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libgcc",
+          "Version": "16.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libgcc@16.2.0-r5?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libstdc++",
+          "Version": "16.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libstdc%2B%2B@16.2.0-r5?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libuuid",
+          "Version": "2.42.4-r3",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libuuid@2.42.4-r3?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxcrypt",
+          "Version": "4.5.2-r8",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libxcrypt@4.5.2-r8?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libzstd1",
+          "Version": "1.6.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/libzstd1@1.6.0-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "mpdecimal",
+          "Version": "4.0.1-r7",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/mpdecimal@4.0.1-r7?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ncurses",
+          "Version": "6.6.20261121-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/ncurses@6.6.20261121-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ncurses-terminfo-base",
+          "Version": "6.6.20261121-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/ncurses-terminfo-base@6.6.20261121-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "openssl-4.0-libcrypto",
+          "Version": "4.0.3-r8",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/openssl-4.0-libcrypto@4.0.3-r8?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "openssl-4.0-libssl",
+          "Version": "4.0.3-r8",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/openssl-4.0-libssl@4.0.3-r8?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "openssl-provider-legacy-allowed",
+          "Version": "4.1.0-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/openssl-provider-legacy-allowed@4.1.0-r1?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "py3-pip-wheel",
+          "Version": "26.3-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/py3-pip-wheel@26.3-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "python-3.14",
+          "Version": "3.14.10_git20261118-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "python-3.14-base",
+          "Version": "3.14.10_git20261118-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14-base@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "python-3.14-runtime",
+          "Version": "3.14.10_git20261118-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14-runtime@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "readline",
+          "Version": "8.3-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/readline@8.3-r4?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "sqlite-libs",
+          "Version": "3.54.1-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/sqlite-libs@3.54.1-r1?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "wolfi-base",
+          "Version": "1-r8",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/wolfi-base@1-r8?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "wolfi-baselayout",
+          "Version": "20230201-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/wolfi-baselayout@20230201-r31?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "wolfi-keys",
+          "Version": "1-r15",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/wolfi-keys@1-r15?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "xz",
+          "Version": "5.8.4-r2",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/xz@5.8.4-r2?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "zlib",
+          "Version": "1.4-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/wolfi/zlib@1.4-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "glibc-2.44",
+          "InstalledVersion": "2.44-r24",
+          "VulnerabilityID": "CVE-2026-121758",
+          "Aliases": [
+            "CVE-2026-121758"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "glibc-2.44",
+          "InstalledVersion": "2.44-r24",
+          "VulnerabilityID": "CVE-2026-124024",
+          "Aliases": [
+            "CVE-2026-124024"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "python-3.14",
+          "InstalledVersion": "3.14.10_git20261118-r0",
+          "VulnerabilityID": "CVE-2026-124249",
+          "Aliases": [
+            "CVE-2026-124249"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "glibc-2.44",
+          "InstalledVersion": "2.44-r24",
+          "VulnerabilityID": "CVE-2026-115819",
+          "Aliases": [
+            "CVE-2026-115819"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "LOW",
+          "PkgName": "glibc-2.44",
+          "InstalledVersion": "2.44-r24",
+          "VulnerabilityID": "CVE-2026-100290",
+          "Aliases": [
+            "CVE-2026-100290"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/glibc-2.44@2.44-r24?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "python-3.14",
+          "InstalledVersion": "3.14.10_git20261118-r0",
+          "VulnerabilityID": "CVE-2026-115559",
+          "Aliases": [
+            "CVE-2026-115559"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "LOW",
+          "PkgName": "python-3.14",
+          "InstalledVersion": "3.14.10_git20261118-r0",
+          "VulnerabilityID": "CVE-2026-103995",
+          "Aliases": [
+            "CVE-2026-103995"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "python-3.14",
+          "InstalledVersion": "3.14.10_git20261118-r0",
+          "VulnerabilityID": "CVE-2026-115791",
+          "Aliases": [
+            "CVE-2026-115791"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "LOW",
+          "PkgName": "python-3.14",
+          "InstalledVersion": "3.14.10_git20261118-r0",
+          "VulnerabilityID": "CVE-2026-16052",
+          "Aliases": [
+            "CVE-2026-16052"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "LOW",
+          "PkgName": "python-3.14",
+          "InstalledVersion": "3.14.10_git20261118-r0",
+          "VulnerabilityID": "CVE-2026-19552",
+          "Aliases": [
+            "CVE-2026-19552"
+          ],
+          "Locations": [
+            "/usr/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/wolfi/python-3.14@3.14.10_git20261118-r0?arch=x86_64&distro=wolfi-20230201"
+          },
+          "FixedVersion": ""
+        }
+      ]
+    }
+  ]
+}

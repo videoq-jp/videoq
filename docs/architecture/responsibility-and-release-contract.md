@@ -62,6 +62,12 @@ The fixture README defines the tested wire scope. Keep valid old hashes stable;
 never rewrite queued payloads under an existing job ID merely to change encoding.
 New producers use the discriminated [JobMessage](../../apps/api/src/lib/jobs.ts)
 contract, but the compatibility gate must test the deployed old consumer as well.
+The required `delivery-regression` CI job pins independently deployed API and
+Python consumer source revisions and runs their real producer/consumer entry
+points against the candidate, including rejection, canonical hashes and completed
+redelivery suppression. See [pins, provenance and rollout gating](../verification/delivery-regression.md).
+An incompatible combination blocks the existing mixed deployment path; changing
+the baseline to the candidate is not an incompatibility waiver.
 A passing new/new test alone cannot authorize mixed-version rollout.
 
 For database changes, expand before switching writers: add compatible fields or

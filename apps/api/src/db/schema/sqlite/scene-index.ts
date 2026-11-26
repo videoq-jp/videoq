@@ -17,6 +17,8 @@ export const sceneIndexRuns = sqliteTable("scene_index_runs", {
   userId: text("user_id").notNull(),
   sourceRevision: text("source_revision").notNull(),
   dimensions: integer("dimensions").notNull(),
+  embeddingIdentity: text("embedding_identity"),
+  embeddingFingerprint: text("embedding_fingerprint"),
   expectedScenes: integer("expected_scenes").notNull(),
   pendingVectors: integer("pending_vectors").notNull().default(0),
   status: text("status", { enum: ["staging", "published"] }).notNull().default("staging"),

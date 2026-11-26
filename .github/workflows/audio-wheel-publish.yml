@@ -1,0 +1,94 @@
+name: Publish reviewed audio wheel
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_revision:
+        description: Independently reviewed immutable publisher commit
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: audio-wheel-fixed-release-publisher
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.repository == 'videoq-jp/videoq' && github.ref == 'refs/tags/videoq-audio-wheel-publisher-20261126-v1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Bind dispatch to the exact reviewed immutable workflow
+        env:
+          REVIEWED_REVISION: ${{ inputs.reviewed_revision }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          [[ "$REVIEWED_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$REVIEWED_REVISION" = "$GITHUB_SHA"
+          test "$REVIEWED_REVISION" = "$WORKFLOW_SHA"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Validate fresh successful run, exact archive, native proof and raw scans read-only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEWED_REVISION: ${{ inputs.reviewed_revision }}
+        run: |
+          artifact=$(python3 -c 'import json; p=json.load(open(".github/scripts/audio-wheel-publication.json")); assert p["status"]=="reviewed-corrected-native-proof"; print(p["artifact"])')
+          [[ "$artifact" =~ ^[0-9]+$ ]]
+          gh api "repos/videoq-jp/videoq/actions/artifacts/$artifact/zip" > candidate.zip
+          python3 .github/scripts/audio-wheel-publication.py validate --archive candidate.zip --revision "$REVIEWED_REVISION"
+  publish:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # This checkout is the reviewed publisher tag, never the candidate PR checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Freshly revalidate and copy exact tested bytes to the fixed new release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEWED_REVISION: ${{ inputs.reviewed_revision }}
+        run: |
+          artifact=$(python3 -c 'import json; p=json.load(open(".github/scripts/audio-wheel-publication.json")); assert p["status"]=="reviewed-corrected-native-proof"; print(p["artifact"])')
+          [[ "$artifact" =~ ^[0-9]+$ ]]
+          gh api "repos/videoq-jp/videoq/actions/artifacts/$artifact/zip" > candidate.zip
+          python3 .github/scripts/audio-wheel-publication.py publish --archive candidate.zip --revision "$REVIEWED_REVISION"
+  anonymous-readback:
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Require anonymous exact-byte consumer access before any lock adoption
+        env:
+          REVIEWED_REVISION: ${{ inputs.reviewed_revision }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/audio-wheel-publication.py readback --revision "$REVIEWED_REVISION" > anonymous-readback.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: audio-wheel-anonymous-readback-${{ github.run_id }}-${{ github.run_attempt }}
+          path: anonymous-readback.json
+          if-no-files-found: error
+          retention-days: 90

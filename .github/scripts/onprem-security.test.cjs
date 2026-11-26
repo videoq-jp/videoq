@@ -104,9 +104,11 @@ test('upstream CPU images retain separate architecture scans and a verified asse
   const cpu = onprem.slice(onprem.indexOf('  upstream-cpu-images:'));
   assert.match(cpu, /engine: \[llamacpp, whispercpp\]/);
   assert.match(cpu, /architecture: \[amd64, arm64\]/);
-  assert.match(cpu, /steps.header_inventory.outcome == 'success'/);
-  assert.match(cpu, /apps\/inference\/whispercpp\/security\/header-image-inventory.json/);
-  assert.match(cpu, /gate: assess/);
+  assert.match(cpu, /steps.minimal_runtime.outcome == 'success'/);
+  assert.match(cpu, /apps\/inference\/whispercpp\/verify_runtime.py/);
+  assert.match(cpu, /matrix.engine == 'whispercpp' && 'strict'/);
+  assert.doesNotMatch(cpu, /security-config:.*whispercpp\/security\/grype/);
+  assert.match(cpu, /gate:.*'strict' \|\| 'assess'/);
   assert.match(cpu, /onprem-upstream-security\.cjs upstream-cpu-security\.json/);
   assert.doesNotMatch(cpu, /continue-on-error: true/);
 });

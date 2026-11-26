@@ -45,6 +45,8 @@ type PlatformResources = {
 export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_URL" | "LLM_BASE_URL" | "LLM_MAX_TOKENS"> &
   Omit<PlatformResources, "SCENE_VECTORIZE_1536" | "SCENE_VECTORIZE_768"> &
   SecretBindings & {
+    OPERATIONAL_POLICY_WEBHOOK_URL?: string;
+    OPERATIONAL_POLICY_WEBHOOK_TOKEN?: string;
     RUNTIME?: "node";
     SEARCH_INDEX_WORKFLOW?: Workflow<unknown>;
     ACCOUNT_JOB_BACKEND?: "sqs" | "cloudflare";
@@ -70,6 +72,8 @@ export type Bindings = Omit<RuntimeStrings, keyof SecretBindings | "OPENAI_BASE_
     LLM_MAX_TOKENS?: string;
     EMBEDDING_BASE_URL?: string;
     EMBEDDING_API_KEY?: string;
+    EMBEDDING_REVISION?: string;
+    EMBEDDING_PREPROCESSING?: string;
     EMBEDDING_PROFILE?: string;
     EMBEDDING_PROVIDER?: string;
     LLM_REASONING_EFFORT?: "none" | "minimal" | "low" | "medium" | "high";

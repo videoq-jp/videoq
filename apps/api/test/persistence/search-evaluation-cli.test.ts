@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 vi.mock('wrangler',()=>({getPlatformProxy:vi.fn()}));
 import {getPlatformProxy} from 'wrangler';
-import {main,parseSearchEvaluationArguments} from '../../scripts/d1-staging-evaluate-search';
+import {main,parseSearchEvaluationArguments,searchEvaluationEnvironment} from '../../scripts/d1-staging-evaluate-search';
 const directories:string[]=[];
 afterEach(async()=>{vi.unstubAllEnvs();vi.clearAllMocks();await Promise.all(directories.splice(0).map(path=>rm(path,{recursive:true,force:true})));});
 async function fixture(){
@@ -48,4 +48,13 @@ describe('staging search evaluation preflight',()=>{
   await expect(main(f.args)).rejects.toThrow('model/profile');
   expect(getPlatformProxy).not.toHaveBeenCalled();
  });
+});
+
+it('preserves explicit embedding identity and endpoints without inventing missing declarations',()=>{
+ const source={EMBEDDING_PROVIDER:'openai',EMBEDDING_PROFILE:'embeddinggemma2',EMBEDDING_MODEL:'served-alias',
+  EMBEDDING_BASE_URL:'https://private.invalid/v1',OPENAI_BASE_URL:'https://chat.invalid/v1',EMBEDDING_REVISION:'weights-sha256',EMBEDDING_PREPROCESSING:'normalize-v2'};
+ expect(searchEvaluationEnvironment('postgresql://readonly/test',source)).toEqual({DATABASE_URL:'postgresql://readonly/test',...source});
+ const missing=searchEvaluationEnvironment('postgresql://readonly/test',{});
+ for(const key of Object.keys(source))expect(missing[key as keyof typeof missing]).toBeUndefined();
+ expect(searchEvaluationEnvironment('postgresql://readonly/test',{...source,EMBEDDING_REVISION:'',EMBEDDING_PREPROCESSING:''})).toMatchObject({EMBEDDING_REVISION:'',EMBEDDING_PREPROCESSING:''});
 });

@@ -4,7 +4,7 @@ import type { UsageRecorder } from "../tools/usage";
 import type { SceneHit } from "./contracts/scene-search";
 import { persistenceBackend } from "./backend";
 import { embedQuery } from "../lib/embeddings";
-import { embeddingDimensions, resolveEmbeddingConfig } from "../lib/embedding-contract";
+import { embeddingFingerprint, embeddingDimensions, resolveEmbeddingConfig } from "../lib/embedding-contract";
 
 export type { SceneHit } from "./contracts/scene-search";
 export type SceneSearch = {
@@ -29,7 +29,7 @@ export async function openSceneSearch(
   const index = dimensions === 768 ? env.SCENE_VECTORIZE_768 : env.SCENE_VECTORIZE_1536;
   if (!index) throw new Error(`Vectorize ${dimensions} binding is required`);
   const { createD1SceneSearchRepository } = await import("./d1/scene-search");
-  const repository = createD1SceneSearchRepository(env.DB, index, dimensions);
+  const repository = createD1SceneSearchRepository(env.DB, index, dimensions, await embeddingFingerprint(config));
   const allowed = new Set(params.videoIds);
   return {
     async search(query, videoIds, callSignal) {

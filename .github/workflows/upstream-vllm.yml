@@ -31,6 +31,12 @@ jobs:
           assert.match(digest, /^sha256:[a-f0-9]{64}$/);
           appendFileSync(process.env.GITHUB_ENV, `VLLM_IMAGE=${repository}@${digest}\n`);
           JS
+      - name: Install the reviewed Helm renderer
+        run: HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
+      - name: Validate all supported native profiles and mandatory masks
+        env:
+          HELM_BIN: ${{ runner.temp }}/helm/helm
+        run: node .github/scripts/check-vllm-render.cjs
       - name: Prepare verified audio wheels without building an engine
         id: audio
         run: |
@@ -62,6 +68,7 @@ jobs:
             --tmpfs /usr/local/lib/python3.12/dist-packages/PyNvVideoCodec:ro,size=1m \
             --tmpfs /usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs:ro,size=1m \
             --tmpfs /usr/local/lib/python3.12/dist-packages/mooncake:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/torchcodec:ro,size=1m \
             -v "$PWD/audio-runtime:/opt/videoq-audio:ro" \
             -v "$PWD/.github/scripts/check-vllm-runtime.py:/probe.py:ro" \
             --entrypoint python3 "$VLLM_IMAGE" /probe.py > vllm-runtime.json
@@ -71,9 +78,6 @@ jobs:
           docker run --rm --platform linux/amd64 --network none --user 10001:10001 \
             -v "$PWD/.github/scripts/check-vllm-inventory.py:/inventory.py:ro" \
             --entrypoint python3 "$VLLM_IMAGE" /inventory.py > vllm-native-inventory.json
-      - name: Install the reviewed Helm renderer
-        if: ${{ !cancelled() && steps.audio.outcome == 'success' }}
-        run: HELM_INSTALL_DIR="$RUNNER_TEMP/helm" bash .github/scripts/install-helm.sh
       - name: Reject unassessed upstream or audio findings
         if: ${{ !cancelled() && steps.audio.outcome == 'success' }}
         env:

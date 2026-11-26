@@ -142,7 +142,16 @@ container mounts that volume read-only at `/opt/videoq-audio` and imports it via
 unchanged. The locked DNS wheel takes precedence over the vulnerable base-image
 copy; inspection must verify its actual import path/version and reject the
 upstream bounded WKS parser reproducer. The supported target is Linux amd64 /
-Python 3.12.
+Python 3.12. PyAV 19.0.2 is built against genuine signed FFmpeg 9.1 and
+uses the exact reviewed release asset in `videoq-jp/videoq`, rather than the
+unpatched PyPI wheel with the same Python version. Its immutable consumer
+SHA256 and size bind the tested bytes; only this specific asset URL is allowed
+for PyAV, while the other four wheels remain PyPI-only. Source authentication,
+235 wheel file members, 227 installed members, native codec/Whisper preprocessing
+and the zero-finding unsuppressed overlay scan were independently verified before
+publication. Full normal image/native gates remain required after lock adoption;
+this overlay does not establish GPU/model execution or clear unrelated base-image
+findings. The original failed native candidate is not adoption evidence.
 
 With `downloadModels=false`, this init container remains but never downloads:
 it verifies the cached wheels and populates a fresh runtime volume. Pre-populated
@@ -461,9 +470,15 @@ acceptance and vulnerability evaluation.
 ### Grype native-library controls
 
 The upstream NVIDIA image is scanned in full. Its unused PyNvVideoCodec,
-OpenCV native-library and Mooncake directories are hidden behind mandatory
-empty read-only mounts in supported profiles. Video input and Mooncake KV
-transfer are outside these profiles. The read-only audio overlay includes a
+OpenCV native-library, Mooncake and optional TorchCodec directories are hidden
+behind mandatory empty read-only mounts in supported profiles. Masking TorchCodec
+selects the supported Whisper automatic SoundFile fallback rather than loading
+system FFmpeg through its optional decoder. Actual hosted full-duration MP3,
+FLAC and PCM preprocessing plus strict loaded-library checks remain required;
+the mask alone is not runtime acceptance or a vulnerability waiver. Video input,
+TorchCodec video decoding and Mooncake KV transfer are outside the supported
+chat, embedding and Whisper profiles. Optional-package namespace detection can
+still report TorchCodec as present, so it does not establish video support. The read-only audio overlay includes a
 manifest-hashed startup guard limiting PyAV to local MP3/WAV/FLAC and rejecting
 network input. CI verifies the actual runtime controls before accepting exact
 findings; changing/removing a control or adding a new CVE blocks promotion.

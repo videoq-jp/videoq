@@ -42,12 +42,36 @@ def check_image(image, pins):
     return info['Id']
 
 
+REVIEWED_NODE_IMAGE = 'node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5'
+
+
 def node_image(dockerfile=ROOT / 'apps/api/Dockerfile'):
-    matches = re.findall(r'^FROM (node:\d+\.\d+\.\d+-alpine@sha256:[a-f0-9]{64}) AS base$',
-                         Path(dockerfile).read_text(), re.M)
-    if len(matches) != 1:
-        raise ValueError('Expected one reviewed digest-pinned API Node base')
-    return matches[0]
+    # Resolve the named base, never an unrelated (possibly decoy) Node stage.
+    stages = {}
+    for line in Path(dockerfile).read_text().splitlines():
+        if not re.match(r'^\s*FROM\s', line, re.I):
+            continue
+        match = re.fullmatch(r'\s*FROM\s+(\S+)(?:\s+AS\s+([A-Za-z0-9_][A-Za-z0-9_.-]*))?\s*', line, re.I)
+        if not match:
+            raise ValueError('Unsupported API Dockerfile stage declaration')
+        image, alias = match.groups()
+        if alias:
+            alias = alias.lower()
+            if alias in stages:
+                raise ValueError('Ambiguous API Dockerfile stage alias')
+            stages[alias] = image
+    current, seen = 'base', set()
+    if current not in stages:
+        raise ValueError('Missing API Node base stage')
+    while current.lower() in stages:
+        alias = current.lower()
+        if alias in seen:
+            raise ValueError('Cyclic API Node base ancestry')
+        seen.add(alias)
+        current = stages[alias]
+    if current != REVIEWED_NODE_IMAGE:
+        raise ValueError('API Node base does not resolve to the reviewed immutable image')
+    return current
 
 
 def run(output, image):

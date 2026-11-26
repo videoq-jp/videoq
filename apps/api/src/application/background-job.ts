@@ -1,3 +1,4 @@
+import { SafeJobError, classifyJobFailure } from './job-failure';
 import type { JobRepository } from './job-execution-port';
 import type { JobMessage } from './job-message';
 
@@ -52,11 +53,11 @@ export interface BackgroundJobDependencies {
   sha256(value: string): Promise<string>;
   execute(job: BackgroundJob, leaseToken: string): Promise<void>;
 }
-export class BackgroundJobBusyError extends Error {
-  constructor() { super('Background job busy'); }
+export class BackgroundJobBusyError extends SafeJobError {
+  constructor() { super('JOB_BUSY', true, 'Background job busy'); }
 }
-export class BackgroundJobConflictError extends Error {
-  constructor() { super('Background job conflict'); }
+export class BackgroundJobConflictError extends SafeJobError {
+  constructor() { super('JOB_IDENTITY_CONFLICT', false, 'Background job conflict'); }
 }
 
 export async function executeBackgroundJob(input: unknown, deps: BackgroundJobDependencies): Promise<void> {
@@ -69,7 +70,7 @@ export async function executeBackgroundJob(input: unknown, deps: BackgroundJobDe
     await deps.execute(job, claim.leaseToken);
     if (!await deps.repository.complete(job.job_id, claim.leaseToken)) throw new Error('Background job lease was lost');
   } catch (error) {
-    await deps.repository.fail(job.job_id, claim.leaseToken, 'WORKER_EXECUTION_FAILED').catch(() => false);
+    await deps.repository.fail(job.job_id, claim.leaseToken, classifyJobFailure(error).error_code).catch(() => false);
     throw error;
   }
 }

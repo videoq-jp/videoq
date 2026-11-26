@@ -1,0 +1,160 @@
+[
+  {
+    "results": [
+      {
+        "deleted_video_rows": 0
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.1178
+      },
+      "duration": 0.1178,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 1343488,
+      "rows_read": 1,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  },
+  {
+    "results": [
+      {
+        "deleted_scene_rows": 0
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.058
+      },
+      "duration": 0.058,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 1343488,
+      "rows_read": 0,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  },
+  {
+    "results": [
+      {
+        "scope": "active-object",
+        "logical_deleted_at": "2026-11-23T00:00:00Z",
+        "completed_at": null
+      },
+      {
+        "scope": "active-object",
+        "logical_deleted_at": "2026-11-25T03:18:05.150Z",
+        "completed_at": null
+      },
+      {
+        "scope": "active-index",
+        "logical_deleted_at": "2026-11-25T03:18:05.150Z",
+        "completed_at": null
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.0843
+      },
+      "duration": 0.0843,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 1343488,
+      "rows_read": 6,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  },
+  {
+    "results": [
+      {
+        "job_id": "isolated-recovery-v2",
+        "status": "completed",
+        "attempts": 3
+      },
+      {
+        "job_id": "isolated-recovery-v3",
+        "status": "completed",
+        "attempts": 3
+      },
+      {
+        "job_id": "isolated-recovery-v4",
+        "status": "completed",
+        "attempts": 3
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.0859
+      },
+      "duration": 0.0859,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 1343488,
+      "rows_read": 3,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  },
+  {
+    "results": [
+      {
+        "dedupe_key": "synthetic-frozen-outbox-replay",
+        "attempts": 1,
+        "completed_at": "2026-11-25T02:49:24.644Z",
+        "last_error": ""
+      },
+      {
+        "dedupe_key": "synthetic-frozen-outbox-replay:isolated-recovery-v4",
+        "attempts": 1,
+        "completed_at": "2026-11-25T02:56:15.549Z",
+        "last_error": ""
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.0941
+      },
+      "duration": 0.0941,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 1343488,
+      "rows_read": 4,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]

@@ -166,7 +166,7 @@ withHelm("private local inference deployment", () => {
     const whisper = render().find(r => r.kind === "Deployment" && r.metadata.name.endsWith("-whisper"));
     const engine = whisper.spec.template.spec.containers[1];
     expect(engine.command).toEqual(["/app/build/bin/whisper-server"]);
-    expect(engine.image).toMatch(/^ghcr.io\/ggml-org\/whisper.cpp@sha256:/);
+    expect(engine.image).toMatch(/^ghcr.io\/videoq-jp\/videoq-whispercpp-candidate@sha256:/);
     expect(engine.args).toContain("127.0.0.1");
     expect(engine.args).toContain("/v1/audio/transcriptions");
     expect(command("-f", `${chart}/examples/whisper-nvidia.yaml`, "--set-json", 'whisper.resources.limits={"cpu":"2","memory":"4Gi"}').status).not.toBe(0);
@@ -174,7 +174,7 @@ withHelm("private local inference deployment", () => {
   it("selects the native upstream CPU image and rejects architecture mismatches", () => {
     const deployment = render("--set", "whispercpp.architecture=arm64").find(r => r.kind === "Deployment" && r.metadata.name.endsWith("-whisper"));
     expect(deployment.spec.template.spec.nodeSelector["kubernetes.io/arch"]).toBe("arm64");
-    expect(deployment.spec.template.spec.containers[1].image).toContain("f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0");
+    expect(deployment.spec.template.spec.containers[1].image).toContain("4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d");
     expect(command("--set", "whispercpp.architecture=arm64", "--set-json", 'whisper.nodeSelector={"kubernetes.io/arch":"amd64"}').status).not.toBe(0);
   });
   it("rejects mutable Whisper revisions and unpinned production images", () => {

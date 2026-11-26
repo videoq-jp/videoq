@@ -1,3 +1,4 @@
+import {seedPostgresSceneIndex} from "../helpers/postgres-scene-index";
 import {describe,it,expect} from 'vitest';
 import pg from 'pg';
 import {setTimeout as delay} from 'node:timers/promises';
@@ -13,9 +14,9 @@ describe.skipIf(!databaseUrl)('request-scoped PostgreSQL search snapshots',()=>{
   try{
    await admin.query(`CREATE DATABASE "${name}"`);created=true;
    writer=new pg.Client({connectionString:url.toString()});await writer.connect();
-   await writer.query('CREATE EXTENSION vector; CREATE TABLE scene_embeddings(langchain_id uuid PRIMARY KEY,content text NOT NULL,embedding vector(1536) NOT NULL,user_id text,video_id integer,langchain_metadata jsonb)');
+   await writer.query('CREATE EXTENSION vector; CREATE TABLE videos(id integer PRIMARY KEY,user_id text,title text,transcript text); INSERT INTO videos VALUES(1,\'owner\',\'Snapshot video\',\'\'); CREATE TABLE scene_embeddings(langchain_id uuid PRIMARY KEY,content text NOT NULL,embedding vector(1536) NOT NULL,user_id text,video_id integer,langchain_metadata jsonb)');
    const embedding=Array.from({length:1536},(_,i)=>i===0?1:0);
-   await writer.query("INSERT INTO scene_embeddings VALUES('00000000-0000-4000-8000-000000000001','before',$1,'owner',1,'{}')",[JSON.stringify(embedding)]);
+   await seedPostgresSceneIndex(url.toString(),1,[{text:'before',vector:embedding}]);
    coordinator=new pg.Client({connectionString:url.toString()});await coordinator.connect();
    await coordinator.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
    const snapshot=(await coordinator.query('SELECT pg_export_snapshot() AS snapshot')).rows[0].snapshot;

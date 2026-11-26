@@ -102,7 +102,9 @@ export async function createMaintenanceRepository(env: Bindings): Promise<import
       import("./d1/maintenance-repository"), import("../features/lti/config"), import("../lib/embedding-contract"),
     ]);
     const dimensions = embedding.embeddingDimensions(embedding.resolveEmbeddingConfig(env)) as 768 | 1536;
-    return createD1MaintenanceRepository(env.DB, ltiMaterialsEnabled(env), dimensions);
+    const repository = createD1MaintenanceRepository(env.DB, ltiMaterialsEnabled(env), dimensions);
+    const { policyMaintenanceWakeup } = await import("./d1/policy-wakeup");
+    return { getNextWakeup: async windows => policyMaintenanceWakeup(env, await repository.getNextWakeup(windows)) };
   }
   const { createPostgresMaintenanceRepository } = await import("./postgres/maintenance-repository");
   return createPostgresMaintenanceRepository(env);
@@ -159,7 +161,7 @@ export async function maintainSceneIndex(env: Bindings) {
     import("./d1/scene-index-maintenance"), import("../lib/embedding-contract"),
   ]);
   const dimensions = embedding.embeddingDimensions(embedding.resolveEmbeddingConfig(env)) as 768 | 1536;
-  return maintainD1SceneIndex(env.DB, { 1536: env.SCENE_VECTORIZE_1536, 768: env.SCENE_VECTORIZE_768 }, dimensions);
+  return maintainD1SceneIndex(env.DB, { 1536: env.SCENE_VECTORIZE_1536, 768: env.SCENE_VECTORIZE_768 }, dimensions, await embedding.embeddingFingerprint(embedding.resolveEmbeddingConfig(env)));
 }
 
 /** Staged scene ingestion is cloud-only; on-prem workers retain pgvector. */
@@ -167,9 +169,11 @@ export async function createWorkerScenePersistence(env: Bindings) {
   if (persistenceBackend(env) !== "d1") throw new Error("Worker scene API requires D1");
   if (!env.DB) throw new Error("D1 DB binding is required");
   const { createD1SceneIndexWriter, readD1WorkerSceneSource, finishD1WorkerSceneIndex } = await import("./d1/scene-index-writer");
+  const { embeddingDimensions, embeddingIdentity, embeddingFingerprint, resolveEmbeddingConfig } = await import("../lib/embedding-contract");
+  const fingerprint = await embeddingFingerprint(resolveEmbeddingConfig(env));
   const database = env.DB;
-  return { finish: (input: import("./contracts/scene-index").FinishSceneIndexInput) => finishD1WorkerSceneIndex(database, input),
-    writer: createD1SceneIndexWriter(database), readSource: (videoId: number) => readD1WorkerSceneSource(database, videoId) };
+  return { finish: (input: import("./contracts/scene-index").FinishSceneIndexInput) => finishD1WorkerSceneIndex(database, input, fingerprint),
+    writer: createD1SceneIndexWriter(database, fingerprint, embeddingIdentity(resolveEmbeddingConfig(env)), embeddingDimensions(resolveEmbeddingConfig(env)) as 768 | 1536), readSource: (videoId: number) => readD1WorkerSceneSource(database, videoId) };
 }
 
 export async function createProcessingQuotaRepository(env: Bindings): Promise<import("./contracts/processing-quota").ProcessingQuotaRepository> {

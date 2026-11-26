@@ -58,6 +58,27 @@ describe("D1 + LangChain Vectorize scene search", () => {
       expect(options.returnValues).toBe(false);
     }
   });
+  it("keeps every current-768 selection and tenant fence under provider count and normalized-byte limits", async () => {
+    const userId = '所有者"\\' + '語'.repeat(30);
+    const selected = [...Array.from({ length: 1000 }, (_, i) => i + 1), ...Array.from({ length: 160 }, (_, i) => Number.MAX_SAFE_INTEGER - i)];
+    const observed: number[] = [];
+    const provider = { query: vi.fn((_vector, options) => {
+      const filter = options.filter;
+      const ids = filter.video_id.$in as number[];
+      // Reproduce real service40029/count and40001/normalized-size boundaries.
+      expect(ids.length).toBeLessThanOrEqual(100);
+      expect(filter.user_id).toBe(userId);
+      const owner = JSON.stringify(userId).replace(/[^\x20-\x7e]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+      const normalized = `{"user_id": ${owner}, "video_id": {"$in": [${ids.map(id => `${id}.0`).join(", ")}]}}`;
+      expect(new TextEncoder().encode(normalized).length).toBeLessThan(1536);
+      observed.push(...ids);
+      return Promise.resolve({ matches: [] });
+    }) } as unknown as Vectorize;
+    const current = createD1SceneSearchRepository(fixture.database, provider, 768);
+    expect(await current.search({ queryEmbedding: Array.from({ length: 768 }, () => .1), userId, videoIds: [...selected, selected[0]], limit: 20 })).toEqual([]);
+    expect(observed).toEqual(selected);
+    expect(new Set(observed).size).toBe(selected.length);
+  });
   it.each([100, 101, 125])("searches all %i selected videos within the provider's list limit", async (count) => {
     query.mockReset();
     const selected = [1, ...Array.from({ length: count - 2 }, (_, i) => i + 6), 3];

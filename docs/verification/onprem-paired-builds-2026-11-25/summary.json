@@ -1,0 +1,694 @@
+{
+  "scope": "Three prospectively controlled AB/BA/AB pairs, original hosted comparator failures retained, actual raw artifacts re-evaluated using independently reviewed exact-owned-scope correspondence; not a successful original workflow conclusion.",
+  "runId": 45542395983,
+  "originalWorkflowConclusion": "failure",
+  "headSource": "1b01da259c30185b30fad70b85f25000ab6ca8ae",
+  "testedMerge": "04dcbaae033402c30623775a9e41b21aa4124636",
+  "reviewedValidatorCommit": "7189627c62cf7e2847efa5e7aecea9e31304cc73",
+  "allThreeReviewedReevaluationsPassed": true,
+  "coldSeconds": {
+    "baseline": [
+      1873.348,
+      2899.004,
+      1873.105
+    ],
+    "candidate": [
+      1063.697,
+      1712.088,
+      1097.093
+    ]
+  },
+  "warmSeconds": {
+    "baseline": [
+      1.883,
+      3.121,
+      1.995
+    ],
+    "candidate": [
+      1.441,
+      2.52,
+      1.828
+    ]
+  },
+  "meanColdSeconds": {
+    "baseline": 2215.1523333333334,
+    "candidate": 1290.9593333333332
+  },
+  "meanWarmSeconds": {
+    "baseline": 2.333,
+    "candidate": 1.9296666666666666
+  },
+  "pairedColdReductionPercent": [
+    43.21946589742003,
+    40.94219945884863,
+    41.429177755651715
+  ],
+  "ratioOfMeanColdReductionPercent": 41.721419610419574,
+  "measurementRunnerSeconds": {
+    "baseline": 6653.11,
+    "candidate": 3879.338
+  },
+  "provisionedBuildKitBudgetNotActualUsage": {
+    "baseline": {
+      "quotaCpuSeconds": 26612.44,
+      "GiBSeconds": 53224.88
+    },
+    "candidate": {
+      "quotaCpuSeconds": 15517.352,
+      "GiBSeconds": 31034.704
+    }
+  },
+  "fullExperimentRunnerSeconds": 13880.0,
+  "counts": {
+    "pairedVariants": 6,
+    "coldWarmRounds": 12,
+    "componentBuildInvocations": 36,
+    "exactMeasuredSmokedScannedFinalConfigurations": 18,
+    "buildFailures": 0,
+    "smokeScanFailures": 0,
+    "originalComparatorFailures": 3,
+    "realInvalidationControlsPassed": 6,
+    "baselineColdCompilerExecutions": 6,
+    "candidateColdCompilerExecutions": 3,
+    "warmCompilerExecutions": 0
+  },
+  "pairs": [
+    {
+      "pair": 1,
+      "jobId": 138963793553,
+      "originalJobConclusion": "failure",
+      "onlyOriginalFailure": "Verify same-runner paired controls: Unmatched actual builder ancestry: parentLimits",
+      "reviewedReevaluationPassed": true,
+      "artifact": {
+        "id": 14994880279,
+        "sha256": "9c04354e4ea4f887c360307095ac6a2b6e38164f0430fd84a72cfb2193c290ab"
+      },
+      "comparison": {
+        "source": "04dcbaae033402c30623775a9e41b21aa4124636",
+        "protocol": "same runner; distinct fresh builders; effective 4 CPU/8GiB/no swap; sequential AB or BA",
+        "cold": {
+          "baselineSeconds": 1873.348,
+          "candidateSeconds": 1063.697,
+          "reductionPercent": 43.21946589742003
+        },
+        "warm": {
+          "baselineSeconds": 1.883,
+          "candidateSeconds": 1.441
+        },
+        "buildRunnerSeconds": {
+          "baseline": 1875.418,
+          "candidate": 1065.324
+        },
+        "packageInventoryComparison": {
+          "api": {
+            "matchedPackageVersions": true,
+            "packages": 275
+          },
+          "worker": {
+            "matchedPackageVersions": true,
+            "packages": 64
+          },
+          "web": {
+            "matchedPackageVersions": true,
+            "packages": 72
+          }
+        },
+        "hostVariation": {
+          "baseline": {
+            "cpus": 4,
+            "memoryTotal": "16367524 kB",
+            "memoryAvailable": "14991728 kB",
+            "loadAverage": [
+              2.01611328125,
+              0.78076171875,
+              0.34765625
+            ],
+            "diskFreeBytes": 106790629376
+          },
+          "candidate": {
+            "cpus": 4,
+            "memoryTotal": "16367524 kB",
+            "memoryAvailable": "15134272 kB",
+            "loadAverage": [
+              1.64013671875,
+              1.802734375,
+              1.970703125
+            ],
+            "diskFreeBytes": 102144610304
+          }
+        },
+        "decision": "per-pair evidence only; adoption requires all three pairs, scans, smokes and actual invalidation controls"
+      },
+      "variants": {
+        "baseline": {
+          "coldSeconds": 1873.348,
+          "warmSeconds": 1.883,
+          "allBuildRunnerSeconds": 1875.418,
+          "compilerCache": {
+            "run-1/api": true,
+            "run-1/web": true,
+            "run-2/api": false,
+            "run-2/web": false
+          },
+          "exactSmokedScannedImages": [
+            {
+              "component": "api",
+              "imageId": "sha256:b7ea850c08fa71a7d7707d9b31d1caf3007cf832ffce686ccd36f07e7bfffaae",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "worker",
+              "imageId": "sha256:39b0f5f6d3247e63679945c8db356a73304731928913d26db5f5432345981ba0",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "web",
+              "imageId": "sha256:2605c491b99671479530243544243d0d763cc409fdf9ec4b18e036c2b7411f78",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            }
+          ],
+          "resources": {
+            "minHostMemoryAvailableKiB": 13890648,
+            "minHostDiskFreeBytes": 96079806464,
+            "maxHostLoad1": 7.18505859375,
+            "effectiveBuildKitCpus": 4,
+            "memoryBytes": 8589934592,
+            "swapBytes": 0
+          }
+        },
+        "candidate": {
+          "coldSeconds": 1063.697,
+          "warmSeconds": 1.441,
+          "allBuildRunnerSeconds": 1065.324,
+          "compilerCache": {
+            "run-1/api": true,
+            "run-1/web": false,
+            "run-2/api": false,
+            "run-2/web": false
+          },
+          "exactSmokedScannedImages": [
+            {
+              "component": "api",
+              "imageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "worker",
+              "imageId": "sha256:3894ec57c87c9f5079ab53a33291e449416d6861dc4ec700a99b65e0c3d8988f",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "web",
+              "imageId": "sha256:83fcc1cc2c4812af72f9a10666e95760be66c24e65c7e264540dea296f042f1c",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            }
+          ],
+          "resources": {
+            "minHostMemoryAvailableKiB": 13922260,
+            "minHostDiskFreeBytes": 94579703808,
+            "maxHostLoad1": 5.4404296875,
+            "effectiveBuildKitCpus": 4,
+            "memoryBytes": 8589934592,
+            "swapBytes": 0
+          }
+        }
+      },
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "fullJobRunnerSeconds": 5732.0,
+      "firstImageCheckSeconds": 69.0,
+      "secondImageCheckSeconds": 30.0,
+      "hardware": {
+        "cpuModelNames": [
+          "AMD EPYC 9V45 96-Core Processor"
+        ],
+        "runnerImage": {
+          "os": "ubuntu24",
+          "version": "20261116.376.1"
+        },
+        "hostMemoryTotal": "16367524 kB"
+      }
+    },
+    {
+      "pair": 2,
+      "jobId": 138963793854,
+      "originalJobConclusion": "failure",
+      "onlyOriginalFailure": "Verify same-runner paired controls: Unmatched actual builder ancestry: parentLimits",
+      "reviewedReevaluationPassed": true,
+      "artifact": {
+        "id": 14993377633,
+        "sha256": "4e4db167bfc270d0d936989f5249add3a543508fbc66d3e5a3342a8fb5d2bd0b"
+      },
+      "comparison": {
+        "source": "04dcbaae033402c30623775a9e41b21aa4124636",
+        "protocol": "same runner; distinct fresh builders; effective 4 CPU/8GiB/no swap; sequential AB or BA",
+        "cold": {
+          "baselineSeconds": 2899.004,
+          "candidateSeconds": 1712.088,
+          "reductionPercent": 40.94219945884863
+        },
+        "warm": {
+          "baselineSeconds": 3.121,
+          "candidateSeconds": 2.52
+        },
+        "buildRunnerSeconds": {
+          "baseline": 2902.413,
+          "candidate": 1714.9
+        },
+        "packageInventoryComparison": {
+          "api": {
+            "matchedPackageVersions": true,
+            "packages": 275
+          },
+          "worker": {
+            "matchedPackageVersions": true,
+            "packages": 64
+          },
+          "web": {
+            "matchedPackageVersions": true,
+            "packages": 72
+          }
+        },
+        "hostVariation": {
+          "baseline": {
+            "cpus": 4,
+            "memoryTotal": "16367524 kB",
+            "memoryAvailable": "14842136 kB",
+            "loadAverage": [
+              1.6767578125,
+              2.03662109375,
+              1.93798828125
+            ],
+            "diskFreeBytes": 102145597440
+          },
+          "candidate": {
+            "cpus": 4,
+            "memoryTotal": "16367524 kB",
+            "memoryAvailable": "14969396 kB",
+            "loadAverage": [
+              1.55859375,
+              0.55419921875,
+              0.20068359375
+            ],
+            "diskFreeBytes": 106787909632
+          }
+        },
+        "decision": "per-pair evidence only; adoption requires all three pairs, scans, smokes and actual invalidation controls"
+      },
+      "variants": {
+        "baseline": {
+          "coldSeconds": 2899.004,
+          "warmSeconds": 3.121,
+          "allBuildRunnerSeconds": 2902.413,
+          "compilerCache": {
+            "run-1/api": true,
+            "run-1/web": true,
+            "run-2/api": false,
+            "run-2/web": false
+          },
+          "exactSmokedScannedImages": [
+            {
+              "component": "api",
+              "imageId": "sha256:43a509abac1b34fc34a4c8a6d88ba8c0735edf6b7daf29d05029f8edb47a7dc5",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "worker",
+              "imageId": "sha256:698f35bf0d21bc0e8f6c5d6f7e1a2656f637b10ccaf0309390f9e44521cc78b7",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "web",
+              "imageId": "sha256:07ef658e33693350054e849d157d6b344f7700405df8dec0f1a51327c5d93076",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            }
+          ],
+          "resources": {
+            "minHostMemoryAvailableKiB": 14037456,
+            "minHostDiskFreeBytes": 91661586432,
+            "maxHostLoad1": 7.13525390625,
+            "effectiveBuildKitCpus": 4,
+            "memoryBytes": 8589934592,
+            "swapBytes": 0
+          }
+        },
+        "candidate": {
+          "coldSeconds": 1712.088,
+          "warmSeconds": 2.52,
+          "allBuildRunnerSeconds": 1714.9,
+          "compilerCache": {
+            "run-1/api": true,
+            "run-1/web": false,
+            "run-2/api": false,
+            "run-2/web": false
+          },
+          "exactSmokedScannedImages": [
+            {
+              "component": "api",
+              "imageId": "sha256:b8558809c2085ab71d049d2a9bd7825bc63448d8caf84f33fb7486522770af8c",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "worker",
+              "imageId": "sha256:c456bccbfd78b20f3a393096eb5e4903a329d21f45c226054d6a6f218f840106",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "web",
+              "imageId": "sha256:fa88c929e8367ade4d682313ef55521b9ba85554469b71ed416ca3f4a176ff4b",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            }
+          ],
+          "resources": {
+            "minHostMemoryAvailableKiB": 13884012,
+            "minHostDiskFreeBytes": 99003686912,
+            "maxHostLoad1": 6.68115234375,
+            "effectiveBuildKitCpus": 4,
+            "memoryBytes": 8589934592,
+            "swapBytes": 0
+          }
+        }
+      },
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "fullJobRunnerSeconds": 4927.0,
+      "firstImageCheckSeconds": 112.0,
+      "secondImageCheckSeconds": 46.0,
+      "hardware": {
+        "cpuModelNames": [
+          "AMD EPYC 7763 64-Core Processor"
+        ],
+        "runnerImage": {
+          "os": "ubuntu24",
+          "version": "20261116.376.1"
+        },
+        "hostMemoryTotal": "16367524 kB"
+      }
+    },
+    {
+      "pair": 3,
+      "jobId": 138963793758,
+      "originalJobConclusion": "failure",
+      "onlyOriginalFailure": "Verify same-runner paired controls: Unmatched actual builder ancestry: parentLimits",
+      "reviewedReevaluationPassed": true,
+      "artifact": {
+        "id": 14993176027,
+        "sha256": "a6e009373c4f373f204780a025cef7ee17605c91272b95fb3c940ba603beb3ac"
+      },
+      "comparison": {
+        "source": "04dcbaae033402c30623775a9e41b21aa4124636",
+        "protocol": "same runner; distinct fresh builders; effective 4 CPU/8GiB/no swap; sequential AB or BA",
+        "cold": {
+          "baselineSeconds": 1873.105,
+          "candidateSeconds": 1097.093,
+          "reductionPercent": 41.429177755651715
+        },
+        "warm": {
+          "baselineSeconds": 1.995,
+          "candidateSeconds": 1.828
+        },
+        "buildRunnerSeconds": {
+          "baseline": 1875.279,
+          "candidate": 1099.114
+        },
+        "packageInventoryComparison": {
+          "api": {
+            "matchedPackageVersions": true,
+            "packages": 275
+          },
+          "worker": {
+            "matchedPackageVersions": true,
+            "packages": 64
+          },
+          "web": {
+            "matchedPackageVersions": true,
+            "packages": 72
+          }
+        },
+        "hostVariation": {
+          "baseline": {
+            "cpus": 4,
+            "memoryTotal": "16078416 kB",
+            "memoryAvailable": "14654340 kB",
+            "loadAverage": [
+              1.47314453125,
+              0.529296875,
+              0.203125
+            ],
+            "diskFreeBytes": 110235160576
+          },
+          "candidate": {
+            "cpus": 4,
+            "memoryTotal": "16078416 kB",
+            "memoryAvailable": "14690972 kB",
+            "loadAverage": [
+              2.07958984375,
+              1.8349609375,
+              1.85986328125
+            ],
+            "diskFreeBytes": 105591447552
+          }
+        },
+        "decision": "per-pair evidence only; adoption requires all three pairs, scans, smokes and actual invalidation controls"
+      },
+      "variants": {
+        "baseline": {
+          "coldSeconds": 1873.105,
+          "warmSeconds": 1.995,
+          "allBuildRunnerSeconds": 1875.279,
+          "compilerCache": {
+            "run-1/api": true,
+            "run-1/web": true,
+            "run-2/api": false,
+            "run-2/web": false
+          },
+          "exactSmokedScannedImages": [
+            {
+              "component": "api",
+              "imageId": "sha256:9f9206968591d246ad4a7fa76c5dba500e64eed4faa2830e431c44d562c96765",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "worker",
+              "imageId": "sha256:87f05031d4243e1351d930b738d75d4289eb962978c72e9404c27d1887a99c66",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "web",
+              "imageId": "sha256:24f80be5a2f418b75a5c420aad142758a5be5e34055b72373b9c50cd16435456",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            }
+          ],
+          "resources": {
+            "minHostMemoryAvailableKiB": 13753912,
+            "minHostDiskFreeBytes": 99525046272,
+            "maxHostLoad1": 6.83154296875,
+            "effectiveBuildKitCpus": 4,
+            "memoryBytes": 8589934592,
+            "swapBytes": 0
+          }
+        },
+        "candidate": {
+          "coldSeconds": 1097.093,
+          "warmSeconds": 1.828,
+          "allBuildRunnerSeconds": 1099.114,
+          "compilerCache": {
+            "run-1/api": true,
+            "run-1/web": false,
+            "run-2/api": false,
+            "run-2/web": false
+          },
+          "exactSmokedScannedImages": [
+            {
+              "component": "api",
+              "imageId": "sha256:314e4d782a35371dde5e8c6b58b68bd0669efaa4bbee3b696a55f4fbba0c7a77",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "worker",
+              "imageId": "sha256:dc0ea88d6fb4dbeda858a294bf452b10b8b1752ec202ac44211c4b882b560232",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            },
+            {
+              "component": "web",
+              "imageId": "sha256:844d0e03c618bab884cfe8e7d45edead45ba9ed59cacdf5397136e41f3b1b91e",
+              "smokeMatches": true,
+              "scanMatches": true,
+              "unchangedAfterChecks": true
+            }
+          ],
+          "resources": {
+            "minHostMemoryAvailableKiB": 13639520,
+            "minHostDiskFreeBytes": 98069872640,
+            "maxHostLoad1": 5.71435546875,
+            "effectiveBuildKitCpus": 4,
+            "memoryBytes": 8589934592,
+            "swapBytes": 0
+          }
+        }
+      },
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "fullJobRunnerSeconds": 3221.0,
+      "firstImageCheckSeconds": 70.0,
+      "secondImageCheckSeconds": 35.0,
+      "hardware": {
+        "cpuModelNames": [
+          "Intel(R) Xeon(R) 6975P-C"
+        ],
+        "runnerImage": {
+          "os": "ubuntu24",
+          "version": "20261116.133.1"
+        },
+        "hostMemoryTotal": "16078416 kB"
+      }
+    }
+  ],
+  "actualInvalidationControls": [
+    {
+      "control": "api-source",
+      "compilerReused": true,
+      "originalImageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+      "changedImageId": "sha256:4d1aabf48a834033b0ac8eb817929c829e12154cc738a557e32f464fba957a5e"
+    },
+    {
+      "control": "vite-input",
+      "compilerReused": true,
+      "originalImageId": "sha256:83fcc1cc2c4812af72f9a10666e95760be66c24e65c7e264540dea296f042f1c",
+      "changedImageId": "sha256:39d786a1ceee7327648e561e19ceb1853b9e8aaefccbdb4c8d615843ebfb9018"
+    },
+    {
+      "control": "patch-integrity",
+      "expectedChecksumRejection": true
+    },
+    {
+      "control": "recipe-rebuild",
+      "compilerReused": false,
+      "originalImageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+      "changedImageId": "sha256:a1a70d5dfd8061c005140b2702aa2749892950a2bd7d220d487f792d293df2f5"
+    },
+    {
+      "control": "security-parent-refresh",
+      "compilerReused": false,
+      "originalImageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+      "changedImageId": "sha256:20e6c672a19f0fb266f0656ca562b26bc5e7d08a2042287418093ade71b26bc3"
+    },
+    {
+      "control": "compiler-flags",
+      "compilerReused": false,
+      "originalImageId": "sha256:05d1f9b89949f87dcf92bccdab2100317b1601f720dc32f0d45b1a5770a5d1f9",
+      "changedImageId": "sha256:ab511d171f57788fdf0bc9eaffff970b33758e2b74df3d05c0aadf2ecf7e5b0e"
+    }
+  ],
+  "decision": "Retain sequential parallelism1; shared application-independent compiler graph is supported by all three paired cold reductions and actual invalidation/security/image gates. Final integrated required CI remains necessary before merge.",
+  "limits": [
+    "Results apply to the frozen application/source and Dockerfile experiment, not byte-identical final integration artifacts; later application tests, main features, migration renumbering and caller fixes change build contexts. Final images require their own normal smoke/scans.",
+    "Each pair shares host/hardware/image/effective limits; CPU models and host image/memory vary across pairs and are retained. Three pairs are not a production latency SLO or broad hardware distribution.",
+    "Warm results use one disposable runner-local builder; no cross-job/external cache is imported/exported. No private signing key/cache is uploaded.",
+    "Resource samples are host observations, not isolated container CPU/RSS measurements. First-variant loaded images remain during second variant, so disk occupancy is order-dependent.",
+    "Runner seconds and fixed resource budgets are cost proxies, not billed monetary charges; full experiment includes setup, full gates and one-time real invalidation compilation. No whole-CI percentage reduction is claimed."
+  ],
+  "retainedFileSha256": {
+    "README.md": "3052e09bf74eaf61d049915f13e09db619a2d9ae74a4d1c9abd30f87012c07e1",
+    "actual-invalidation-log-proof.json": "3aab9b4bb49fbed09e929cc6521a9dee483f42eae1baa7169c5504fe225aa0ea",
+    "actual-invalidation.json": "f3fbf56b9645032dddf654fa5cd3705f8a53c2507231006aefd402276f33777c",
+    "actual-patch-integrity.txt": "784517374588f6f33ac4a58b1854544e7b9a2bdfc5827c55b4b0b66a21c2ca8d",
+    "original-jobs.json": "3e8cf35d53bc968cabd581f2032c0b90cc1314a3b940c52ae85e8fbe237676f3",
+    "pair-1/api-matched-package-versions.json": "aaca7903ed10a46d45fa21a3c80ad91993a94003785518f69cadb66ef077d593",
+    "pair-1/baseline/build/result.json": "883d3733e5e112632893c1541e17605224cadd727820a7db331cb70542362d32",
+    "pair-1/baseline/checks/api-security.json": "e8d62c251d2a13d6fced0f7e26093e0a58ccf767a8f482d78d6fd90641390fb8",
+    "pair-1/baseline/checks/identity-verification.json": "29756444cb5ef5b146e7f4e41e900a6df90bb5a16b76c1b56f937ad0a38752fd",
+    "pair-1/baseline/checks/web-security.json": "92ce419b0e7484f3d0799be8567013d21b8230e89cdd0f4d9dd8012a0185e277",
+    "pair-1/baseline/checks/worker-security.json": "ff8d6968c29450d3a7748f4676ac45d2583c16cbe2fedf3eaf1c7a01019cf0ab",
+    "pair-1/baseline/compiler-cache.json": "c2d55ef57908b0ee7d4f0c95ed71ab4c7d4486ddf40637b1d372c8545d239fb3",
+    "pair-1/candidate/build/result.json": "631ccef9ab2b9471a658b172109fe0f4327633ecf7d93da72930e9e42da6f914",
+    "pair-1/candidate/checks/api-security.json": "6012e6f46a215bc8915683b0c11387a993a64b0a537d8345992082e18fc0c217",
+    "pair-1/candidate/checks/identity-verification.json": "c27b335ff0c7ef873fc89f3f9103e1a5c7ca6e7acb2ab279e79995a17147c2a1",
+    "pair-1/candidate/checks/web-security.json": "c4f9dc4a786d4ff5e8a2a97bc89c345cbf7df49531c42bb94da06ffa758deceb",
+    "pair-1/candidate/checks/worker-security.json": "b1d00993021378dc086981965d06ca2943f75c45ee5577c99e89c7dae65484d4",
+    "pair-1/candidate/compiler-cache.json": "2dec390fb49d8565ec0c5421288c4c45d134d0e441d56ccbc473047b00bad3f6",
+    "pair-1/web-matched-package-versions.json": "c6f73538c76091fbad9aa0bfb4a08defa0f526da3586a88019a17d61332af078",
+    "pair-1/worker-matched-package-versions.json": "86d3b751fc39313681bd6e8dc5633309feea9d120626c50ea8a1f77f98e8abf8",
+    "pair-2/api-matched-package-versions.json": "aaca7903ed10a46d45fa21a3c80ad91993a94003785518f69cadb66ef077d593",
+    "pair-2/baseline/build/result.json": "b6c948ea63905734fbb0be68e40ec1b5f561ff7e56f0428890b067434714741c",
+    "pair-2/baseline/checks/api-security.json": "0ee10e7dfc15f2aa2acf9cd5f65903a51088ec990908d37c72bd18f6c4ff2e05",
+    "pair-2/baseline/checks/identity-verification.json": "f6a3144a84e45e6e4734eb30d8ac73522058ed36299597830664bce0dc0625eb",
+    "pair-2/baseline/checks/web-security.json": "1b4ae77a86a3760bc0ae21fcd76d341abce864bce7a82eeaf404da09feaf1ce1",
+    "pair-2/baseline/checks/worker-security.json": "c1998856349c1c952d21a0b23e68a95ae8d26c4f719ae7f0bd804eab0c722dae",
+    "pair-2/baseline/compiler-cache.json": "c2d55ef57908b0ee7d4f0c95ed71ab4c7d4486ddf40637b1d372c8545d239fb3",
+    "pair-2/candidate/build/result.json": "ab3526f169ca4f320c538faf4c09ef504c7e150b0e38e8776a157e684258bb81",
+    "pair-2/candidate/checks/api-security.json": "6868c4b8aeb4cfbe0936327bfe8aee850b25e2d96dbd0d3d12b25f8c8c5e916b",
+    "pair-2/candidate/checks/identity-verification.json": "5df27180a58c291b314b6a4d265e42d6a98060d193bfd190ca48dc7d3f77252c",
+    "pair-2/candidate/checks/web-security.json": "95924c20085975a67f3a9220513dde808dcd23ddea206166e5942d2a78c643fc",
+    "pair-2/candidate/checks/worker-security.json": "60845d6d0c40fd7748854deee5b1692cda7c454ff07d1fd33f7112a91e3df199",
+    "pair-2/candidate/compiler-cache.json": "2dec390fb49d8565ec0c5421288c4c45d134d0e441d56ccbc473047b00bad3f6",
+    "pair-2/web-matched-package-versions.json": "c6f73538c76091fbad9aa0bfb4a08defa0f526da3586a88019a17d61332af078",
+    "pair-2/worker-matched-package-versions.json": "86d3b751fc39313681bd6e8dc5633309feea9d120626c50ea8a1f77f98e8abf8",
+    "pair-3/api-matched-package-versions.json": "aaca7903ed10a46d45fa21a3c80ad91993a94003785518f69cadb66ef077d593",
+    "pair-3/baseline/build/result.json": "ede8a538045c797839270957700dfab4dd0119957e40b1570ddcdbc570db1e40",
+    "pair-3/baseline/checks/api-security.json": "f2b446005648174f33e91efb333df89bc4806f4f27f14221a1fb3c3982453865",
+    "pair-3/baseline/checks/identity-verification.json": "de08b5d03b07e2e74d645f8643169b06d8faf708b192a07dd10c67eee8e855af",
+    "pair-3/baseline/checks/web-security.json": "fdaefe57f2347f395f13edcf10c13e08cb41f86529d1a2975a4192a05e95a202",
+    "pair-3/baseline/checks/worker-security.json": "4c407213a202b34c5f865b5d1da3374dcb6351a98648543d4839fe7451949051",
+    "pair-3/baseline/compiler-cache.json": "c2d55ef57908b0ee7d4f0c95ed71ab4c7d4486ddf40637b1d372c8545d239fb3",
+    "pair-3/candidate/build/result.json": "0a26d1eb6761f19a9d8ed8332df4023a31186a8b2a9e1da5dc696a0e44862db7",
+    "pair-3/candidate/checks/api-security.json": "7b590a70ea11cb2c652b0558b72f937e394ed7a90eace88ea7033d95b5185020",
+    "pair-3/candidate/checks/identity-verification.json": "f87647c83ea570b325d3739d31ac75c4622a3e6b78024eb97b8f4f6b2dd958e4",
+    "pair-3/candidate/checks/web-security.json": "d922db83cfd4cf90f2b18c0972ac8c511fbb68c6bd6c30af15a4e75238ec591f",
+    "pair-3/candidate/checks/worker-security.json": "cd866d7f4527311eda796af7b728e068e4498f3dc6cc3d82cd44eaaf06c43db3",
+    "pair-3/candidate/compiler-cache.json": "2dec390fb49d8565ec0c5421288c4c45d134d0e441d56ccbc473047b00bad3f6",
+    "pair-3/web-matched-package-versions.json": "c6f73538c76091fbad9aa0bfb4a08defa0f526da3586a88019a17d61332af078",
+    "pair-3/worker-matched-package-versions.json": "86d3b751fc39313681bd6e8dc5633309feea9d120626c50ea8a1f77f98e8abf8",
+    "pair-3-reevaluation.json": "82844b6fb2387c7fb5412b2ceb81e40cc062f8296652702f22fdcce17cf15f2c"
+  },
+  "oneTimeInvalidationRunnerSeconds": 2445.0,
+  "retainedMetadataSanitization": "Only the upstream NGINX maintainer email in six retained web scan config/history copies is redacted; findings, image identities and original archive SHA256 values are unchanged. Original unmodified scan bytes remain in the pinned hosted artifacts.",
+  "originalUnsanitizedScanSha256": {
+    "pair-1/baseline/checks/web-security.json": "a4b6ef165e97d326b850cc9f08d1ab79f2af6f628f586ee952123c1148d1a82c",
+    "pair-1/candidate/checks/web-security.json": "786c37b68ca8f73b1aa77e5e005a1ab841ef59f1f7b3afb3dc624345f76339ef",
+    "pair-2/baseline/checks/web-security.json": "349e750265ce05c742cccbb1409684d2da014ee34c4424928b8e8ab81f71e4f2",
+    "pair-2/candidate/checks/web-security.json": "713c3d75ba1e984592286cfc2e93737371da717b3769fe99da5f6bc28487887b",
+    "pair-3/baseline/checks/web-security.json": "bc8da93496a4aa276249aadac64d42bacec7df476b968ec823ea4bf9531900dc",
+    "pair-3/candidate/checks/web-security.json": "4e085301e5ffe3b9844a6d55e5bdbb372317ba51fae559d7dddcbd9a870c67ba"
+  }
+}

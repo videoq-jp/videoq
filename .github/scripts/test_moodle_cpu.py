@@ -51,12 +51,27 @@ class MoodleCpuSafetyTests(unittest.TestCase):
                 probe.native_transport_result(value)
 
     def test_node_base_is_read_from_the_reviewed_immutable_api_dockerfile(self):
-        self.assertRegex(install.node_image(), r'^node:\d+\.\d+\.\d+-alpine@sha256:[a-f0-9]{64}$')
+        self.assertEqual(install.node_image(), install.REVIEWED_NODE_IMAGE)
         path = self.root / 'Dockerfile'
+        pin = install.REVIEWED_NODE_IMAGE
+        for source in [f'FROM {pin} AS base',
+                       f'FROM {pin} AS openssl-security-base\nFROM openssl-security-base AS base',
+                       f'FROM {pin} AS security\nFROM security AS intermediate\nFROM intermediate AS base']:
+            with self.subTest(source=source):
+                path.write_text(source)
+                self.assertEqual(install.node_image(path), pin)
         for source in ['FROM node:latest AS base', 'FROM unreviewed.invalid/node@sha256:' + 'a' * 64 + ' AS base',
-                       'FROM node:26.13.0-alpine AS base']:
-            path.write_text(source)
-            with self.assertRaises(ValueError):
+                       'FROM node:26.13.0-alpine AS base',
+                       f'FROM {pin} AS decoy\nFROM node:latest AS actual\nFROM actual AS base',
+                       f'FROM {pin} AS decoy\nFROM absent AS base',
+                       f'FROM {pin} AS decoy',
+                       f'FROM {pin[:-1]}0 AS base',
+                       f'FROM {pin} AS security\nFROM node:latest AS SECURITY\nFROM security AS base',
+                       f'FROM {pin} AS base\nFROM {pin} AS BASE',
+                       'FROM other AS base\nFROM base AS other',
+                       'FROM base AS base']:
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                path.write_text(source)
                 install.node_image(path)
 
     def test_node_transport_recomputes_success_and_discards_private_or_invalid_metadata(self):

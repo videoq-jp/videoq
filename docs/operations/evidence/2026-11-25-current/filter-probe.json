@@ -1,0 +1,36 @@
+{
+  "at": "2026-11-25T03:10:41.653Z",
+  "index": "videoq-acceptance-20261125-c33d",
+  "transport": "Wrangler official REST queryById; native Worker query diagnosed separately",
+  "results": [
+    {
+      "count": 100,
+      "filterBytes": 332,
+      "passed": true
+    },
+    {
+      "count": 200,
+      "filterBytes": 732,
+      "passed": false,
+      "exceeds2048": false
+    },
+    {
+      "count": 300,
+      "filterBytes": 1132,
+      "passed": false,
+      "exceeds2048": false
+    },
+    {
+      "count": 400,
+      "filterBytes": 1532,
+      "passed": false,
+      "exceeds2048": true
+    },
+    {
+      "count": 500,
+      "filterBytes": 1932,
+      "passed": false,
+      "exceeds2048": true
+    }
+  ]
+}

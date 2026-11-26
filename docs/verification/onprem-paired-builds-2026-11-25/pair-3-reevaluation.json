@@ -1,0 +1,73 @@
+{
+  "scope": "Pair 3 only; original hosted comparator failed, corrected validator re-evaluates retained raw evidence; no three-pair adoption claim",
+  "runId": 45542395983,
+  "jobId": 138963793758,
+  "headSource": "1b01da259c30185b30fad70b85f25000ab6ca8ae",
+  "testedMerge": "04dcbaae033402c30623775a9e41b21aa4124636",
+  "originalJobConclusion": "failure",
+  "originalFailedStep": "Verify same-runner paired controls",
+  "originalError": "Unmatched actual builder ancestry: parentLimits",
+  "cause": "Only the exact selected container-owned scope name differed; fresh distinct builders necessarily have different container IDs. Owned resource limits and every external ancestor path/limit were equal.",
+  "artifact": {
+    "id": 14993176027,
+    "sha256": "a6e009373c4f373f204780a025cef7ee17605c91272b95fb3c940ba603beb3ac"
+  },
+  "reevaluationValidatorCommit": "7189627c62cf7e2847efa5e7aecea9e31304cc73",
+  "reevaluation": {
+    "source": "04dcbaae033402c30623775a9e41b21aa4124636",
+    "protocol": "same runner; distinct fresh builders; effective 4 CPU/8GiB/no swap; sequential AB or BA",
+    "cold": {
+      "baselineSeconds": 1873.105,
+      "candidateSeconds": 1097.093,
+      "reductionPercent": 41.429177755651715
+    },
+    "warm": {
+      "baselineSeconds": 1.995,
+      "candidateSeconds": 1.828
+    },
+    "buildRunnerSeconds": {
+      "baseline": 1875.279,
+      "candidate": 1099.114
+    },
+    "packageInventoryComparison": {
+      "api": {
+        "matchedPackageVersions": true,
+        "packages": 275
+      },
+      "worker": {
+        "matchedPackageVersions": true,
+        "packages": 64
+      },
+      "web": {
+        "matchedPackageVersions": true,
+        "packages": 72
+      }
+    },
+    "hostVariation": {
+      "baseline": {
+        "cpus": 4,
+        "memoryTotal": "16078416 kB",
+        "memoryAvailable": "14654340 kB",
+        "loadAverage": [
+          1.47314453125,
+          0.529296875,
+          0.203125
+        ],
+        "diskFreeBytes": 110235160576
+      },
+      "candidate": {
+        "cpus": 4,
+        "memoryTotal": "16078416 kB",
+        "memoryAvailable": "14690972 kB",
+        "loadAverage": [
+          2.07958984375,
+          1.8349609375,
+          1.85986328125
+        ],
+        "diskFreeBytes": 105591447552
+      }
+    },
+    "decision": "per-pair evidence only; adoption requires all three pairs, scans, smokes and actual invalidation controls"
+  },
+  "remaining": "Pairs 1 and 2, real invalidation controls, complete runner resource/cost/failure comparison and final normal CI still required."
+}

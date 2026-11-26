@@ -27,10 +27,24 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
         created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
       )`);
       return {
+        lastError: async jobId => (await pool.query('SELECT last_error FROM job_executions WHERE job_id=$1',[jobId])).rows[0]?.last_error,
         repository: createPostgresJobRepository({ DATABASE_POOL: pool } as Bindings),
         expireLease: async jobId => { await pool.query("UPDATE job_executions SET lease_until='2000-01-01' WHERE job_id=$1", [jobId]); },
         dispose,
       };
     } catch (error) { await dispose(); throw error; }
   });
+});
+
+import { createServer } from 'node:net';
+import { expect,it } from 'vitest';
+import { classifyJobFailure } from '../../src/application/job-failure';
+it('classifies an actual refused PostgreSQL connection without retaining connection details',async()=>{
+ const server=createServer();await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const address=server.address();if(!address || typeof address==='string')throw new Error('fixture address');
+ await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
+ const repository=createPostgresJobRepository({DATABASE_URL:`postgresql://synthetic@127.0.0.1:${address.port}/postgres`} as Bindings);
+ let failure:unknown;try{await repository.claim({jobId:'refused',jobType:'index_video_transcript',payloadSha256:'a'.repeat(64)});}catch(error){failure=error;}
+ expect(classifyJobFailure(failure)).toEqual({error_code:'DATABASE_UNAVAILABLE',retryable:true});
+ expect(failure).toBeInstanceOf(Error);expect((failure as Error).message).toBe('DATABASE_UNAVAILABLE');
 });

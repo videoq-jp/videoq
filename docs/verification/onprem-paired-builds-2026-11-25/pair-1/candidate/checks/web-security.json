@@ -1,0 +1,1375 @@
+{
+  "SchemaVersion": 2,
+  "Scanner": "Grype",
+  "ArtifactType": "container_image",
+  "ArtifactName": "videoq-web",
+  "Metadata": {
+    "RepoDigests": [],
+    "OS": {
+      "Family": "alpine",
+      "Name": "3.24.4"
+    },
+    "ImageConfig": {
+      "architecture": "amd64",
+      "config": {
+        "ExposedPorts": {
+          "80/tcp": {}
+        },
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "NGINX_VERSION=1.31.9",
+          "PKG_RELEASE=1",
+          "DYNPKG_RELEASE=1",
+          "NJS_VERSION=1.0.2",
+          "NJS_RELEASE=1",
+          "ACME_VERSION=0.4.2",
+          "VIDEOQ_CSP_STORAGE_ORIGINS="
+        ],
+        "Entrypoint": [
+          "/docker-entrypoint.sh"
+        ],
+        "Cmd": [
+          "nginx",
+          "-g",
+          "daemon off;"
+        ],
+        "WorkingDir": "/",
+        "Labels": {
+          "maintainer": "NGINX Docker Maintainers <[redacted-upstream-maintainer-email]>"
+        },
+        "StopSignal": "SIGQUIT"
+      },
+      "created": "2026-11-25T04:40:49.0172334Z",
+      "history": [
+        {
+          "created": "2026-11-05T18:00:28.583714131Z",
+          "created_by": "ADD alpine-minirootfs-3.24.4-x86_64.tar.gz / # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-05T18:00:28.583714131Z",
+          "created_by": "CMD [\"/bin/sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:34:34.829698266Z",
+          "created_by": "LABEL maintainer=NGINX Docker Maintainers <[redacted-upstream-maintainer-email]>",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:34:34.829698266Z",
+          "created_by": "ENV NGINX_VERSION=1.31.9",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:34:34.829698266Z",
+          "created_by": "ENV PKG_RELEASE=1",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:34:34.829698266Z",
+          "created_by": "ENV DYNPKG_RELEASE=1",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:34:34.829698266Z",
+          "created_by": "RUN /bin/sh -c set -x     && addgroup -g 101 -S nginx     && adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx     && apkArch=\"$(cat /etc/apk/arch)\"     && nginxPackages=\"         nginx=${NGINX_VERSION}-r${PKG_RELEASE}     \"     && apk add --no-cache --virtual .checksum-deps         openssl     && case \"$apkArch\" in         x86_64|aarch64)             set -x             && KEY_SHA512=\"e09fa32f0a0eab2b879ccbbc4d0e4fb9751486eedda75e35fac65802cc9faa266425edf83e261137a2f4d16281ce2c1a5f4502930fe75154723da014214f0655\"             && wget -O /tmp/nginx_signing.rsa.pub https://nginx.org/keys/nginx_signing.rsa.pub             && if echo \"$KEY_SHA512 */tmp/nginx_signing.rsa.pub\" | sha512sum -c -; then                 echo \"key verification succeeded!\";                 mv /tmp/nginx_signing.rsa.pub /etc/apk/keys/;             else                 echo \"key verification failed!\";                 exit 1;             fi             && DEPS=$(apk query --summarize depends --recursive --no-cache                        --repository \"@nginxorg https://nginx.org/packages/mainline/alpine/v$(egrep -o '^[0-9]+\\.[0-9]+' /etc/alpine-release)/main\"                        ${nginxPackages/=/@nginxorg=})             && apk add --no-cache $DEPS             && apk add --repositories-file /dev/null -X \"https://nginx.org/packages/mainline/alpine/v$(egrep -o '^[0-9]+\\.[0-9]+' /etc/alpine-release)/main\" --no-cache $nginxPackages             ;;         *)             set -x             && tempDir=\"$(mktemp -d)\"             && chown nobody:nobody $tempDir             && apk add --no-cache --virtual .build-deps                 gcc                 libc-dev                 make                 openssl-dev                 pcre2-dev                 zlib-dev                 linux-headers                 bash                 alpine-sdk                 findutils                 curl             && su nobody -s /bin/sh -c \"                 export HOME=${tempDir}                 && cd ${tempDir}                 && curl -f -L -O https://github.com/nginx/pkg-oss/archive/${NGINX_VERSION}-${PKG_RELEASE}.tar.gz                 && PKGOSSCHECKSUM=\\\"220da8433bf53265cf51abeaa0b6fdd9b6c77d16ee75340cb7bfd6412513d4d0a5b82e38bdf24a0343956906ea43748eb9c8615e917f6488915c7d6b69ccb8c0 *${NGINX_VERSION}-${PKG_RELEASE}.tar.gz\\\"                 && if [ \\\"\\$(openssl sha512 -r ${NGINX_VERSION}-${PKG_RELEASE}.tar.gz)\\\" = \\\"\\$PKGOSSCHECKSUM\\\" ]; then                     echo \\\"pkg-oss tarball checksum verification succeeded!\\\";                 else                     echo \\\"pkg-oss tarball checksum verification failed!\\\";                     exit 1;                 fi                 && tar xzvf ${NGINX_VERSION}-${PKG_RELEASE}.tar.gz                 && cd pkg-oss-${NGINX_VERSION}-${PKG_RELEASE}                 && cd alpine                 && make base                 && apk index --allow-untrusted -o ${tempDir}/packages/alpine/${apkArch}/APKINDEX.tar.gz ${tempDir}/packages/alpine/${apkArch}/*.apk                 && abuild-sign -k ${tempDir}/.abuild/abuild-key.rsa ${tempDir}/packages/alpine/${apkArch}/APKINDEX.tar.gz                 \"             && cp ${tempDir}/.abuild/abuild-key.rsa.pub /etc/apk/keys/             && apk del --no-network .build-deps             && DEPS=$(apk query --summarize depends --recursive --no-cache                        --repository \"@nginxorg ${tempDir}/packages/alpine/\"                        ${nginxPackages/=/@nginxorg=})             && apk add --no-cache $DEPS             && apk add --repositories-file /dev/null -X ${tempDir}/packages/alpine/ --no-cache $nginxPackages             ;;     esac     && apk del --no-network .checksum-deps     && if [ -n \"$tempDir\" ]; then rm -rf \"$tempDir\"; fi     && if [ -f \"/etc/apk/keys/abuild-key.rsa.pub\" ]; then rm -f /etc/apk/keys/abuild-key.rsa.pub; fi     && apk add --no-cache gettext-envsubst     && apk add --no-cache tzdata     && ln -sf /dev/stdout /var/log/nginx/access.log     && ln -sf /dev/stderr /var/log/nginx/error.log     && mkdir /docker-entrypoint.d # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-18T16:34:34.888828719Z",
+          "created_by": "COPY docker-entrypoint.sh / # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-18T16:34:34.925870009Z",
+          "created_by": "COPY 10-listen-on-ipv6-by-default.sh /docker-entrypoint.d # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-18T16:34:34.952925489Z",
+          "created_by": "COPY 15-local-resolvers.envsh /docker-entrypoint.d # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-18T16:34:34.974492186Z",
+          "created_by": "COPY 20-envsubst-on-templates.sh /docker-entrypoint.d # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-18T16:34:34.998554347Z",
+          "created_by": "COPY 30-tune-worker-processes.sh /docker-entrypoint.d # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-18T16:34:34.998554347Z",
+          "created_by": "ENTRYPOINT [\"/docker-entrypoint.sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:34:34.998554347Z",
+          "created_by": "EXPOSE map[80/tcp:{}]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:34:34.998554347Z",
+          "created_by": "STOPSIGNAL SIGQUIT",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:34:34.998554347Z",
+          "created_by": "CMD [\"nginx\" \"-g\" \"daemon off;\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:35:46.482258624Z",
+          "created_by": "ENV NJS_VERSION=1.0.2",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:35:46.482258624Z",
+          "created_by": "ENV NJS_RELEASE=1",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:35:46.482258624Z",
+          "created_by": "ENV ACME_VERSION=0.4.2",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-18T16:35:46.482258624Z",
+          "created_by": "RUN /bin/sh -c set -x     && apkArch=\"$(cat /etc/apk/arch)\"     && nginxPackages=\"         nginx=${NGINX_VERSION}-r${PKG_RELEASE}         nginx-module-xslt=${NGINX_VERSION}-r${DYNPKG_RELEASE}         nginx-module-geoip=${NGINX_VERSION}-r${DYNPKG_RELEASE}         nginx-module-image-filter=${NGINX_VERSION}-r${DYNPKG_RELEASE}         nginx-module-njs=${NGINX_VERSION}.${NJS_VERSION}-r${NJS_RELEASE}         nginx-module-acme=${NGINX_VERSION}.${ACME_VERSION}-r${PKG_RELEASE}     \"     && apk add --no-cache --virtual .checksum-deps         openssl     && case \"$apkArch\" in         x86_64|aarch64)             apk add -X \"https://nginx.org/packages/mainline/alpine/v$(egrep -o '^[0-9]+\\.[0-9]+' /etc/alpine-release)/main\" --no-cache $nginxPackages             ;;         *)             set -x             && tempDir=\"$(mktemp -d)\"             && chown nobody:nobody $tempDir             && apk add --no-cache --virtual .build-deps                 gcc                 libc-dev                 make                 openssl-dev                 pcre2-dev                 zlib-dev                 linux-headers                 libxslt-dev                 gd-dev                 geoip-dev                 libedit-dev                 bash                 alpine-sdk                 findutils                 curl                 cargo                 clang-libclang             && su nobody -s /bin/sh -c \"                 export HOME=${tempDir}                 && cd ${tempDir}                 && curl -f -L -O https://github.com/nginx/pkg-oss/archive/${NGINX_VERSION}-${PKG_RELEASE}.tar.gz                 && PKGOSSCHECKSUM=\\\"220da8433bf53265cf51abeaa0b6fdd9b6c77d16ee75340cb7bfd6412513d4d0a5b82e38bdf24a0343956906ea43748eb9c8615e917f6488915c7d6b69ccb8c0 *${NGINX_VERSION}-${PKG_RELEASE}.tar.gz\\\"                 && if [ \\\"\\$(openssl sha512 -r ${NGINX_VERSION}-${PKG_RELEASE}.tar.gz)\\\" = \\\"\\$PKGOSSCHECKSUM\\\" ]; then                     echo \\\"pkg-oss tarball checksum verification succeeded!\\\";                 else                     echo \\\"pkg-oss tarball checksum verification failed!\\\";                     exit 1;                 fi                 && tar xzvf ${NGINX_VERSION}-${PKG_RELEASE}.tar.gz                 && cd pkg-oss-${NGINX_VERSION}-${PKG_RELEASE}                 && cd alpine                 && export BUILDTARGET=\\\"module-geoip module-image-filter module-njs module-xslt module-acme\\\"                 && if [ \\\"\\$(apk --print-arch)\\\" = \\\"armhf\\\" ]; then BUILDTARGET=\\\"\\$( echo \\$BUILDTARGET | sed 's,module-acme,,' )\\\"; fi                 && make \\$BUILDTARGET                 && apk index --allow-untrusted -o ${tempDir}/packages/alpine/${apkArch}/APKINDEX.tar.gz ${tempDir}/packages/alpine/${apkArch}/*.apk                 && abuild-sign -k ${tempDir}/.abuild/abuild-key.rsa ${tempDir}/packages/alpine/${apkArch}/APKINDEX.tar.gz                 \"             && cp ${tempDir}/.abuild/abuild-key.rsa.pub /etc/apk/keys/             && apk del --no-network .build-deps             && if [ \"$apkArch\" = \"armhf\" ]; then nginxPackages=\"$( echo $nginxPackages | sed 's,nginx-module-acme=.*,,')\"; fi             && apk add -X ${tempDir}/packages/alpine/ --no-cache $nginxPackages             ;;     esac     && apk del --no-network .checksum-deps     && if [ -n \"$tempDir\" ]; then rm -rf \"$tempDir\"; fi     && if [ -f \"/etc/apk/keys/abuild-key.rsa.pub\" ]; then rm -f /etc/apk/keys/abuild-key.rsa.pub; fi     && apk add --no-cache curl ca-certificates # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:28.158681659Z",
+          "created_by": "RUN /bin/sh -c apk add --no-cache --upgrade 'brotli-libs>=1.2.1-r0' 'curl>=8.23.0-r0' 'libcurl>=8.23.0-r0' 'libexpat>=2.10.0-r0' 'libxslt>=1.1.43-r4' # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:28.877908942Z",
+          "created_by": "RUN /bin/sh -c apk add --no-cache --upgrade     --repository https://dl-cdn.alpinelinux.org/alpine/edge/main     'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1' # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:28.911491896Z",
+          "created_by": "COPY /security-packages /tmp/security-packages # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:29.101456401Z",
+          "created_by": "RUN /bin/sh -c cp /tmp/security-packages/*.pub /etc/apk/keys/     && apk add --no-network /tmp/security-packages/libcrypto3-3.5.9-r100.apk /tmp/security-packages/libssl3-3.5.9-r100.apk     && rm -rf /tmp/security-packages # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:29.114958097Z",
+          "created_by": "COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:48.944859592Z",
+          "created_by": "COPY /tmp/security-headers.inc.template /etc/nginx/templates/security-headers.inc.template # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:48.952037518Z",
+          "created_by": "COPY --chmod=755 apps/web/scripts/15-videoq-csp.envsh /docker-entrypoint.d/15-videoq-csp.envsh # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:49.010595517Z",
+          "created_by": "ENV VIDEOQ_CSP_STORAGE_ORIGINS=",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T04:40:49.010595517Z",
+          "created_by": "COPY /workspace/apps/web/dist /usr/share/nginx/html # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:49.0172334Z",
+          "created_by": "COPY LICENSE /usr/share/licenses/videoq/LICENSE # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:40:49.0172334Z",
+          "created_by": "EXPOSE 80/tcp",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:75f1d9657d880da5f75298e8f40e9928bb6e260c50d26f97af196845307e3064",
+          "sha256:2e9bfabaf10d4c116a92511343f6be7f27a973e299e0b2ad6f825179a448aa50",
+          "sha256:3bca624210963cb604a86768d7ea70dcc2391463a88d250b7514f2353a6c63b0",
+          "sha256:fe95f42d27827e8e08ae9fd84052d16b69c94c8fd71f3809637887fd08e70c94",
+          "sha256:73884487472cb5d5453348edd7f004ddde6570cc26ba05a562d65befb511cbeb",
+          "sha256:38420c71c9bb7230a642d914396b11a44f3d9a175ad68be6d84dbca71b0e5e91",
+          "sha256:ed926ec8b48d612ca7c0ebcd7a2b556fcaf253cfec5052ded3340b368206928a",
+          "sha256:8e9b46bfa70aa722e34fd952e3ae6220309090149b55c3d490d76cad0b672ea1",
+          "sha256:0c12e23ad1df5440daf90a82aec277dcaba8ebd03ee18edb0b20c320316eedbe",
+          "sha256:df7956ad0d6c422c8de496045fabdaddf903ee680eca2d338f6a0c1b68f09ee0",
+          "sha256:210e61f60f7e38e473d27d36677d492a8f28e49cfd7294024c7a124559fc762e",
+          "sha256:d270ebc0a62a0258aac2cc45c4fa64d77bcb540bd5211599cfc03739e1030665",
+          "sha256:b044ecbc1d566d528bc1a4f5f1ac71541d4a7496a261f7fc51471bb4644bccb2",
+          "sha256:8803acff10bb57df4678b836e6c2e3ed52a73c1cba657752c9f1e47eb9b7c4cb",
+          "sha256:311a1832763e64eab7bf469520528eacfe18c2f78f5a7a78bdceb11f99b69bf1",
+          "sha256:6ea0b4ec9e0b46aef9affb2741978ea21e53a557e37e3fe944903663264137b8",
+          "sha256:dcc2a9f551a79c6b567a53cd2c5cbf109c115849f5b9a4bc12a46795e7f57344"
+        ]
+      }
+    }
+  },
+  "Results": [
+    {
+      "Class": "os-pkgs",
+      "Type": "alpine",
+      "Packages": [
+        {
+          "Name": "alpine-baselayout",
+          "Version": "3.7.2-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/alpine-baselayout@3.7.2-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "alpine-baselayout-data",
+          "Version": "3.7.2-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/alpine-baselayout-data@3.7.2-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "alpine-keys",
+          "Version": "2.6-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/alpine-keys@2.6-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "alpine-release",
+          "Version": "3.24.4-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/alpine-release@3.24.4-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "aom-libs",
+          "Version": "3.14.1-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/aom-libs@3.14.1-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "apk-tools",
+          "Version": "3.0.9-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/apk-tools@3.0.9-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "brotli-libs",
+          "Version": "1.2.1-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/brotli-libs@1.2.1-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "busybox",
+          "Version": "1.37.0-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/busybox@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "busybox-binsh",
+          "Version": "1.37.0-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/busybox-binsh@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "c-ares",
+          "Version": "1.34.9-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/c-ares@1.34.9-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ca-certificates",
+          "Version": "20261020-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/ca-certificates@20261020-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ca-certificates-bundle",
+          "Version": "20261020-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/ca-certificates-bundle@20261020-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "curl",
+          "Version": "8.23.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/curl@8.23.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "fontconfig",
+          "Version": "2.17.1-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/fontconfig@2.17.1-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "freetype",
+          "Version": "2.14.3-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/freetype@2.14.3-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "geoip",
+          "Version": "1.6.12-r6",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/geoip@1.6.12-r6?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "gettext-envsubst",
+          "Version": "1.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/gettext-envsubst@1.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libapk",
+          "Version": "3.0.9-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libapk@3.0.9-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libavif",
+          "Version": "1.4.1-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libavif@1.4.1-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbsd",
+          "Version": "0.12.2-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libbsd@0.12.2-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libbz2",
+          "Version": "1.0.8-r6",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libbz2@1.0.8-r6?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libcrypto3",
+          "Version": "3.5.9-r100",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libcurl",
+          "Version": "8.23.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libcurl@8.23.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libdav1d",
+          "Version": "1.5.3-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libdav1d@1.5.3-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libedit",
+          "Version": "20260508.3.1-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libedit@20260508.3.1-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libexpat",
+          "Version": "2.10.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libexpat@2.10.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libgcc",
+          "Version": "15.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libgcc@15.2.0-r5?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libgd",
+          "Version": "2.3.3-r10",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libgd@2.3.3-r10?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libice",
+          "Version": "1.1.2-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libice@1.1.2-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libidn2",
+          "Version": "2.3.8-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libidn2@2.3.8-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libintl",
+          "Version": "1.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libintl@1.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libjpeg-turbo",
+          "Version": "3.1.3-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libjpeg-turbo@3.1.3-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libmaxminddb-libs",
+          "Version": "1.13.3-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libmaxminddb-libs@1.13.3-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libmd",
+          "Version": "1.2.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libmd@1.2.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libncursesw",
+          "Version": "6.6_p20260516-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libncursesw@6.6_p20260516-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libpng",
+          "Version": "1.6.59-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libpng@1.6.59-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libpsl",
+          "Version": "0.21.5-r3",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libpsl@0.21.5-r3?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libsharpyuv",
+          "Version": "1.6.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libsharpyuv@1.6.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libsm",
+          "Version": "1.2.6-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libsm@1.2.6-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libssl3",
+          "Version": "3.5.9-r100",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libstdc++",
+          "Version": "15.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libstdc%2B%2B@15.2.0-r5?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libunistring",
+          "Version": "1.4.2-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libunistring@1.4.2-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libuuid",
+          "Version": "2.42.3-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libuuid@2.42.3-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libwebp",
+          "Version": "1.6.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libwebp@1.6.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libx11",
+          "Version": "1.8.14-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libx11@1.8.14-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxau",
+          "Version": "1.0.12-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libxau@1.0.12-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxcb",
+          "Version": "1.17.0-r2",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libxcb@1.17.0-r2?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxdmcp",
+          "Version": "1.1.5-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libxdmcp@1.1.5-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxext",
+          "Version": "1.3.7-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libxext@1.3.7-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxml2",
+          "Version": "2.13.9-r3",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libxml2@2.13.9-r3?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxpm",
+          "Version": "3.5.20-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libxpm@3.5.20-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxslt",
+          "Version": "1.1.43-r4",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libxslt@1.1.43-r4?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libxt",
+          "Version": "1.3.1-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libxt@1.3.1-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libyuv",
+          "Version": "0.0.1928-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libyuv@0.0.1928-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "musl",
+          "Version": "1.2.6-r6",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/musl@1.2.6-r6?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "musl-utils",
+          "Version": "1.2.6-r3",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/musl-utils@1.2.6-r3?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ncurses-terminfo-base",
+          "Version": "6.6_p20260516-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/ncurses-terminfo-base@6.6_p20260516-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "nghttp2-libs",
+          "Version": "1.70.0-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/nghttp2-libs@1.70.0-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "nginx",
+          "Version": "1.31.9-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/nginx@1.31.9-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "nginx-module-acme",
+          "Version": "1.31.9.0.4.2-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/nginx-module-acme@1.31.9.0.4.2-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "nginx-module-geoip",
+          "Version": "1.31.9-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/nginx-module-geoip@1.31.9-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "nginx-module-image-filter",
+          "Version": "1.31.9-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/nginx-module-image-filter@1.31.9-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "nginx-module-njs",
+          "Version": "1.31.9.1.0.2-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/nginx-module-njs@1.31.9.1.0.2-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "nginx-module-xslt",
+          "Version": "1.31.9-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/nginx-module-xslt@1.31.9-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "pcre2",
+          "Version": "10.49-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/pcre2@10.49-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "scanelf",
+          "Version": "1.3.9-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/scanelf@1.3.9-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ssl_client",
+          "Version": "1.37.0-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/ssl_client@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "tiff",
+          "Version": "4.7.2-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/tiff@4.7.2-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "tzdata",
+          "Version": "2026f-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/tzdata@2026f-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "xz-libs",
+          "Version": "5.8.4-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/xz-libs@5.8.4-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "zlib",
+          "Version": "1.4-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/zlib@1.4-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "zstd-libs",
+          "Version": "1.6.0-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/zstd-libs@1.6.0-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "busybox",
+          "InstalledVersion": "1.37.0-r31",
+          "VulnerabilityID": "CVE-2025-60876",
+          "Aliases": [
+            "CVE-2025-60876"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/busybox@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "busybox-binsh",
+          "InstalledVersion": "1.37.0-r31",
+          "VulnerabilityID": "CVE-2025-60876",
+          "Aliases": [
+            "CVE-2025-60876"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/busybox-binsh@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "ssl_client",
+          "InstalledVersion": "1.37.0-r31",
+          "VulnerabilityID": "CVE-2025-60876",
+          "Aliases": [
+            "CVE-2025-60876"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/ssl_client@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "libcrypto3",
+          "InstalledVersion": "3.5.9-r100",
+          "VulnerabilityID": "CVE-2026-95690",
+          "Aliases": [
+            "CVE-2026-95690"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "libssl3",
+          "InstalledVersion": "3.5.9-r100",
+          "VulnerabilityID": "CVE-2026-95690",
+          "Aliases": [
+            "CVE-2026-95690"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "libcrypto3",
+          "InstalledVersion": "3.5.9-r100",
+          "VulnerabilityID": "CVE-2026-35190",
+          "Aliases": [
+            "CVE-2026-35190"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "libssl3",
+          "InstalledVersion": "3.5.9-r100",
+          "VulnerabilityID": "CVE-2026-35190",
+          "Aliases": [
+            "CVE-2026-35190"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        }
+      ],
+      "ExperimentalModifiedFindings": [
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-124709",
+            "Aliases": [
+              "CVE-2026-124709"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-124709",
+            "Aliases": [
+              "CVE-2026-124709"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-107494",
+            "Aliases": [
+              "CVE-2026-107494"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-107494",
+            "Aliases": [
+              "CVE-2026-107494"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-121482",
+            "Aliases": [
+              "CVE-2026-121482"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-121482",
+            "Aliases": [
+              "CVE-2026-121482"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-84786",
+            "Aliases": [
+              "CVE-2026-84786"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-84786",
+            "Aliases": [
+              "CVE-2026-84786"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-107493",
+            "Aliases": [
+              "CVE-2026-107493"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-107493",
+            "Aliases": [
+              "CVE-2026-107493"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        }
+      ]
+    }
+  ]
+}

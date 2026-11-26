@@ -1,0 +1,385 @@
+{
+  "kind": "supplemental-new-workload-read-measurement",
+  "originalMeasurementIdentity": {
+    "sourceSha": "176ce1d1576fdb40d299d9ed7d2591b35dffd52d",
+    "configSha256": "86f9c785c2616a474a79ce90149641549793723fd9f8037750598909f0a3d296",
+    "workerSourceSha256": "4e8f7aff286a1b5505fcc86b249363e971c653842e82f9a2a237225cda905631",
+    "account": "12daec56fdba43f677f2766ee26a5a39",
+    "worker": "videoq-acceptance-20261125-c33d",
+    "database": "ca70322e-c692-44b2-9052-de5d01a60e61",
+    "index": "videoq-acceptance-20261125-c33d",
+    "bucket": "videoq-acceptance-20261125-c33d",
+    "workflow": "videoq-acceptance-20261125-c33d",
+    "workflowId": "8da7a09bf8391a3906d2258d70c74519b6d6fd692de5ddb92472103122858be6",
+    "model": "@cf/google/embeddinggemma-2",
+    "dimensions": 768,
+    "productionModified": false
+  },
+  "measuredToolSourceSha": "741c8d786c7c6d7edc20494923ddffc0249bc488",
+  "snapshotSha256": "7a2eaaee04d5843efa117ed4101c866b5640abab9aacdddc36d5b0f7412fb501",
+  "schemaComparison": {
+    "passed": true,
+    "applicationObjectsCompared": 202,
+    "providerInternalExcluded": [
+      {
+        "name": "_cf_KV",
+        "type": "table",
+        "sqlSha256": "4043fea8b8581dfc344308300f74de5f3f0c683b4a9b0df120aff19d08d01156"
+      }
+    ],
+    "differenceNames": []
+  },
+  "data": {
+    "videos": 1000,
+    "scenes": 2,
+    "indexes": 174
+  },
+  "placement": "APAC D1 via raw REST from local Node, not original Worker-binding latency",
+  "samples": 30,
+  "totalQueryCalls": 310,
+  "metadataCovered": 310,
+  "metadataUnavailable": 0,
+  "totalRowsRead": 33470,
+  "totalRowsWritten": 0,
+  "privateCatalogSha256": "985b3b459e753b7842bcac7c64ffd81b235726a5a30d283c9942ec848d7e8d4a",
+  "allOriginalThirtySqlProfilesMatched": true,
+  "cells": [
+    {
+      "tenantVideoCount": 1,
+      "concurrency": 1,
+      "samples": 5,
+      "queryCallsPerRequest": 6,
+      "rowsReadPerRequest": [
+        12,
+        12,
+        12,
+        12,
+        12
+      ],
+      "rowsWrittenPerRequest": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sqlOperations": [
+        {
+          "sqlSha256": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "c1b9f5297f3d2b46ad06689e5a055a72c7962906ef2573c2cea112d7a34b4b28",
+          "calls": 5,
+          "rowsRead": 20,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        },
+        {
+          "sqlSha256": "e5d885430968efee78b7d7faaf66148348914a52895845470269f54c3287f1d5",
+          "calls": 5,
+          "rowsRead": 20,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        }
+      ]
+    },
+    {
+      "tenantVideoCount": 1,
+      "concurrency": 2,
+      "samples": 5,
+      "queryCallsPerRequest": 6,
+      "rowsReadPerRequest": [
+        12,
+        12,
+        12,
+        12,
+        12
+      ],
+      "rowsWrittenPerRequest": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sqlOperations": [
+        {
+          "sqlSha256": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "c1b9f5297f3d2b46ad06689e5a055a72c7962906ef2573c2cea112d7a34b4b28",
+          "calls": 5,
+          "rowsRead": 20,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        },
+        {
+          "sqlSha256": "e5d885430968efee78b7d7faaf66148348914a52895845470269f54c3287f1d5",
+          "calls": 5,
+          "rowsRead": 20,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        }
+      ]
+    },
+    {
+      "tenantVideoCount": 100,
+      "concurrency": 1,
+      "samples": 5,
+      "queryCallsPerRequest": 7,
+      "rowsReadPerRequest": [
+        318,
+        318,
+        318,
+        318,
+        318
+      ],
+      "rowsWrittenPerRequest": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sqlOperations": [
+        {
+          "sqlSha256": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "6de2fc3aded8b22831831c1da7a84d9593560ef9cd26cb93153d665a74a6cca0",
+          "calls": 5,
+          "rowsRead": 1225,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        },
+        {
+          "sqlSha256": "49f19ec4d2c78407cfc36a256086d81eca39cf93ec4c583eb5e7698bd07878d6",
+          "calls": 5,
+          "rowsRead": 300,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        },
+        {
+          "sqlSha256": "812e649e2f0a10396da89fd0684a116a30c976de0b728b1c8f46cebbba2dbc82",
+          "calls": 5,
+          "rowsRead": 45,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        }
+      ]
+    },
+    {
+      "tenantVideoCount": 100,
+      "concurrency": 2,
+      "samples": 5,
+      "queryCallsPerRequest": 7,
+      "rowsReadPerRequest": [
+        318,
+        318,
+        318,
+        318,
+        318
+      ],
+      "rowsWrittenPerRequest": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sqlOperations": [
+        {
+          "sqlSha256": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "6de2fc3aded8b22831831c1da7a84d9593560ef9cd26cb93153d665a74a6cca0",
+          "calls": 5,
+          "rowsRead": 1225,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        },
+        {
+          "sqlSha256": "49f19ec4d2c78407cfc36a256086d81eca39cf93ec4c583eb5e7698bd07878d6",
+          "calls": 5,
+          "rowsRead": 300,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        },
+        {
+          "sqlSha256": "812e649e2f0a10396da89fd0684a116a30c976de0b728b1c8f46cebbba2dbc82",
+          "calls": 5,
+          "rowsRead": 45,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        }
+      ]
+    },
+    {
+      "tenantVideoCount": 1000,
+      "concurrency": 1,
+      "samples": 5,
+      "queryCallsPerRequest": 18,
+      "rowsReadPerRequest": [
+        3017,
+        3017,
+        3017,
+        3017,
+        3017
+      ],
+      "rowsWrittenPerRequest": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sqlOperations": [
+        {
+          "sqlSha256": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "6de2fc3aded8b22831831c1da7a84d9593560ef9cd26cb93153d665a74a6cca0",
+          "calls": 60,
+          "rowsRead": 14425,
+          "rowsWritten": 0,
+          "metadataCovered": 60
+        },
+        {
+          "sqlSha256": "cef2ae4c7ca3047c4f57df2dde641e904818870695e48280a303890f8965e47c",
+          "calls": 5,
+          "rowsRead": 595,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        },
+        {
+          "sqlSha256": "812e649e2f0a10396da89fd0684a116a30c976de0b728b1c8f46cebbba2dbc82",
+          "calls": 5,
+          "rowsRead": 45,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        }
+      ]
+    },
+    {
+      "tenantVideoCount": 1000,
+      "concurrency": 2,
+      "samples": 5,
+      "queryCallsPerRequest": 18,
+      "rowsReadPerRequest": [
+        3017,
+        3017,
+        3017,
+        3017,
+        3017
+      ],
+      "rowsWrittenPerRequest": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sqlOperations": [
+        {
+          "sqlSha256": "0b4e9313d6caedcf69f447e1af59ef40af22285bf8102359cf6271915bda031f",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "aea95b72841cab732c53fd7de68a36d784187b9dc55c429c0a13a5efaa9a962a",
+          "calls": 10,
+          "rowsRead": 10,
+          "rowsWritten": 0,
+          "metadataCovered": 10
+        },
+        {
+          "sqlSha256": "6de2fc3aded8b22831831c1da7a84d9593560ef9cd26cb93153d665a74a6cca0",
+          "calls": 60,
+          "rowsRead": 14425,
+          "rowsWritten": 0,
+          "metadataCovered": 60
+        },
+        {
+          "sqlSha256": "cef2ae4c7ca3047c4f57df2dde641e904818870695e48280a303890f8965e47c",
+          "calls": 5,
+          "rowsRead": 595,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        },
+        {
+          "sqlSha256": "812e649e2f0a10396da89fd0684a116a30c976de0b728b1c8f46cebbba2dbc82",
+          "calls": 5,
+          "rowsRead": 45,
+          "rowsWritten": 0,
+          "metadataCovered": 5
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "New D1-only SQL replay, not recovery of historical request metadata or replacement latency measurement",
+    "Same SQL hashes/call profiles for all30 original requests; parameters reconstructed through actual auth/search against pre-resume snapshot",
+    "Snapshot has1000metadata videos and2scenes but precedes final Workflow publication and genuine-model reindex: physical scene/run IDs differ; equal original post-Workflow physical layout/read counts not asserted",
+    "Native admin authentication SQL and actual scene-search repository generate the catalog; Vectorize matches are deterministic snapshot candidates, no new semantic quality/provider claims",
+    "D1 raw REST returns positional results and rows_read/rows_written metadata; provider counts include index reads, not returned-result row counts",
+    "Read replay excludes uninstrumented provenance-validation queries just as original310query traces did; setup/schema verification reads separately excluded",
+    "Concurrency1/2 matched, but HTTP API placement/latency differs from Worker binding; no new end-to-end performance claim"
+  ]
+}

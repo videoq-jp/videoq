@@ -6,6 +6,7 @@ export interface MaintenanceDependencies {
   sweepMaterials(): Promise<unknown>;
   reconcileUploads(): Promise<unknown>;
   failInvitations(now: Date, graceMs: number): Promise<unknown>;
+  observePolicy?(now: Date): Promise<unknown>;
   health(): Promise<{ pending: number; dead: number; oldestPendingSeconds: number | null }>;
   pruneHistory(): Promise<unknown>;
   pruneIdempotency(): Promise<unknown>;

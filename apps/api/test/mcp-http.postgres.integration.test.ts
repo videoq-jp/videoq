@@ -1,3 +1,4 @@
+import { seedPostgresSceneIndex } from "./helpers/postgres-scene-index";
 import { once } from "node:events";
 import type { Server } from "node:http";
 import pg from "pg";
@@ -79,11 +80,8 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
       VALUES (3,'owner','Graph course','Graph description',now(),now(),0),(4,'owner','Private course','',now(),now(),0);
       INSERT INTO video_course_members (course_id,video_id,"order",added_at) VALUES (3,42,0,now()),(4,99,0,now());
       INSERT INTO video_course_memberships (course_id,user_id,joined_at) VALUES (3,'member',now());`);
-    await db.query(`INSERT INTO scene_embeddings (langchain_id,content,embedding,user_id,video_id,langchain_metadata)
-      VALUES ($1,$2,$3,'owner',42,$4),($5,'Private scene',$3,'owner',99,$4)`, [
-      crypto.randomUUID(), "A red line rises on the graph.", JSON.stringify(embedding),
-      { video_title: "Graph lesson", start_time: "00:00:00", end_time: "00:00:05" }, crypto.randomUUID(),
-    ]);
+    await seedPostgresSceneIndex(url.toString(), 42, [{ text: "A red line rises on the graph.", vector: embedding, endTime: "00:00:05" }]);
+    await seedPostgresSceneIndex(url.toString(), 99, [{ text: "Private scene", vector: embedding, endTime: "00:00:05" }]);
     const provider = new Hono();
     provider.post("/v1/embeddings", async c => {
       const body = await c.req.json();

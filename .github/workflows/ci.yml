@@ -8,6 +8,15 @@ on:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [normal, whisper-candidate-publish]
+        default: normal
+      reviewed_revision:
+        description: Exact reviewed immutable publisher tag SHA; required only for isolated publication
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -19,6 +28,7 @@ concurrency:
 
 jobs:
   supply-chain:
+    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
     name: Supply Chain Security
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -74,6 +84,7 @@ jobs:
       - run: npm run audit:signatures -- --prefix infra/db-maintenance/runtime
 
   workflow-security:
+    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
     name: Deployment Security Tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -89,6 +100,12 @@ jobs:
           manager: npm
       - name: Test production deployment policy
         run: node --test .github/scripts/*.test.cjs
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6.2.0
+        with:
+          python-version-file: .python-version
+      - name: Install hash-locked security test numerical dependency
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r .github/scripts/security-test-requirements.txt
       - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
       - name: Require consistent interpreter and package manager pins
         run: python3 .github/scripts/runtime-versions.py check
@@ -97,8 +114,8 @@ jobs:
     name: CI Success
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: always()
-    needs: [changes, lab-gitops, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, moodle-installed, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
+    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    needs: [changes, delivery-regression, lab-gitops, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, moodle-installed, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
     steps:
       - name: Require every selected CI job to pass
         env:
@@ -107,7 +124,7 @@ jobs:
           node <<'NODE'
           const jobs = JSON.parse(process.env.JOB_RESULTS);
           const failed = Object.entries(jobs).filter(([name, job]) =>
-            (['changes', 'supply-chain', 'workflow-security', 'container-result', 'terraform-result'].includes(name) ||
+            (['changes', 'delivery-regression', 'supply-chain', 'workflow-security', 'container-result', 'terraform-result'].includes(name) ||
               (name === 'lab-gitops' && jobs.changes.outputs.lab === 'true') ||
               (name === 'operations-fixture' && jobs.changes.outputs.operations === 'true') ||
               (name === 'moodle-installed' && jobs.changes.outputs.moodle === 'true') ||
@@ -122,12 +139,19 @@ jobs:
           }
           NODE
 
+  # Always required: message producers/storage policy can change outside narrow
+  # path lists, and a skipped compatibility gate must never authorize rollout.
+  delivery-regression:
+    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    uses: ./.github/workflows/delivery-regression.yml
+
   lab-gitops:
     needs: changes
     if: needs.changes.outputs.lab == 'true'
     uses: ./.github/workflows/lab-gitops.yml
 
   changes:
+    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
@@ -268,6 +292,7 @@ jobs:
               - '.github/scripts/background-workflow-admission.cjs'
               - '.github/scripts/migration-backend.cjs'
               - '.github/scripts/protect-api-deployment.cjs'
+              - '.github/scripts/embedding-release-preflight.cjs'
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-package-manager/**'
               - '.github/operations-tools/**'
@@ -320,6 +345,8 @@ jobs:
               - '.github/scripts/vllm-*-smoke.*'
               - '.github/workflows/upstream-vllm.yml'
             upstream_images:
+              - '.github/whisper-runtime-pins.json'
+              - 'apps/inference/whispercpp/verify_runtime.py'
               - '.github/actions/scan-image/**'
               - '.github/scripts/grype-scan.py'
               - '.github/scripts/install-security-tools.py'
@@ -373,6 +400,7 @@ jobs:
               - '.github/scripts/install-helm.sh'
               - '.github/onprem-lab/**'
             onprem:
+              - '.github/scripts/build-onprem-measured.py'
               - 'apps/security/openssl/**'
               - '.github/actions/scan-image/**'
               - '.github/scripts/grype-scan.py'
@@ -600,8 +628,17 @@ jobs:
           npm run test:unit --workspace @videoq/api -- --maxWorkers=2
           npm run test:workers --workspace @videoq/api
           npm run build:node --workspace @videoq/api
+          EMBEDDING_RECEIPT_PATH="$RUNNER_TEMP/embedding-lifecycle.json" node apps/api/test/helpers/embedding-lifecycle-probe.mjs
           BACKGROUND_WORKER_E2E=1 SQS_TEST_ENDPOINT=http://127.0.0.1:9324/ npm run test:unit --workspace @videoq/api -- --maxWorkers=1 test/background-worker.e2e.test.ts test/sqs-background-consumer.integration.test.ts
           bash .github/scripts/verify-prebuilt-deployment.sh api
+      - name: Retain isolated embedding admission and rebuild evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: embedding-lifecycle-${{ github.sha }}
+          path: ${{ runner.temp }}/embedding-lifecycle.json
+          if-no-files-found: warn
+          retention-days: 30
 
   worker-test:
     name: Worker Python
@@ -913,7 +950,7 @@ jobs:
   container-result:
     name: Container Validation
     needs: [changes, container-checks]
-    if: always()
+    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -934,7 +971,7 @@ jobs:
   terraform-result:
     name: Terraform Plan
     needs: [changes, terraform-checks]
-    if: always()
+    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -989,3 +1026,29 @@ jobs:
         run: node .github/scripts/backup-preservation-fixture.mjs
       - name: Export a restored synthetic database using the actual isolated operator ZIP
         run: node .github/scripts/backup-d1-export-fixture.mjs
+
+  whisper-candidate-dispatch:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Reject isolated mode outside its uniquely reviewed tag
+        env:
+          REVIEWED_REVISION: ${{ inputs.reviewed_revision }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          test "$GITHUB_REPOSITORY" = videoq-jp/videoq
+          test "$GITHUB_REF" = refs/tags/videoq-whisper-candidate-publisher-20261125-v1
+          [[ "$REVIEWED_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$REVIEWED_REVISION" = "$GITHUB_SHA"
+          test "$REVIEWED_REVISION" = "$WORKFLOW_SHA"
+  whisper-candidate-publish:
+    needs: whisper-candidate-dispatch
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1'
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    uses: ./.github/workflows/whisper-candidate-publish.yml

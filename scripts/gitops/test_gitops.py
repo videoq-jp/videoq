@@ -322,6 +322,10 @@ class ManifestTests(unittest.TestCase):
         self.assertIn('TORCHDYNAMO_DISABLE', serialized)
         self.assertIn('FLEX_ATTENTION', serialized)
         self.assertIn('embeddinggemma-2-f9972ac', serialized)
+        config=next(item['data'] for item in objects if item['kind']=='ConfigMap' and item['metadata']['name']=='videoq-config')
+        self.assertRegex(config['EMBEDDING_REVISION'],r'^google/embeddinggemma-2@f9972ac22e696a105c482202646979e33e4b5a1e:runtime-sha256:[a-f0-9]{64}$')
+        self.assertEqual(config['EMBEDDING_PROFILE'],'embeddinggemma2')
+        self.assertEqual(config['EMBEDDING_PREPROCESSING'],'raw-text-v1')
 
 
 if __name__ == '__main__':

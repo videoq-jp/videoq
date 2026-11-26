@@ -1,0 +1,3767 @@
+{
+  "SchemaVersion": 2,
+  "Scanner": "Grype",
+  "ArtifactType": "container_image",
+  "ArtifactName": "videoq-api",
+  "Metadata": {
+    "RepoDigests": [],
+    "OS": {
+      "Family": "alpine",
+      "Name": "3.24.4"
+    },
+    "ImageConfig": {
+      "architecture": "amd64",
+      "config": {
+        "User": "node",
+        "ExposedPorts": {
+          "8787/tcp": {}
+        },
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "NODE_VERSION=26.13.1",
+          "NODE_ENV=production"
+        ],
+        "Entrypoint": [
+          "docker-entrypoint.sh"
+        ],
+        "Cmd": [
+          "node",
+          "dist/node.mjs"
+        ],
+        "WorkingDir": "/workspace/apps/api",
+        "ArgsEscaped": true
+      },
+      "created": "2026-11-25T04:03:03.016477154Z",
+      "history": [
+        {
+          "created": "2026-11-05T18:00:28.583714131Z",
+          "created_by": "ADD alpine-minirootfs-3.24.4-x86_64.tar.gz / # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-05T18:00:28.583714131Z",
+          "created_by": "CMD [\"/bin/sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-11T18:42:11.833822946Z",
+          "created_by": "ENV NODE_VERSION=26.13.1",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-11T18:42:11.833822946Z",
+          "created_by": "RUN /bin/sh -c addgroup -g 1000 node     && adduser -u 1000 -G node -s /bin/sh -D node     && apk add --no-cache         libatomic         libstdc++     && apk add --no-cache --virtual .build-deps         gnupg         curl     && ARCH= OPENSSL_ARCH='linux*' && alpineArch=\"$(apk --print-arch)\"       && case \"${alpineArch##*-}\" in         x86_64) ARCH='x64' OPENSSL_ARCH=linux-x86_64;;         aarch64) OPENSSL_ARCH=linux-aarch64;;         *) echo \"unsupported architecture\"; exit 1 ;;       esac     && export GNUPGHOME=\"$(mktemp -d)\"     && set -ex     && for key in       5BE8A3F6C8A5C01D106C0AD820B1A390B168D356       DD792F5973C6DE52C432CBDAC77ABFA00DDBF2B7       CC68F5A3106FF448322E48ED27F5E38D5B0A215F       890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4       C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C       108F52B48DB57BB0CC439B2997B01419BD92F80A       655F3B5C1FB3FA8D1A0CA6BDE4A7D232B936D2FD       A363A499291CBBC940DD62E41F10027AF002F8B0     ; do         { gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys \"$key\" && gpg --batch --fingerprint \"$key\"; } ||         { gpg --batch --keyserver keyserver.ubuntu.com --recv-keys \"$key\" && gpg --batch --fingerprint \"$key\"; } ;     done   && if [ \"$ARCH\" = \"x64\" ]; then     curl -fsSLO --compressed \"https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH-musl.tar.xz\"     && curl -fsSLO --compressed \"https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc\"     && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc     && gpgconf --kill all     && rm -rf \"$GNUPGHOME\"     && grep \" node-v$NODE_VERSION-linux-$ARCH-musl.tar.xz\\$\" SHASUMS256.txt | sha256sum -c -     && tar -xJf \"node-v$NODE_VERSION-linux-$ARCH-musl.tar.xz\" -C /usr/local --strip-components=1 --no-same-owner     && rm \"node-v$NODE_VERSION-linux-$ARCH-musl.tar.xz\" SHASUMS256.txt.asc SHASUMS256.txt     && ln -s /usr/local/bin/node /usr/local/bin/nodejs;   else     echo \"Building from source\"     && apk add --no-cache --virtual .build-deps-full         binutils-gold         g++         gcc         libgcc         linux-headers         make         python3         py-setuptools         rust         cargo     && curl -fsSLO --compressed \"https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION.tar.xz\"     && curl -fsSLO --compressed \"https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc\"     && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc     && gpgconf --kill all     && rm -rf \"$GNUPGHOME\"     && grep \" node-v$NODE_VERSION.tar.xz\\$\" SHASUMS256.txt | sha256sum -c -     && tar -xf \"node-v$NODE_VERSION.tar.xz\"     && cd \"node-v$NODE_VERSION\"     && ./configure     && make -j$(getconf _NPROCESSORS_ONLN) V=     && make install     && apk del .build-deps-full     && cd ..     && rm -Rf \"node-v$NODE_VERSION\"     && rm \"node-v$NODE_VERSION.tar.xz\" SHASUMS256.txt.asc SHASUMS256.txt;   fi   && find /usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name \"$OPENSSL_ARCH\" -exec rm -rf {} \\;   && apk del .build-deps   && node --version   && npm --version   && rm -rf /tmp/* # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-11T18:42:11.872874427Z",
+          "created_by": "COPY docker-entrypoint.sh /usr/local/bin/ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-11T18:42:11.872874427Z",
+          "created_by": "ENTRYPOINT [\"docker-entrypoint.sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-11T18:42:11.872874427Z",
+          "created_by": "CMD [\"node\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:49:49.366687828Z",
+          "created_by": "RUN /bin/sh -c apk upgrade --no-cache zlib # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:49:49.758282502Z",
+          "created_by": "RUN /bin/sh -c apk add --no-cache --upgrade     --repository https://dl-cdn.alpinelinux.org/alpine/edge/main     'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1' # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T03:49:50.172023904Z",
+          "created_by": "ARG NPM_VERSION=12.2.3",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:49:50.172023904Z",
+          "created_by": "ARG NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.3.tgz",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:49:50.172023904Z",
+          "created_by": "ARG NPM_INTEGRITY=sha512-ovmNRRe76Jvcp1E6iOePQ6H9Zr4XMOrqgfaeGNhtRvP3XSl2Lo/a9C1N5/jRlLLrsqCem/omgGdZHpZ5a6yn1Q==",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T03:49:50.172023904Z",
+          "created_by": "RUN |3 NPM_VERSION=12.2.3 NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.3.tgz NPM_INTEGRITY=sha512-ovmNRRe76Jvcp1E6iOePQ6H9Zr4XMOrqgfaeGNhtRvP3XSl2Lo/a9C1N5/jRlLLrsqCem/omgGdZHpZ5a6yn1Q== /bin/sh -c node --input-type=module -e 'import {createHash} from \"node:crypto\"; import {writeFileSync} from \"node:fs\"; const r=await fetch(process.env.NPM_URL); if(!r.ok) throw new Error(\"npm download failed\"); const b=Buffer.from(await r.arrayBuffer()); if(\"sha512-\"+createHash(\"sha512\").update(b).digest(\"base64\")!==process.env.NPM_INTEGRITY) throw new Error(\"npm integrity mismatch\"); writeFileSync(\"/tmp/npm.tgz\",b)'     && mkdir -p /opt/verified-npm     && tar -xzf /tmp/npm.tgz -C /opt/verified-npm --strip-components=1     && ln -sf /opt/verified-npm/bin/npm-cli.js /usr/local/bin/npm     && ln -sf /opt/verified-npm/bin/npx-cli.js /usr/local/bin/npx     && rm /tmp/npm.tgz     && test \"$(npm --version)\" = \"$NPM_VERSION\" # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:01.408512956Z",
+          "created_by": "COPY /security-packages /tmp/security-packages # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:01.749807262Z",
+          "created_by": "RUN |3 NPM_VERSION=12.2.3 NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.3.tgz NPM_INTEGRITY=sha512-ovmNRRe76Jvcp1E6iOePQ6H9Zr4XMOrqgfaeGNhtRvP3XSl2Lo/a9C1N5/jRlLLrsqCem/omgGdZHpZ5a6yn1Q== /bin/sh -c cp /tmp/security-packages/*.pub /etc/apk/keys/     && apk add --no-network /tmp/security-packages/libcrypto3-3.5.9-r100.apk /tmp/security-packages/libssl3-3.5.9-r100.apk     && rm -rf /tmp/security-packages # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:01.749807262Z",
+          "created_by": "ENV NODE_ENV=production",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T04:03:01.892722274Z",
+          "created_by": "RUN |3 NPM_VERSION=12.2.3 NPM_URL=https://registry.npmjs.org/npm/-/npm-12.2.3.tgz NPM_INTEGRITY=sha512-ovmNRRe76Jvcp1E6iOePQ6H9Zr4XMOrqgfaeGNhtRvP3XSl2Lo/a9C1N5/jRlLLrsqCem/omgGdZHpZ5a6yn1Q== /bin/sh -c rm -rf /usr/local/lib/node_modules/npm /opt/verified-npm /usr/local/bin/npm /usr/local/bin/npx # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:01.897718031Z",
+          "created_by": "WORKDIR /workspace",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:02.877083951Z",
+          "created_by": "COPY /workspace /workspace # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:02.969917264Z",
+          "created_by": "COPY /workspace/packages/trpc packages/trpc # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:02.9768215Z",
+          "created_by": "COPY /workspace/packages/domain packages/domain # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:02.982821092Z",
+          "created_by": "COPY /workspace/apps/api/dist apps/api/dist # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:02.996741532Z",
+          "created_by": "COPY /workspace/apps/api/drizzle apps/api/drizzle # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:03.005995898Z",
+          "created_by": "COPY /workspace/apps/api/scripts apps/api/scripts # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:03.011853233Z",
+          "created_by": "WORKDIR /workspace/apps/api",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:03.016477154Z",
+          "created_by": "COPY LICENSE /usr/share/licenses/videoq/LICENSE # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-11-25T04:03:03.016477154Z",
+          "created_by": "USER node",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T04:03:03.016477154Z",
+          "created_by": "EXPOSE 8787/tcp",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-11-25T04:03:03.016477154Z",
+          "created_by": "CMD [\"node\" \"dist/node.mjs\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:75f1d9657d880da5f75298e8f40e9928bb6e260c50d26f97af196845307e3064",
+          "sha256:8f8ba2e7b93f54e8c7b465b28c7a76908f5f7f7fc335aa9e929876f465b72f89",
+          "sha256:f569d830a47c762f32bc8991c73ae7b25be435dd52ec4af3b54f566b855f215c",
+          "sha256:98df91e6e03195e9b755afc5f5112abdecebea8a642b17d861e3b4929579b14f",
+          "sha256:9b48a4d16609d95f13c6d3cc1fc6df6790b457834fc7ad4d927d68d61e88a844",
+          "sha256:1155edcce56de17646c371d978e0bb705a19752b65b7c6151925c39c585e1bf6",
+          "sha256:3a769d56fb8c3abdb72fed3e65ae728f29fa97870546cb66a78f80200b520dcf",
+          "sha256:611e18f63e0c476659b431be3b68fa45ca4773ca649191678fc05a2acd75a7e3",
+          "sha256:3f36305726bf1ac21b737f2360cb86f1275aff9feae915c4f90d8a3de1f58774",
+          "sha256:8f28ab9f3ce10576279452aa3f729467187e6422b2d2b965b21af0811a47a4f9",
+          "sha256:94829962b221088370da471f59024f18c467a26aa5f7953d231c6ff2dfd1c3e6",
+          "sha256:f8ffe6744f812a410fdae682baee3b3f113ab0172786219c5f4f14526cb86f9e",
+          "sha256:859d5009514619f761504086b52304ac86a804d1fb27868b1d1dc489326b17cd",
+          "sha256:e953c169d7e053e1fd6e952dae6cc17d97d65ae706b7aa100b30f3b8fde934ef",
+          "sha256:84eaca74b65b42fdf2d6e22bf8bf208ed4be6eb239325a8218c60bbe59e86824",
+          "sha256:e2c3835f8ec5693f9048402caa1b15f83125883bb39d48426450992feaf9f05c",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "sha256:90c822c2b738f382837dff638c9065a97e5f239ce792310bd5291e679bc7f1da"
+        ]
+      }
+    }
+  },
+  "Results": [
+    {
+      "Class": "lang-pkgs",
+      "Type": "npm",
+      "Packages": [
+        {
+          "Name": "@babel/helper-string-parser",
+          "Version": "7.29.7",
+          "Identifier": {
+            "PURL": "pkg:npm/%40babel/helper-string-parser@7.29.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/@babel/helper-string-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@babel/helper-validator-identifier",
+          "Version": "7.29.7",
+          "Identifier": {
+            "PURL": "pkg:npm/%40babel/helper-validator-identifier@7.29.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/@babel/helper-validator-identifier/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@babel/parser",
+          "Version": "7.29.8",
+          "Identifier": {
+            "PURL": "pkg:npm/%40babel/parser@7.29.8"
+          },
+          "Locations": [
+            "/workspace/node_modules/@babel/parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@babel/types",
+          "Version": "7.29.8",
+          "Identifier": {
+            "PURL": "pkg:npm/%40babel/types@7.29.8"
+          },
+          "Locations": [
+            "/workspace/node_modules/@babel/types/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/api-key",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/api-key@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/api-key/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/core",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/core@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/core/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/drizzle-adapter",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/drizzle-adapter@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/drizzle-adapter/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/kysely-adapter",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/kysely-adapter@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/kysely-adapter/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/memory-adapter",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/memory-adapter@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/memory-adapter/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/mongo-adapter",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/mongo-adapter@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/mongo-adapter/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/oauth-provider",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/oauth-provider@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/oauth-provider/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/prisma-adapter",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/prisma-adapter@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/better-auth/node_modules/@better-auth/prisma-adapter/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/telemetry",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/telemetry@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/telemetry/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-auth/utils",
+          "Version": "0.5.1",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-auth/utils@0.5.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-auth/utils/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@better-fetch/fetch",
+          "Version": "1.3.3",
+          "Identifier": {
+            "PURL": "pkg:npm/%40better-fetch/fetch@1.3.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/@better-fetch/fetch/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@cfworker/json-schema",
+          "Version": "4.1.6",
+          "Identifier": {
+            "PURL": "pkg:npm/%40cfworker/json-schema@4.1.6"
+          },
+          "Locations": [
+            "/workspace/node_modules/@cfworker/json-schema/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@hono/mcp",
+          "Version": "0.3.5",
+          "Identifier": {
+            "PURL": "pkg:npm/%40hono/mcp@0.3.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/@hono/mcp/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@hono/node-server",
+          "Version": "2.1.11",
+          "Identifier": {
+            "PURL": "pkg:npm/%40hono/node-server@2.1.11"
+          },
+          "Locations": [
+            "/workspace/node_modules/@hono/node-server/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@hono/trpc-server",
+          "Version": "0.4.2",
+          "Identifier": {
+            "PURL": "pkg:npm/%40hono/trpc-server@0.4.2"
+          },
+          "Locations": [
+            "/workspace/apps/api/node_modules/@hono/trpc-server/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@jridgewell/gen-mapping",
+          "Version": "0.3.13",
+          "Identifier": {
+            "PURL": "pkg:npm/%40jridgewell/gen-mapping@0.3.13"
+          },
+          "Locations": [
+            "/workspace/node_modules/@jridgewell/gen-mapping/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@jridgewell/resolve-uri",
+          "Version": "3.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/%40jridgewell/resolve-uri@3.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/@jridgewell/resolve-uri/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@jridgewell/source-map",
+          "Version": "0.3.11",
+          "Identifier": {
+            "PURL": "pkg:npm/%40jridgewell/source-map@0.3.11"
+          },
+          "Locations": [
+            "/workspace/node_modules/@jridgewell/source-map/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@jridgewell/sourcemap-codec",
+          "Version": "1.6.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40jridgewell/sourcemap-codec@1.6.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@jridgewell/sourcemap-codec/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@jridgewell/trace-mapping",
+          "Version": "0.3.31",
+          "Identifier": {
+            "PURL": "pkg:npm/%40jridgewell/trace-mapping@0.3.31"
+          },
+          "Locations": [
+            "/workspace/node_modules/@jridgewell/gen-mapping/node_modules/@jridgewell/trace-mapping/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@jridgewell/trace-mapping",
+          "Version": "0.3.31",
+          "Identifier": {
+            "PURL": "pkg:npm/%40jridgewell/trace-mapping@0.3.31"
+          },
+          "Locations": [
+            "/workspace/node_modules/@jridgewell/source-map/node_modules/@jridgewell/trace-mapping/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@langchain/cloudflare",
+          "Version": "1.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40langchain/cloudflare@1.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/cloudflare/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@langchain/core",
+          "Version": "1.4.1",
+          "Identifier": {
+            "PURL": "pkg:npm/%40langchain/core@1.4.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/core/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@langchain/langgraph",
+          "Version": "1.7.5",
+          "Identifier": {
+            "PURL": "pkg:npm/%40langchain/langgraph@1.7.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/langgraph/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@langchain/langgraph-checkpoint",
+          "Version": "1.2.3",
+          "Identifier": {
+            "PURL": "pkg:npm/%40langchain/langgraph-checkpoint@1.2.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/langgraph-checkpoint/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@langchain/langgraph-checkpoint-postgres",
+          "Version": "1.1.4",
+          "Identifier": {
+            "PURL": "pkg:npm/%40langchain/langgraph-checkpoint-postgres@1.1.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/langgraph-checkpoint-postgres/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@langchain/langgraph-sdk",
+          "Version": "1.17.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40langchain/langgraph-sdk@1.17.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/langgraph-sdk/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@langchain/openai",
+          "Version": "1.8.4",
+          "Identifier": {
+            "PURL": "pkg:npm/%40langchain/openai@1.8.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/openai/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@langchain/protocol",
+          "Version": "0.0.21",
+          "Identifier": {
+            "PURL": "pkg:npm/%40langchain/protocol@0.0.21"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/protocol/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@modelcontextprotocol/sdk",
+          "Version": "1.32.2",
+          "Identifier": {
+            "PURL": "pkg:npm/%40modelcontextprotocol/sdk@1.32.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@noble/ciphers",
+          "Version": "2.4.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40noble/ciphers@2.4.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@noble/ciphers/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@noble/hashes",
+          "Version": "2.4.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40noble/hashes@2.4.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@noble/hashes/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@polka/url",
+          "Version": "1.0.0-next.29",
+          "Identifier": {
+            "PURL": "pkg:npm/%40polka/url@1.0.0-next.29"
+          },
+          "Locations": [
+            "/workspace/node_modules/@polka/url/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@standard-schema/spec",
+          "Version": "1.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40standard-schema/spec@1.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@standard-schema/spec/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@trpc/server",
+          "Version": "11.28.3",
+          "Identifier": {
+            "PURL": "pkg:npm/%40trpc/server@11.28.3"
+          },
+          "Locations": [
+            "/workspace/apps/api/node_modules/@trpc/server/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@trpc/server",
+          "Version": "11.28.3",
+          "Identifier": {
+            "PURL": "pkg:npm/%40trpc/server@11.28.3"
+          },
+          "Locations": [
+            "/workspace/packages/trpc/node_modules/@trpc/server/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/body-parser",
+          "Version": "1.19.6",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/body-parser@1.19.6"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/body-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/connect",
+          "Version": "3.4.38",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/connect@3.4.38"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/connect/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/debug",
+          "Version": "4.1.13",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/debug@4.1.13"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/debug/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/estree",
+          "Version": "1.0.9",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/estree@1.0.9"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/estree/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/express",
+          "Version": "4.17.25",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/express@4.17.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/express/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/express-serve-static-core",
+          "Version": "4.19.9",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/express-serve-static-core@4.19.9"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/express-serve-static-core/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/http-errors",
+          "Version": "2.0.5",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/http-errors@2.0.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/http-errors/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/json-schema",
+          "Version": "7.0.15",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/json-schema@7.0.15"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/json-schema/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/mime",
+          "Version": "1.3.5",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/mime@1.3.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/mime/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/ms",
+          "Version": "2.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/ms@2.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/ms/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/node",
+          "Version": "26.5.1",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/node@26.5.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/node/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/qs",
+          "Version": "6.15.1",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/qs@6.15.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/qs/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/range-parser",
+          "Version": "1.2.7",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/range-parser@1.2.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/range-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/send",
+          "Version": "0.17.6",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/send@0.17.6"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/serve-static/node_modules/@types/send/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/send",
+          "Version": "1.2.1",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/send@1.2.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/send/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/serve-static",
+          "Version": "1.15.10",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/serve-static@1.15.10"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/serve-static/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@types/ws",
+          "Version": "8.18.1",
+          "Identifier": {
+            "PURL": "pkg:npm/%40types/ws@8.18.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@types/ws/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@typescript/typescript6",
+          "Version": "6.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/%40typescript/typescript6@6.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/typescript/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@videoq/api",
+          "Version": "0.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40videoq/api@0.0.0"
+          },
+          "Locations": [
+            "/workspace/apps/api/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@videoq/docs",
+          "Version": "0.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40videoq/docs@0.0.0"
+          },
+          "Locations": [
+            "/workspace/apps/docs/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@videoq/domain",
+          "Version": "0.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40videoq/domain@0.1.0"
+          },
+          "Locations": [
+            "/workspace/packages/domain/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@videoq/trpc",
+          "Version": "0.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40videoq/trpc@0.1.0"
+          },
+          "Locations": [
+            "/workspace/packages/trpc/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@videoq/web",
+          "Version": "0.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/%40videoq/web@0.0.0"
+          },
+          "Locations": [
+            "/workspace/apps/web/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "@yukiharada1228/langchain-postgres",
+          "Version": "0.2.5",
+          "Identifier": {
+            "PURL": "pkg:npm/%40yukiharada1228/langchain-postgres@0.2.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/@yukiharada1228/langchain-postgres/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "accepts",
+          "Version": "1.3.8",
+          "Identifier": {
+            "PURL": "pkg:npm/accepts@1.3.8"
+          },
+          "Locations": [
+            "/workspace/node_modules/accepts/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "accepts",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/accepts@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/accepts/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "acorn",
+          "Version": "8.18.0",
+          "Identifier": {
+            "PURL": "pkg:npm/acorn@8.18.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/acorn/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ajv",
+          "Version": "8.20.0",
+          "Identifier": {
+            "PURL": "pkg:npm/ajv@8.20.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/ajv/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ajv-formats",
+          "Version": "3.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/ajv-formats@3.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/ajv-formats/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "array-flatten",
+          "Version": "1.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/array-flatten@1.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/array-flatten/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "aws4fetch",
+          "Version": "1.0.20",
+          "Identifier": {
+            "PURL": "pkg:npm/aws4fetch@1.0.20"
+          },
+          "Locations": [
+            "/workspace/apps/api/node_modules/aws4fetch/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "base64-js",
+          "Version": "1.5.1",
+          "Identifier": {
+            "PURL": "pkg:npm/base64-js@1.5.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/base64-js/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "benchmark",
+          "Version": "1.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/benchmark@1.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/fast-uri/benchmark/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "better-auth",
+          "Version": "1.7.25",
+          "Identifier": {
+            "PURL": "pkg:npm/better-auth@1.7.25"
+          },
+          "Locations": [
+            "/workspace/node_modules/better-auth/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "better-call",
+          "Version": "1.4.5",
+          "Identifier": {
+            "PURL": "pkg:npm/better-call@1.4.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/better-call/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "bin",
+          "Version": "1.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/bin@1.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/terser/bin/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "body-parser",
+          "Version": "1.20.9",
+          "Identifier": {
+            "PURL": "pkg:npm/body-parser@1.20.9"
+          },
+          "Locations": [
+            "/workspace/node_modules/body-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "body-parser",
+          "Version": "2.4.0",
+          "Identifier": {
+            "PURL": "pkg:npm/body-parser@2.4.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/body-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "buffer-from",
+          "Version": "1.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/buffer-from@1.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/buffer-from/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "bytes",
+          "Version": "3.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/bytes@3.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/bytes/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "bytes",
+          "Version": "3.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/bytes@3.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/body-parser/node_modules/bytes/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "bytes",
+          "Version": "3.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/bytes@3.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/raw-body/node_modules/bytes/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "call-bind-apply-helpers",
+          "Version": "1.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/call-bind-apply-helpers@1.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/call-bind-apply-helpers/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "call-bound",
+          "Version": "1.0.4",
+          "Identifier": {
+            "PURL": "pkg:npm/call-bound@1.0.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/call-bound/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "commander",
+          "Version": "2.20.3",
+          "Identifier": {
+            "PURL": "pkg:npm/commander@2.20.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/terser/node_modules/commander/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "content-disposition",
+          "Version": "0.5.4",
+          "Identifier": {
+            "PURL": "pkg:npm/content-disposition@0.5.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/express/node_modules/content-disposition/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "content-disposition",
+          "Version": "1.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/content-disposition@1.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/content-disposition/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "content-type",
+          "Version": "1.0.5",
+          "Identifier": {
+            "PURL": "pkg:npm/content-type@1.0.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/content-type/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "content-type",
+          "Version": "2.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/content-type@2.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/body-parser/node_modules/content-type/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "content-type",
+          "Version": "2.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/content-type@2.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/negotiator/node_modules/content-type/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "content-type",
+          "Version": "2.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/content-type@2.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/type-is/node_modules/content-type/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "convert-source-map",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/convert-source-map@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/convert-source-map/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "cookie",
+          "Version": "0.7.2",
+          "Identifier": {
+            "PURL": "pkg:npm/cookie@0.7.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/cookie/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "cookie",
+          "Version": "0.7.2",
+          "Identifier": {
+            "PURL": "pkg:npm/cookie@0.7.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/express/node_modules/cookie/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "cookie",
+          "Version": "1.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/cookie@1.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/cookie/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "cookie-signature",
+          "Version": "1.0.7",
+          "Identifier": {
+            "PURL": "pkg:npm/cookie-signature@1.0.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/cookie-signature/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "cookie-signature",
+          "Version": "1.2.2",
+          "Identifier": {
+            "PURL": "pkg:npm/cookie-signature@1.2.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/cookie-signature/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "cors",
+          "Version": "2.8.6",
+          "Identifier": {
+            "PURL": "pkg:npm/cors@2.8.6"
+          },
+          "Locations": [
+            "/workspace/node_modules/cors/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "cross-spawn",
+          "Version": "7.0.6",
+          "Identifier": {
+            "PURL": "pkg:npm/cross-spawn@7.0.6"
+          },
+          "Locations": [
+            "/workspace/node_modules/cross-spawn/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "csstype",
+          "Version": "3.2.3",
+          "Identifier": {
+            "PURL": "pkg:npm/csstype@3.2.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/csstype/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "debug",
+          "Version": "2.6.9",
+          "Identifier": {
+            "PURL": "pkg:npm/debug@2.6.9"
+          },
+          "Locations": [
+            "/workspace/node_modules/body-parser/node_modules/debug/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "debug",
+          "Version": "2.6.9",
+          "Identifier": {
+            "PURL": "pkg:npm/debug@2.6.9"
+          },
+          "Locations": [
+            "/workspace/node_modules/express/node_modules/debug/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "debug",
+          "Version": "2.6.9",
+          "Identifier": {
+            "PURL": "pkg:npm/debug@2.6.9"
+          },
+          "Locations": [
+            "/workspace/node_modules/finalhandler/node_modules/debug/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "debug",
+          "Version": "2.6.9",
+          "Identifier": {
+            "PURL": "pkg:npm/debug@2.6.9"
+          },
+          "Locations": [
+            "/workspace/node_modules/send/node_modules/debug/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "debug",
+          "Version": "4.4.3",
+          "Identifier": {
+            "PURL": "pkg:npm/debug@4.4.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/debug/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "defu",
+          "Version": "6.1.7",
+          "Identifier": {
+            "PURL": "pkg:npm/defu@6.1.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/defu/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "depd",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/depd@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/depd/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "destroy",
+          "Version": "1.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/destroy@1.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/destroy/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "dist",
+          "Version": "1.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/dist@1.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/terser/dist/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "drizzle-orm",
+          "Version": "0.45.4",
+          "Identifier": {
+            "PURL": "pkg:npm/drizzle-orm@0.45.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/drizzle-orm/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "dunder-proto",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/dunder-proto@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/dunder-proto/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ee-first",
+          "Version": "1.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/ee-first@1.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/ee-first/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "encodeurl",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/encodeurl@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/encodeurl/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "es-define-property",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/es-define-property@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/es-define-property/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "es-errors",
+          "Version": "1.3.0",
+          "Identifier": {
+            "PURL": "pkg:npm/es-errors@1.3.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/es-errors/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "es-module-lexer",
+          "Version": "2.3.2",
+          "Identifier": {
+            "PURL": "pkg:npm/es-module-lexer@2.3.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/es-module-lexer/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "es-object-atoms",
+          "Version": "1.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/es-object-atoms@1.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/es-object-atoms/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "escalade",
+          "Version": "3.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/escalade@3.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/escalade/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "escape-html",
+          "Version": "1.0.3",
+          "Identifier": {
+            "PURL": "pkg:npm/escape-html@1.0.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/escape-html/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "estree-walker",
+          "Version": "3.0.3",
+          "Identifier": {
+            "PURL": "pkg:npm/estree-walker@3.0.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/estree-walker/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "etag",
+          "Version": "1.8.1",
+          "Identifier": {
+            "PURL": "pkg:npm/etag@1.8.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/etag/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "eventemitter3",
+          "Version": "4.0.7",
+          "Identifier": {
+            "PURL": "pkg:npm/eventemitter3@4.0.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/eventemitter3/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "eventemitter3",
+          "Version": "5.0.4",
+          "Identifier": {
+            "PURL": "pkg:npm/eventemitter3@5.0.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/langgraph-sdk/node_modules/eventemitter3/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "eventsource",
+          "Version": "3.0.7",
+          "Identifier": {
+            "PURL": "pkg:npm/eventsource@3.0.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/eventsource/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "eventsource-parser",
+          "Version": "3.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/eventsource-parser@3.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/eventsource-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "express",
+          "Version": "4.22.3",
+          "Identifier": {
+            "PURL": "pkg:npm/express@4.22.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/express/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "express",
+          "Version": "5.2.1",
+          "Identifier": {
+            "PURL": "pkg:npm/express@5.2.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/express/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "express-rate-limit",
+          "Version": "8.7.1",
+          "Identifier": {
+            "PURL": "pkg:npm/express-rate-limit@8.7.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/express-rate-limit/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "fast-deep-equal",
+          "Version": "3.1.3",
+          "Identifier": {
+            "PURL": "pkg:npm/fast-deep-equal@3.1.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/fast-deep-equal/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "fast-uri",
+          "Version": "3.1.9",
+          "Identifier": {
+            "PURL": "pkg:npm/fast-uri@3.1.9"
+          },
+          "Locations": [
+            "/workspace/node_modules/fast-uri/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "finalhandler",
+          "Version": "1.3.2",
+          "Identifier": {
+            "PURL": "pkg:npm/finalhandler@1.3.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/finalhandler/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "finalhandler",
+          "Version": "2.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/finalhandler@2.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/finalhandler/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "forwarded",
+          "Version": "0.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/forwarded@0.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/forwarded/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "fresh",
+          "Version": "0.5.2",
+          "Identifier": {
+            "PURL": "pkg:npm/fresh@0.5.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/fresh/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "fresh",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/fresh@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/fresh/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "function-bind",
+          "Version": "1.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/function-bind@1.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/function-bind/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "get-east-asian-width",
+          "Version": "1.7.0",
+          "Identifier": {
+            "PURL": "pkg:npm/get-east-asian-width@1.7.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/get-east-asian-width/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "get-intrinsic",
+          "Version": "1.3.0",
+          "Identifier": {
+            "PURL": "pkg:npm/get-intrinsic@1.3.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/get-intrinsic/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "get-proto",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/get-proto@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/get-proto/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "gopd",
+          "Version": "1.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/gopd@1.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/gopd/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "has-symbols",
+          "Version": "1.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/has-symbols@1.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/has-symbols/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "hasown",
+          "Version": "2.0.4",
+          "Identifier": {
+            "PURL": "pkg:npm/hasown@2.0.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/hasown/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "hono",
+          "Version": "4.13.21",
+          "Identifier": {
+            "PURL": "pkg:npm/hono@4.13.21"
+          },
+          "Locations": [
+            "/workspace/node_modules/hono/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "hono-rate-limiter",
+          "Version": "0.5.4",
+          "Identifier": {
+            "PURL": "pkg:npm/hono-rate-limiter@0.5.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/hono-rate-limiter/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "http-errors",
+          "Version": "2.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/http-errors@2.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/http-errors/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "iconv-lite",
+          "Version": "0.4.24",
+          "Identifier": {
+            "PURL": "pkg:npm/iconv-lite@0.4.24"
+          },
+          "Locations": [
+            "/workspace/node_modules/body-parser/node_modules/iconv-lite/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "iconv-lite",
+          "Version": "0.4.24",
+          "Identifier": {
+            "PURL": "pkg:npm/iconv-lite@0.4.24"
+          },
+          "Locations": [
+            "/workspace/node_modules/raw-body/node_modules/iconv-lite/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "iconv-lite",
+          "Version": "0.7.3",
+          "Identifier": {
+            "PURL": "pkg:npm/iconv-lite@0.7.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/iconv-lite/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "inherits",
+          "Version": "2.0.4",
+          "Identifier": {
+            "PURL": "pkg:npm/inherits@2.0.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/inherits/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ip-address",
+          "Version": "10.7.4",
+          "Identifier": {
+            "PURL": "pkg:npm/ip-address@10.7.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/ip-address/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ipaddr.js",
+          "Version": "1.9.1",
+          "Identifier": {
+            "PURL": "pkg:npm/ipaddr.js@1.9.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/proxy-addr/node_modules/ipaddr.js/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "is-alphabetical",
+          "Version": "2.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/is-alphabetical@2.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/is-alphabetical/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "is-alphanumerical",
+          "Version": "2.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/is-alphanumerical@2.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/is-alphanumerical/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "is-decimal",
+          "Version": "2.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/is-decimal@2.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/is-decimal/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "is-network-error",
+          "Version": "1.3.2",
+          "Identifier": {
+            "PURL": "pkg:npm/is-network-error@1.3.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/is-network-error/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "is-promise",
+          "Version": "4.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/is-promise@4.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/is-promise/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "isexe",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/isexe@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/isexe/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "jose",
+          "Version": "6.2.17",
+          "Identifier": {
+            "PURL": "pkg:npm/jose@6.2.17"
+          },
+          "Locations": [
+            "/workspace/node_modules/jose/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "js-tiktoken",
+          "Version": "1.0.21",
+          "Identifier": {
+            "PURL": "pkg:npm/js-tiktoken@1.0.21"
+          },
+          "Locations": [
+            "/workspace/node_modules/js-tiktoken/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "json-schema-traverse",
+          "Version": "1.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/json-schema-traverse@1.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/json-schema-traverse/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "json-schema-typed",
+          "Version": "8.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/json-schema-typed@8.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/json-schema-typed/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "kysely",
+          "Version": "0.29.5",
+          "Identifier": {
+            "PURL": "pkg:npm/kysely@0.29.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/kysely/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "langchain",
+          "Version": "1.6.6",
+          "Identifier": {
+            "PURL": "pkg:npm/langchain@1.6.6"
+          },
+          "Locations": [
+            "/workspace/node_modules/langchain/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "langsmith",
+          "Version": "0.12.0",
+          "Identifier": {
+            "PURL": "pkg:npm/langsmith@0.12.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/langsmith/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "math-intrinsics",
+          "Version": "1.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/math-intrinsics@1.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/math-intrinsics/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "media-typer",
+          "Version": "0.3.0",
+          "Identifier": {
+            "PURL": "pkg:npm/media-typer@0.3.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/media-typer/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "media-typer",
+          "Version": "1.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/media-typer@1.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/media-typer/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "merge-descriptors",
+          "Version": "1.0.3",
+          "Identifier": {
+            "PURL": "pkg:npm/merge-descriptors@1.0.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/merge-descriptors/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "merge-descriptors",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/merge-descriptors@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/merge-descriptors/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "methods",
+          "Version": "1.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/methods@1.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/methods/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "mime",
+          "Version": "1.6.0",
+          "Identifier": {
+            "PURL": "pkg:npm/mime@1.6.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/mime/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "mime-db",
+          "Version": "1.52.0",
+          "Identifier": {
+            "PURL": "pkg:npm/mime-db@1.52.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/mime-db/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "mime-db",
+          "Version": "1.54.0",
+          "Identifier": {
+            "PURL": "pkg:npm/mime-db@1.54.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/mime-db/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "mime-types",
+          "Version": "2.1.35",
+          "Identifier": {
+            "PURL": "pkg:npm/mime-types@2.1.35"
+          },
+          "Locations": [
+            "/workspace/node_modules/mime-types/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "mime-types",
+          "Version": "3.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/mime-types@3.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/mime-types/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "mrmime",
+          "Version": "2.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/mrmime@2.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/mrmime/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ms",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/ms@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/body-parser/node_modules/ms/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ms",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/ms@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/express/node_modules/ms/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ms",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/ms@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/finalhandler/node_modules/ms/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ms",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/ms@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/send/node_modules/debug/node_modules/ms/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ms",
+          "Version": "2.1.3",
+          "Identifier": {
+            "PURL": "pkg:npm/ms@2.1.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/ms/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "mustache",
+          "Version": "4.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/mustache@4.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/mustache/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "nanoid",
+          "Version": "3.3.20",
+          "Identifier": {
+            "PURL": "pkg:npm/nanoid@3.3.20"
+          },
+          "Locations": [
+            "/workspace/node_modules/nanoid/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "nanostores",
+          "Version": "1.5.3",
+          "Identifier": {
+            "PURL": "pkg:npm/nanostores@1.5.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/nanostores/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "negotiator",
+          "Version": "0.6.3",
+          "Identifier": {
+            "PURL": "pkg:npm/negotiator@0.6.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/accepts/node_modules/negotiator/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "negotiator",
+          "Version": "1.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/negotiator@1.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/negotiator/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "object-assign",
+          "Version": "4.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/object-assign@4.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/object-assign/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "object-inspect",
+          "Version": "1.13.4",
+          "Identifier": {
+            "PURL": "pkg:npm/object-inspect@1.13.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/object-inspect/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "on-finished",
+          "Version": "2.4.1",
+          "Identifier": {
+            "PURL": "pkg:npm/on-finished@2.4.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/on-finished/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "once",
+          "Version": "1.4.0",
+          "Identifier": {
+            "PURL": "pkg:npm/once@1.4.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/once/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "openai",
+          "Version": "7.57.0",
+          "Identifier": {
+            "PURL": "pkg:npm/openai@7.57.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/openai/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "p-finally",
+          "Version": "1.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/p-finally@1.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/p-finally/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "p-queue",
+          "Version": "6.6.2",
+          "Identifier": {
+            "PURL": "pkg:npm/p-queue@6.6.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/p-queue/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "p-queue",
+          "Version": "9.3.5",
+          "Identifier": {
+            "PURL": "pkg:npm/p-queue@9.3.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/langgraph-sdk/node_modules/p-queue/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "p-retry",
+          "Version": "7.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/p-retry@7.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/p-retry/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "p-timeout",
+          "Version": "3.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/p-timeout@3.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/p-timeout/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "p-timeout",
+          "Version": "7.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/p-timeout@7.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/langgraph-sdk/node_modules/p-timeout/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "parseurl",
+          "Version": "1.3.3",
+          "Identifier": {
+            "PURL": "pkg:npm/parseurl@1.3.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/parseurl/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "path-key",
+          "Version": "3.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/path-key@3.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/path-key/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "path-to-regexp",
+          "Version": "0.1.13",
+          "Identifier": {
+            "PURL": "pkg:npm/path-to-regexp@0.1.13"
+          },
+          "Locations": [
+            "/workspace/node_modules/express/node_modules/path-to-regexp/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "path-to-regexp",
+          "Version": "8.4.2",
+          "Identifier": {
+            "PURL": "pkg:npm/path-to-regexp@8.4.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/router/node_modules/path-to-regexp/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "pg",
+          "Version": "8.23.1",
+          "Identifier": {
+            "PURL": "pkg:npm/pg@8.23.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/pg/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "pg-connection-string",
+          "Version": "2.14.1",
+          "Identifier": {
+            "PURL": "pkg:npm/pg-connection-string@2.14.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/pg-connection-string/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "pg-int8",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/pg-int8@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/pg-int8/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "pg-pool",
+          "Version": "3.14.0",
+          "Identifier": {
+            "PURL": "pkg:npm/pg-pool@3.14.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/pg-pool/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "pg-protocol",
+          "Version": "1.16.1",
+          "Identifier": {
+            "PURL": "pkg:npm/pg-protocol@1.16.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/pg-protocol/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "pg-types",
+          "Version": "2.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/pg-types@2.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/pg-types/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "pgpass",
+          "Version": "1.0.5",
+          "Identifier": {
+            "PURL": "pkg:npm/pgpass@1.0.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/pgpass/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "picocolors",
+          "Version": "1.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/picocolors@1.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/picocolors/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "pkce-challenge",
+          "Version": "5.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/pkce-challenge@5.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/pkce-challenge/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "postcss",
+          "Version": "8.5.29",
+          "Identifier": {
+            "PURL": "pkg:npm/postcss@8.5.29"
+          },
+          "Locations": [
+            "/workspace/node_modules/postcss/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "postgres-array",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/postgres-array@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/postgres-array/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "postgres-array",
+          "Version": "3.0.4",
+          "Identifier": {
+            "PURL": "pkg:npm/postgres-array@3.0.4"
+          },
+          "Locations": [
+            "/workspace/node_modules/@langchain/langgraph-checkpoint-postgres/node_modules/postgres-array/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "postgres-bytea",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/postgres-bytea@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/postgres-bytea/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "postgres-date",
+          "Version": "1.0.7",
+          "Identifier": {
+            "PURL": "pkg:npm/postgres-date@1.0.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/postgres-date/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "postgres-interval",
+          "Version": "1.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/postgres-interval@1.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/postgres-interval/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "proxy-addr",
+          "Version": "2.0.8",
+          "Identifier": {
+            "PURL": "pkg:npm/proxy-addr@2.0.8"
+          },
+          "Locations": [
+            "/workspace/node_modules/proxy-addr/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "punycode",
+          "Version": "2.3.1",
+          "Identifier": {
+            "PURL": "pkg:npm/punycode@2.3.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/punycode/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "qs",
+          "Version": "6.16.2",
+          "Identifier": {
+            "PURL": "pkg:npm/qs@6.16.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/qs/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "range-parser",
+          "Version": "1.2.1",
+          "Identifier": {
+            "PURL": "pkg:npm/range-parser@1.2.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/express/node_modules/range-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "range-parser",
+          "Version": "1.2.1",
+          "Identifier": {
+            "PURL": "pkg:npm/range-parser@1.2.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/send/node_modules/range-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "range-parser",
+          "Version": "1.3.0",
+          "Identifier": {
+            "PURL": "pkg:npm/range-parser@1.3.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/range-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "raw-body",
+          "Version": "2.5.3",
+          "Identifier": {
+            "PURL": "pkg:npm/raw-body@2.5.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/raw-body/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "raw-body",
+          "Version": "3.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/raw-body@3.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/raw-body/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "react",
+          "Version": "19.3.1",
+          "Identifier": {
+            "PURL": "pkg:npm/react@19.3.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/react/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "react-dom",
+          "Version": "19.3.1",
+          "Identifier": {
+            "PURL": "pkg:npm/react-dom@19.3.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/react-dom/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "require-from-string",
+          "Version": "2.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/require-from-string@2.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/require-from-string/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "rou3",
+          "Version": "0.9.2",
+          "Identifier": {
+            "PURL": "pkg:npm/rou3@0.9.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/rou3/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "router",
+          "Version": "2.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/router@2.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/router/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "safe-buffer",
+          "Version": "5.2.1",
+          "Identifier": {
+            "PURL": "pkg:npm/safe-buffer@5.2.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/safe-buffer/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "safer-buffer",
+          "Version": "2.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/safer-buffer@2.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/safer-buffer/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "scheduler",
+          "Version": "0.28.0",
+          "Identifier": {
+            "PURL": "pkg:npm/scheduler@0.28.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/scheduler/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "semver",
+          "Version": "7.8.5",
+          "Identifier": {
+            "PURL": "pkg:npm/semver@7.8.5"
+          },
+          "Locations": [
+            "/workspace/node_modules/semver/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "send",
+          "Version": "0.19.2",
+          "Identifier": {
+            "PURL": "pkg:npm/send@0.19.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/send/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "send",
+          "Version": "1.2.1",
+          "Identifier": {
+            "PURL": "pkg:npm/send@1.2.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/send/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "serve-static",
+          "Version": "1.16.3",
+          "Identifier": {
+            "PURL": "pkg:npm/serve-static@1.16.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/serve-static/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "serve-static",
+          "Version": "2.2.1",
+          "Identifier": {
+            "PURL": "pkg:npm/serve-static@2.2.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/serve-static/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "set-cookie-parser",
+          "Version": "3.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/set-cookie-parser@3.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/set-cookie-parser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "setprototypeof",
+          "Version": "1.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/setprototypeof@1.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/setprototypeof/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "shebang-command",
+          "Version": "2.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/shebang-command@2.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/shebang-command/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "shebang-regex",
+          "Version": "3.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/shebang-regex@3.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/shebang-regex/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "side-channel",
+          "Version": "1.1.1",
+          "Identifier": {
+            "PURL": "pkg:npm/side-channel@1.1.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/side-channel/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "side-channel-list",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/side-channel-list@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/side-channel-list/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "side-channel-map",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/side-channel-map@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/side-channel-map/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "side-channel-weakmap",
+          "Version": "1.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/side-channel-weakmap@1.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/side-channel-weakmap/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "source-map",
+          "Version": "0.6.1",
+          "Identifier": {
+            "PURL": "pkg:npm/source-map@0.6.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/source-map/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "source-map-js",
+          "Version": "1.2.2",
+          "Identifier": {
+            "PURL": "pkg:npm/source-map-js@1.2.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/source-map-js/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "source-map-support",
+          "Version": "0.5.21",
+          "Identifier": {
+            "PURL": "pkg:npm/source-map-support@0.5.21"
+          },
+          "Locations": [
+            "/workspace/node_modules/source-map-support/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "split2",
+          "Version": "4.2.0",
+          "Identifier": {
+            "PURL": "pkg:npm/split2@4.2.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/split2/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "statuses",
+          "Version": "2.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/statuses@2.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/statuses/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "stripe",
+          "Version": "23.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/stripe@23.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/stripe/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "terser",
+          "Version": "5.51.2",
+          "Identifier": {
+            "PURL": "pkg:npm/terser@5.51.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/terser/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "tinyexec",
+          "Version": "1.3.1",
+          "Identifier": {
+            "PURL": "pkg:npm/tinyexec@1.3.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/tinyexec/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "toidentifier",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/toidentifier@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/toidentifier/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "totalist",
+          "Version": "3.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/totalist@3.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/totalist/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "tslib",
+          "Version": "2.8.1",
+          "Identifier": {
+            "PURL": "pkg:npm/tslib@2.8.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/tslib/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "type-is",
+          "Version": "1.6.18",
+          "Identifier": {
+            "PURL": "pkg:npm/type-is@1.6.18"
+          },
+          "Locations": [
+            "/workspace/node_modules/type-is/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "type-is",
+          "Version": "2.1.0",
+          "Identifier": {
+            "PURL": "pkg:npm/type-is@2.1.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/@modelcontextprotocol/sdk/node_modules/type-is/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "typescript",
+          "Version": "6.0.3",
+          "Identifier": {
+            "PURL": "pkg:npm/typescript@6.0.3"
+          },
+          "Locations": [
+            "/workspace/node_modules/@typescript/old/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "undici-types",
+          "Version": "8.9.0",
+          "Identifier": {
+            "PURL": "pkg:npm/undici-types@8.9.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/undici-types/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "unpipe",
+          "Version": "1.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/unpipe@1.0.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/unpipe/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "utils-merge",
+          "Version": "1.0.1",
+          "Identifier": {
+            "PURL": "pkg:npm/utils-merge@1.0.1"
+          },
+          "Locations": [
+            "/workspace/node_modules/utils-merge/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "vary",
+          "Version": "1.1.2",
+          "Identifier": {
+            "PURL": "pkg:npm/vary@1.1.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/vary/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "videoq",
+          "Version": "0.0.0",
+          "Identifier": {
+            "PURL": "pkg:npm/videoq@0.0.0"
+          },
+          "Locations": [
+            "/workspace/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "which",
+          "Version": "2.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/which@2.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/which/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "wrappy",
+          "Version": "1.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/wrappy@1.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/wrappy/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "ws",
+          "Version": "8.21.0",
+          "Identifier": {
+            "PURL": "pkg:npm/ws@8.21.0"
+          },
+          "Locations": [
+            "/workspace/node_modules/ws/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "xtend",
+          "Version": "4.0.2",
+          "Identifier": {
+            "PURL": "pkg:npm/xtend@4.0.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/xtend/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "zod",
+          "Version": "4.6.7",
+          "Identifier": {
+            "PURL": "pkg:npm/zod@4.6.7"
+          },
+          "Locations": [
+            "/workspace/node_modules/zod/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        },
+        {
+          "Name": "zod-to-json-schema",
+          "Version": "3.25.2",
+          "Identifier": {
+            "PURL": "pkg:npm/zod-to-json-schema@3.25.2"
+          },
+          "Locations": [
+            "/workspace/node_modules/zod-to-json-schema/package.json"
+          ],
+          "AnalyzedBy": "javascript-package-cataloger"
+        }
+      ],
+      "Vulnerabilities": []
+    },
+    {
+      "Class": "os-pkgs",
+      "Type": "alpine",
+      "Packages": [
+        {
+          "Name": "alpine-baselayout",
+          "Version": "3.7.2-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/alpine-baselayout@3.7.2-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "alpine-baselayout-data",
+          "Version": "3.7.2-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/alpine-baselayout-data@3.7.2-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "alpine-keys",
+          "Version": "2.6-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/alpine-keys@2.6-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "alpine-release",
+          "Version": "3.24.4-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/alpine-release@3.24.4-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "apk-tools",
+          "Version": "3.0.9-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/apk-tools@3.0.9-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "busybox",
+          "Version": "1.37.0-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/busybox@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "busybox-binsh",
+          "Version": "1.37.0-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/busybox-binsh@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ca-certificates-bundle",
+          "Version": "20261020-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/ca-certificates-bundle@20261020-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libapk",
+          "Version": "3.0.9-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libapk@3.0.9-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libatomic",
+          "Version": "15.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libatomic@15.2.0-r5?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libcrypto3",
+          "Version": "3.5.9-r100",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libgcc",
+          "Version": "15.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libgcc@15.2.0-r5?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libssl3",
+          "Version": "3.5.9-r100",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "libstdc++",
+          "Version": "15.2.0-r5",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/libstdc%2B%2B@15.2.0-r5?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "musl",
+          "Version": "1.2.6-r6",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/musl@1.2.6-r6?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "musl-utils",
+          "Version": "1.2.6-r3",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/musl-utils@1.2.6-r3?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "scanelf",
+          "Version": "1.3.9-r1",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/scanelf@1.3.9-r1?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "ssl_client",
+          "Version": "1.37.0-r31",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/ssl_client@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        },
+        {
+          "Name": "zlib",
+          "Version": "1.4-r0",
+          "Identifier": {
+            "PURL": "pkg:apk/alpine/zlib@1.4-r0?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "AnalyzedBy": "apk-db-cataloger"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "busybox",
+          "InstalledVersion": "1.37.0-r31",
+          "VulnerabilityID": "CVE-2025-60876",
+          "Aliases": [
+            "CVE-2025-60876"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/busybox@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "busybox-binsh",
+          "InstalledVersion": "1.37.0-r31",
+          "VulnerabilityID": "CVE-2025-60876",
+          "Aliases": [
+            "CVE-2025-60876"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/busybox-binsh@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "ssl_client",
+          "InstalledVersion": "1.37.0-r31",
+          "VulnerabilityID": "CVE-2025-60876",
+          "Aliases": [
+            "CVE-2025-60876"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/ssl_client@1.37.0-r31?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "libcrypto3",
+          "InstalledVersion": "3.5.9-r100",
+          "VulnerabilityID": "CVE-2026-95690",
+          "Aliases": [
+            "CVE-2026-95690"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "libssl3",
+          "InstalledVersion": "3.5.9-r100",
+          "VulnerabilityID": "CVE-2026-95690",
+          "Aliases": [
+            "CVE-2026-95690"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "libcrypto3",
+          "InstalledVersion": "3.5.9-r100",
+          "VulnerabilityID": "CVE-2026-35190",
+          "Aliases": [
+            "CVE-2026-35190"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        },
+        {
+          "Severity": "MEDIUM",
+          "PkgName": "libssl3",
+          "InstalledVersion": "3.5.9-r100",
+          "VulnerabilityID": "CVE-2026-35190",
+          "Aliases": [
+            "CVE-2026-35190"
+          ],
+          "Locations": [
+            "/lib/apk/db/installed"
+          ],
+          "PkgIdentifier": {
+            "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+          },
+          "FixedVersion": ""
+        }
+      ],
+      "ExperimentalModifiedFindings": [
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-124709",
+            "Aliases": [
+              "CVE-2026-124709"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-124709",
+            "Aliases": [
+              "CVE-2026-124709"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-107494",
+            "Aliases": [
+              "CVE-2026-107494"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-107494",
+            "Aliases": [
+              "CVE-2026-107494"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-121482",
+            "Aliases": [
+              "CVE-2026-121482"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-121482",
+            "Aliases": [
+              "CVE-2026-121482"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-84786",
+            "Aliases": [
+              "CVE-2026-84786"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-84786",
+            "Aliases": [
+              "CVE-2026-84786"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libcrypto3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-107493",
+            "Aliases": [
+              "CVE-2026-107493"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libcrypto3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        },
+        {
+          "Finding": {
+            "Severity": "HIGH",
+            "PkgName": "libssl3",
+            "InstalledVersion": "3.5.9-r100",
+            "VulnerabilityID": "CVE-2026-107493",
+            "Aliases": [
+              "CVE-2026-107493"
+            ],
+            "Locations": [
+              "/lib/apk/db/installed"
+            ],
+            "PkgIdentifier": {
+              "PURL": "pkg:apk/alpine/libssl3@3.5.9-r100?arch=x86_64&distro=alpine-3.24.4"
+            },
+            "FixedVersion": ""
+          },
+          "Type": "vulnerability",
+          "Status": "fixed",
+          "Statement": "fixed",
+          "Source": "apps/security/openssl/backports.openvex.json"
+        }
+      ]
+    },
+    {
+      "Class": "lang-pkgs",
+      "Type": "binary",
+      "Packages": [
+        {
+          "Name": "node",
+          "Version": "26.13.1",
+          "Identifier": {
+            "PURL": "pkg:generic/node@26.13.1"
+          },
+          "Locations": [
+            "/usr/local/bin/node"
+          ],
+          "AnalyzedBy": "binary-classifier-cataloger"
+        }
+      ],
+      "Vulnerabilities": []
+    }
+  ]
+}

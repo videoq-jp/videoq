@@ -1,0 +1,18 @@
+-- Synthetic native-auth fixture only. Password material is generated privately.
+CREATE TABLE IF NOT EXISTS recovery_probe(mode TEXT); INSERT INTO recovery_probe(mode) SELECT 'fail' WHERE NOT EXISTS(SELECT 1 FROM recovery_probe); INSERT INTO users(id,username,email,email_verified,role,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES('owner','owner','acceptance@example.test',1,'admin',0,0,0,0); INSERT INTO account(id,user_id,account_id,provider_id,password) VALUES('credential','owner','owner','credential','__GENERATED_PASSWORD_HASH__'); INSERT INTO videos(id,user_id,title,file,description,uploaded_at,transcript,status,error_message,source_type,source_url,youtube_video_id) VALUES(1,'owner','Sampling lesson','fixture-media','Synthetic fixture','2026-11-25T00:00:00Z','1
+00:00:00,000 --> 00:00:01,000
+Sampling converts a continuous signal into discrete measurements at regular time intervals.
+','completed','','upload','','');
+INSERT INTO videos(id,user_id,title,file,description,uploaded_at,transcript,status,error_message,source_type,source_url,youtube_video_id)
+VALUES(2,'owner','Pending synthetic lesson','fixture-media-v2','','2026-11-25T00:00:00Z','1
+00:00:00,000 --> 00:00:01,000
+A delayed lesson stays fenced to its current source revision.
+','completed','','upload','','');
+UPDATE recovery_probe SET mode='fail';
+INSERT INTO external_tasks(kind,payload,dedupe_key) VALUES('sqs_job','{"message":{"type":"reindex_video_transcript","job_id":"isolated-recovery-v2","payload":{"video_id":1}}}','synthetic-outbox-replay');
+
+
+CREATE TABLE IF NOT EXISTS acceptance_notifications(id TEXT PRIMARY KEY,event TEXT,severity TEXT);
+-- Explicit synthetic overdue fact for delivery/threshold testing; not a measured real deletion.
+INSERT OR IGNORE INTO policy_cleanup(id,scope,task_id,logical_deleted_at)
+VALUES('isolated-cleanup-probe','active-object','synthetic-fixture',strftime('%Y-%m-%dT%H:%M:%fZ','now','-49 hours'));

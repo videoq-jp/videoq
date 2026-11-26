@@ -8,6 +8,7 @@ import socket
 import sys
 from urllib.parse import urlsplit
 from pathlib import Path
+from worker_python.pipeline.embedding_contract import resolve_embedding_config
 from worker_python.internal_api import call_internal_api, uses_internal_persistence
 
 assert uses_internal_persistence()
@@ -53,7 +54,7 @@ for transcript in ["署名付き字幕 🌸", "duplicate must not overwrite"]:
 scene_source = call_internal_api("scene-index/source", {"videoId": 1})["source"]
 assert scene_source["transcript"] == "署名付き字幕 🌸"
 run = {"runId": str(uuid.uuid4()), "videoId": 1, "userId": "owner",
-       "sourceRevision": scene_source["sourceRevision"], "dimensions": 1536, "expectedScenes": 1}
+       "sourceRevision": scene_source["sourceRevision"], "dimensions": 1536, "expectedScenes": 1, "embeddingFingerprint": resolve_embedding_config().fingerprint}
 assert call_internal_api("scene-index/start", run) == {"accepted": True}
 scene = {"id": str(uuid.uuid4()), "content": "署名付き字幕 🌸", "startTime": "00:00:00,000",
          "endTime": "00:00:01,000", "embedding": [0.25] * 1536}

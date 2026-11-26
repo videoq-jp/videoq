@@ -15,9 +15,10 @@
       "name": "av",
       "version": "19.0.2",
       "filename": "av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl",
-      "url": "https://files.pythonhosted.org/packages/e1/7f/9f1237feb894afa472ef834aa1fbfe4d6398f28dc7e86a1b418650204c36/av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl",
-      "sha256": "9c1da7aad0fa6c13b4a5c1e7985be0d13f8526a96284573acaf3d55ead6d3fe8",
-      "size": 34990159
+      "url": "https://github.com/videoq-jp/videoq/releases/download/videoq-audio-wheel-20261126-v1/av-19.0.2-cp312-abi3-manylinux_2_28_x86_64.whl",
+      "sha256": "75fd08d21f054bd7e1ca800f32799131926b43857e8fa2ffe43f8bc755043ffa",
+      "size": 3283767,
+      "ffmpegVersion": "9.1"
     },
     {
       "name": "scipy",
@@ -52,5 +53,5 @@
       "size": 360455
     }
   ],
-  "runtimeGuardSha256": "ea09f7753f1ad771f9d7acc6b1a33289e20b6f59e83ac367e03513ffb3a2bb5a"
+  "runtimeGuardSha256": "bb52374777acff1a921c667bd116b3fbe4c010f5a01be13eeea0735c3fbce9a5"
 }

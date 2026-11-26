@@ -1,6 +1,7 @@
 // Metadata-only traffic flag changes. Caller must freeze deployment automation,
 // own the maintenance hold and persist the original plan before calling pause.
 const {createHash,randomUUID}=require('node:crypto');
+const {preflightSettings}=require('./embedding-release-preflight.cjs');
 const account='12daec56fdba43f677f2766ee26a5a39',flag='MIGRATION_TRAFFIC_STATE';
 const uuid=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/;
 const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
@@ -70,9 +71,24 @@ function createApiTrafficControl(request,{assertOwnership=async()=>{throw Error(
 }
 function createCloudflareTrafficTransport(token,{fetcher=fetch}={}){
  if(typeof token!=='string'||token.length<20||token.length>4096||/[\r\n\0]/.test(token))throw Error('INVALID_API_TRAFFIC_CREDENTIAL');
- return async(method,path,settings)=>{
+ const send=async(method,path,settings)=>{
   const match=new RegExp('^accounts/'+account+'/workers/scripts/(videoq-api|videoq-cutover-api-[a-f0-9]{16})/(settings|deployments|versions\\?per_page=1)$').exec(path);
   if(!match||!['GET','PATCH'].includes(method)||method==='PATCH'&&match[2]!=='settings')throw Error('INVALID_API_TRAFFIC_REQUEST');
+  if(method==='PATCH'){
+   const current=await send('GET',path);
+   if(!Array.isArray(current?.bindings)||settings?.bindings!==undefined&&!Array.isArray(settings.bindings))throw Error('INVALID_API_TRAFFIC_SETTINGS');
+   const bindings=settings.bindings===undefined?current.bindings:settings.bindings.map(binding=>{
+    if(binding.type!=='inherit')return binding;
+    const existing=current.bindings.find(value=>value.name===binding.name);
+    if(!existing)throw Error('INVALID_API_TRAFFIC_SETTINGS');return existing;
+   });
+   if(new Set(bindings.map(binding=>binding.name)).size!==bindings.length)throw Error('INVALID_API_TRAFFIC_SETTINGS');
+   const traffic=bindings.find(binding=>binding.name===flag);
+   if(traffic&&(traffic.type!=='plain_text'||!['paused','running'].includes(traffic.text)))throw Error('INVALID_API_TRAFFIC_SETTINGS');
+   // Evaluate the effective target, including changed model/DB bindings. A
+   // paused metadata edit never authorizes serving and needs no provenance scan.
+   if(traffic?.text!=='paused')await preflightSettings({...current,bindings},{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:token},fetcher);
+  }
   let body;if(method==='PATCH'){body=new FormData();body.set('settings',new Blob([JSON.stringify(settings)],{type:'application/json'}));}
   const response=await fetcher('https://api.cloudflare.com/client/v4/'+path,{method,headers:{authorization:'Bearer '+token},body,redirect:'error',signal:AbortSignal.timeout(20000)});
   if(!response.ok||!response.body)throw Error('API_TRAFFIC_REQUEST_FAILED');
@@ -80,5 +96,6 @@ function createCloudflareTrafficTransport(token,{fetcher=fetch}={}){
   let data;try{data=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw Error('API_TRAFFIC_RESPONSE_INVALID');}
   if(data.success!==true)throw Error('API_TRAFFIC_REQUEST_FAILED');return data.result;
  };
+ return send;
 }
 module.exports={createApiTrafficControl,createCloudflareTrafficTransport,validateApiTrafficPlan:checked};

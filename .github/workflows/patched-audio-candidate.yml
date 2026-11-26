@@ -1,0 +1,119 @@
+name: Patched audio candidate validation
+on:
+  pull_request:
+    paths:
+      - 'apps/inference/vllm/audio-build/**'
+      - '.github/scripts/stage-audio-candidate.py'
+      - '.github/scripts/test_stage_audio_candidate.py'
+      - '.github/workflows/patched-audio-candidate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: patched-audio-candidate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      VLLM_IMAGE: vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6.2.0
+        with:
+          # Host orchestration follows the canonical pin; the offline builder
+          # independently targets its pinned /opt/python/cp312-cp312 toolchain.
+          python-version-file: .python-version
+      - name: Record exact candidate source and native host
+        run: |
+          test "$(uname -m)" = x86_64
+          mkdir -p "$RUNNER_TEMP/audio-evidence"
+          python3 - <<'PY'
+          import json, os, platform, subprocess
+          from pathlib import Path
+          actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert actual == os.environ['GITHUB_SHA']
+          Path(os.environ['RUNNER_TEMP'], 'audio-evidence/source.json').write_text(json.dumps({
+              'source': actual, 'architecture': platform.machine(), 'run': os.environ['GITHUB_RUN_ID'],
+              'attempt': os.environ['GITHUB_RUN_ATTEMPT'], 'scope': 'Artifact-only native source validation; no publication or production lock update'
+          }, indent=2) + '\n')
+          PY
+      - name: Reserve disk on this disposable runner
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/share/swift /usr/local/.ghcup
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          version: v0.39.1
+          driver-opts: |
+            image=moby/buildkit@sha256:7583a0667093d941826bcd1d2878d6a360dfd08a82c93e6d6a6f6cce78801e12
+            memory=8g
+            memory-swap=8g
+            cpu-period=100000
+            cpu-quota=400000
+      - name: Verify signed and hash-locked official build inputs
+        run: |
+          gpg --version
+          python3 apps/inference/vllm/audio-build/recipe.py prepare --directory "$RUNNER_TEMP/audio-context"
+      - name: Build native Python 3.12 wheel and genuine FFmpeg offline
+        id: build
+        run: |
+          set -euo pipefail
+          docker buildx build --platform linux/amd64 --network=none --progress=plain \
+            --file "$RUNNER_TEMP/audio-context/Dockerfile" \
+            --output "type=local,dest=$RUNNER_TEMP/audio-candidate" "$RUNNER_TEMP/audio-context" \
+            2>&1 | tee "$RUNNER_TEMP/audio-evidence/build.log"
+      - name: Stage isolated candidate with unchanged locked companion wheels and guard
+        id: stage
+        run: |
+          python3 .github/scripts/stage-audio-candidate.py \
+            --candidate "$RUNNER_TEMP/audio-candidate" --output "$RUNNER_TEMP/audio-overlay" \
+            --cache "$RUNNER_TEMP/audio-wheel-cache" --download \
+            --receipt "$RUNNER_TEMP/audio-evidence/identity.json"
+      - name: Scan every installed candidate package and ELF without suppressions
+        uses: ./.github/actions/scan-image
+        with:
+          source: dir:${{ runner.temp }}/audio-overlay
+          output: ${{ runner.temp }}/audio-evidence/security.json
+          gate: strict
+      - name: Exercise exact candidate codecs and real vLLM preprocessing without model weights
+        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/audio-native"
+          chmod 0777 "$RUNNER_TEMP/audio-native"
+          docker pull --platform linux/amd64 "$VLLM_IMAGE"
+          docker run --rm --platform linux/amd64 --network none --read-only --user 10001:10001 \
+            --cpus 4 --memory 8g --memory-swap 8g --tmpfs /tmp:rw,nosuid,size=512m \
+            -e HOME=/tmp -e HF_HUB_OFFLINE=1 -e VLLM_NO_USAGE_STATS=1 -e PYTHONPATH=/opt/videoq-audio \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/PyNvVideoCodec:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/mooncake:ro,size=1m \
+            --tmpfs /usr/local/lib/python3.12/dist-packages/torchcodec:ro,size=1m \
+            -v "$RUNNER_TEMP/audio-candidate:/candidate:ro" \
+            -v "$RUNNER_TEMP/audio-overlay:/opt/videoq-audio:ro" \
+            -v "$RUNNER_TEMP/audio-native:/writable" \
+            --entrypoint python3 "$VLLM_IMAGE" /candidate/verify.py --output /writable/native-smoke.json --serving \
+            2>&1 | tee "$RUNNER_TEMP/audio-evidence/native.log"
+      - name: Require built, scanned and smoked bytes to remain identical
+        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
+        run: |
+          python3 .github/scripts/stage-audio-candidate.py --verify \
+            --native-receipt "$RUNNER_TEMP/audio-native/native-smoke.json" \
+            --candidate "$RUNNER_TEMP/audio-candidate" --output "$RUNNER_TEMP/audio-overlay" \
+            --receipt "$RUNNER_TEMP/audio-evidence/identity.json"
+      - name: Retain candidate wheel, provenance, raw scans and actual native evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: patched-audio-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/audio-candidate/
+            ${{ runner.temp }}/audio-evidence/
+            ${{ runner.temp }}/audio-native/
+          if-no-files-found: error
+          retention-days: 90
