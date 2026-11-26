@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { labStage as runStage, stageReporter } from './stage.mjs';
+import { labStage as runStage, stageReporter, readSseBody } from './stage.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { resourceId, stateIds, uploadUrl, fixtureVideo } from './constraints.mjs';
@@ -35,7 +35,7 @@ async function answer(courseId) {
   const events=await labStage('chat.stream', async () => {
   const streamed=await fetch(origin+'/api/chat/messages/stream',{method:'POST',signal:AbortSignal.timeout(600000),headers:{'Content-Type':'application/json',Origin:origin,Cookie:cookie},body:JSON.stringify({messages:[{role:'user',content:question}],course_id:courseId})});
   assert.equal(streamed.status,200);
-  return (await streamed.text()).split('\n').filter(l=>l.startsWith('data: ')).map(l=>JSON.parse(l.slice(6)));
+  return (await readSseBody(streamed, streamStarted, reportStage)).split('\n').filter(l=>l.startsWith('data: ')).map(l=>JSON.parse(l.slice(6)));
   });
   const streamedText=events.filter(e=>e.type==='text_delta').map(e=>e.text).join('');
   if (real) {

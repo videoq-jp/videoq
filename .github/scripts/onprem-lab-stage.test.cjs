@@ -65,3 +65,42 @@ test('started and success reporter failures do not classify successful requests 
   assert.deepEqual(rows.map(row=>row.status),['started','passed']);
  }
 });
+test('SSE progress preserves complete body and retains only fixed categories and timings', async()=>{
+ const {readSseBody}=await import('../onprem-lab/stage.mjs');const rows=[];
+ const body='data: {"type":"tool_progress","status":"running","tool":"private-tool","call_id":123}\n\ndata: {"type":"private-type","text":"private-payload"}\n\ndata: {"type":"text_delta","text":"日本語"}\n\ndata: {"type":"done","feedback_token":"private-token"}\n\n';
+ assert.equal(await readSseBody(new Response(body),performance.now(),row=>rows.push(row)),body);
+ const final=rows.at(-1);assert.equal(final.eventCount,4);assert.equal(final.eventCounters.tool_progress,1);assert.equal(final.eventCounters.other,1);assert.equal(final.toolStatusCounters.running,1);
+ assert(final.headersElapsedMilliseconds>=0);assert(final.firstEventElapsedMilliseconds>=final.headersElapsedMilliseconds);assert(final.lastEventElapsedMilliseconds>=final.firstEventElapsedMilliseconds);
+ assert(!JSON.stringify(rows).includes('private'));assert(!JSON.stringify(rows).includes('日本語'));
+});
+test('partial SSE body abort atomically retains progress without payloads',async()=>{
+ const {readSseBody,stageReporter}=await import('../onprem-lab/stage.mjs');
+ const {mkdtempSync,readFileSync,rmSync}=require('node:fs');const {join}=require('node:path');const {tmpdir}=require('node:os');
+ const directory=mkdtempSync(join(tmpdir(),'lab-sse-'));const path=join(directory,'stages.json');
+ const server=require('node:http').createServer((request,response)=>{response.writeHead(200,{'Content-Type':'text/event-stream'});response.write('data: {"type":"tool_progress","status":"complete","arguments":"private-arguments"}\n\n');});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const started=performance.now();const response=await fetch(`http://127.0.0.1:${server.address().port}`,{signal:AbortSignal.timeout(150)});
+  await assert.rejects(readSseBody(response,started,stageReporter(path,'restore-and-upgrade')),error=>error.name==='TimeoutError');
+  const rows=JSON.parse(readFileSync(path,'utf8')).stages;const final=rows.at(-1);
+  assert.equal(final.eventCount,1);assert.equal(final.eventCounters.tool_progress,1);assert.equal(final.toolStatusCounters.complete,1);assert(final.lastEventElapsedMilliseconds!==null);assert(!JSON.stringify(rows).includes('private-arguments'));
+ }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));rmSync(directory,{recursive:true,force:true});}
+});
+test('SSE diagnostic IO failures preserve original read errors and successful bodies',async()=>{
+ const {readSseBody}=await import('../onprem-lab/stage.mjs');
+ const original=new DOMException('private-error','TimeoutError');let reads=0;
+ const response={body:{getReader:()=>({read:async()=>{if(reads++===0)return{value:new TextEncoder().encode('data: {"type":"citation","sourceId":"private-id"}\n'),done:false};throw original;},releaseLock:()=>{throw new Error('private-release')}})}};
+ await assert.rejects(readSseBody(response,performance.now(),()=>{throw new Error('private-ENOSPC')}),error=>error===original);
+ const body='data: {"type":"done"}\n';assert.equal(await readSseBody(new Response(body),performance.now(),()=>{throw new Error('private-rename')}),body);
+});
+
+test('SSE diagnostics handle fragmented UTF8 and malformed category fields without changing body',async()=>{
+ const {readSseBody}=await import('../onprem-lab/stage.mjs');const rows=[];
+ const body='data: {"type":{"toString":"private"}}\n\ndata: {"type":"tool_progress","status":{"toString":"private"}}\n\ndata: {"type":"text_delta","text":"日本語"}\n';
+ const bytes=new TextEncoder().encode(body);let offset=0;
+ const response=new Response(new ReadableStream({pull(controller){if(offset===bytes.length){controller.close();return;}controller.enqueue(bytes.slice(offset,++offset));}}));
+ assert.equal(await readSseBody(response,performance.now(),row=>rows.push(row)),body);
+ assert.equal(rows.at(-1).eventCount,3);assert.equal(rows.at(-1).eventCounters.other,1);
+ assert.deepEqual(rows.at(-1).toolStatusCounters,{running:0,complete:0,error:0});assert(!JSON.stringify(rows).includes('private'));
+ assert.equal(await readSseBody({body:null},performance.now(),()=>{}),'');
+});
