@@ -35,7 +35,9 @@ jobs:
   onprem:
     name: ${{ inputs.validate_lifecycle && 'Lifecycle rehearsal' || 'Image security checks' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    # Observed pre-generation work: 51.39m; three phases retain two 10m
+    # generation requests each. Allow the 111.39m envelope plus cleanup.
+    timeout-minutes: ${{ inputs.validate_lifecycle && inputs.validate_real_cpu && 120 || 90 }}
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       QUOTA_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
