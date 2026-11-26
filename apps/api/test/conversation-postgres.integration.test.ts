@@ -320,9 +320,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     try {
       const checkpoint = await restored.saver.get({ configurable: { thread_id: restored.threadId, checkpoint_id: restored.checkpointId } });
       expect((checkpoint!.channel_values.messages as BaseMessage[]).some(message => message.text === 'Question 0')).toBe(true);
-      const memory = checkpoint!.channel_values.optchat as { saved: { entries: Array<{ text: string }>; tree: unknown[] } };
-      expect(JSON.stringify(memory.saved.entries)).toContain('Question 0');
-      expect(memory.saved.tree.length).toBeGreaterThan(0);
+
     } finally { await restored.close(); }
     expect(context.at(-1)).toBe('Still remember?');
   });
@@ -554,7 +552,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       const messages = snapshot!.channel_values.messages as BaseMessage[];
       expect(messages.filter(message => message.type === 'tool')).toHaveLength(2);
       expect(snapshot!.channel_values.evidenceSources).toHaveLength(2);
-      expect(snapshot!.channel_values.optchat).toBeDefined();
+      expect(messages.some(message => message.additional_kwargs.lc_source === 'summarization')).toBe(false);
     } finally { await chat.close(); }
   });
 

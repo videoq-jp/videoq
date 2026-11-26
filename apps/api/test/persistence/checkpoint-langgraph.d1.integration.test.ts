@@ -1,3 +1,5 @@
+import { createAgent } from 'langchain';
+import { createChatModel } from '../../src/lib/chat-model';
 import { runRag } from '../../src/lib/rag';
 import { chatCompletionResponse } from '../helpers/chat-completion-response';
 import { requestBodyText } from '../helpers/request-body';
@@ -71,7 +73,7 @@ describe('actual LangGraph on D1',()=>{
 });
 
 
-it('restores OptChat originals and tree through a new D1 saver and agent instance', async () => {
+it('restores summarized history through a new D1 saver and agent instance', async () => {
   const requests: Array<{ response_format?: unknown; messages: unknown[] }> = [];
   vi.stubGlobal('fetch', (_url: unknown, init: RequestInit) => {
     const body = JSON.parse(requestBodyText(init.body)); requests.push(body);
@@ -83,16 +85,21 @@ it('restores OptChat originals and tree through a new D1 saver and agent instanc
   const env = { OPENAI_API_KEY: 'fixture', OPENAI_BASE_URL: 'https://provider.test/v1' } as import('../../src/types/bindings').Bindings;
   const params = { ownerUserId: 'owner', videoIds: null, locale: 'en',
     messages: [{ role: 'user', content: 'Remember vectors. '.repeat(80) }] };
-  const first = await runRag(env, { ...params, memory: { saver: saver(), threadId, checkpointId: null } });
+  const messages = Array.from({ length: 24 }, (_, index) => index % 2
+    ? new AIMessage('answer '.repeat(150)) : new HumanMessage('old context '.repeat(150)));
+  const agent = createAgent({ model: createChatModel(env, { timeoutMs: 1000 }), checkpointer: saver() });
+  const seeded = await agent.graph.updateState(config, { messages });
+  const first = await runRag(env, { ...params, memory: { saver: saver(), threadId, checkpointId: seeded.configurable!.checkpoint_id as string } });
   const checkpoint = await saver().get({ configurable: { thread_id: threadId, checkpoint_id: first.checkpointId } });
-  const tree = checkpoint!.channel_values.optchat as { saved: { tree: unknown[] } };
-  expect(tree.saved.tree.length).toBeGreaterThan(0);
+  expect((checkpoint!.channel_values.messages as HumanMessage[])[0].text).toContain('Earlier conversation about vectors.');
   const summaries = requests.filter(request => !request.response_format).length;
   const second = await runRag(env, { ...params, messages: [{ role: 'user', content: 'Continue.' }],
     memory: { saver: saver(), threadId, checkpointId: first.checkpointId! } });
   expect(second.checkpointId).not.toBe(first.checkpointId);
   expect(requests.filter(request => !request.response_format)).toHaveLength(summaries);
   const restored = await saver().get({ configurable: { thread_id: threadId, checkpoint_id: second.checkpointId } });
-  expect((restored!.channel_values.messages as HumanMessage[])[0].text).toBe(params.messages[0].content);
-  for (const node of tree.saved.tree) expect((restored!.channel_values.optchat as typeof tree).saved.tree).toContainEqual(node);
+  expect((restored!.channel_values.messages as HumanMessage[])[0].text).toContain('Earlier conversation about vectors.');
+  expect(summaries).toBe(1);
+  const parent = await saver().get({ configurable: { thread_id: threadId, checkpoint_id: seeded.configurable!.checkpoint_id } });
+  expect(parent!.channel_values.messages).toHaveLength(24);
 });

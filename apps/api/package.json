@@ -68,7 +68,6 @@
     "@langchain/openai": "^1.8.4",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@trpc/server": "^11.28.3",
-    "@videoq-jp/langchainjs-optchat": "^0.3.0",
     "@videoq/trpc": "0.1.0",
     "@videoq-jp/langchainjs-postgres": "^0.3.0",
     "aws4fetch": "^1.0.20",

@@ -418,7 +418,7 @@ describe("RAG エージェント（非ストリーミング）", () => {
 
     // 1 通目に search_scenes がツールとして渡っている。
     const tools = bodies[0].tools as { function: { name: string; parameters: unknown } }[];
-    expect(tools.map((t) => t.function.name)).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "optchat_zoom", "optchat_date"]);
+    expect(tools.map((t) => t.function.name)).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip"]);
     // 所有者スコープは非公開。動画IDは講座内でのみ指定できる。
     expect(JSON.stringify(tools[0].function.parameters)).not.toContain("user_id");
     expect(JSON.stringify(tools[0].function.parameters)).toContain("video_ids");
@@ -471,7 +471,7 @@ describe("RAG エージェント（非ストリーミング）", () => {
     expect(searchCalls).toEqual([]);
     expect(closed).toBe(0);
     expect(result.answer.sources).toEqual([]);
-    expect((bodies[0].tools as { function: { name: string } }[]).map(tool => tool.function.name)).toEqual(["optchat_zoom", "optchat_date"]);
+    expect(bodies[0].tools).toBeUndefined();
   });
 });
 

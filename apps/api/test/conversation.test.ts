@@ -70,7 +70,7 @@ it.each([false, true])('resumes native agent messages without reconstructing the
     for await (const chunk of streamRag(ENV, next)) chunks.push(chunk);
     expect(chunks.some(chunk => 'part' in chunk)).toBe(true);
     expect(chunks.filter(chunk => 'generationProgress' in chunk)).toEqual([
-      { generationProgress: { type: 'generation_progress', phase: 'thinking' } },
+      { generationProgress: { type: 'generation_progress', phase: 'answering' } },
     ]);
     expect(chunks.at(-1)).toHaveProperty('final.checkpointId');
   } else await runRag(ENV, next);
@@ -96,7 +96,7 @@ it.each([false, true])('persists real middleware compaction directly in agent st
     for await (const chunk of streamRag(ENV, input)) chunks.push(chunk);
     expect(JSON.stringify(chunks)).not.toContain('The user is studying the dot product');
     expect(chunks).toContainEqual({ generationProgress: { type: 'generation_progress', phase: 'summarizing' } });
-    expect(chunks).toContainEqual({ generationProgress: { type: 'generation_progress', phase: 'thinking' } });
+    expect(chunks).toContainEqual({ generationProgress: { type: 'generation_progress', phase: 'answering' } });
     result = chunks.findLast(chunk => 'final' in chunk)!.final;
   } else result = await runRag(ENV, input);
   const summaries = () => requests.filter(request => !request.response_format);
@@ -106,41 +106,18 @@ it.each([false, true])('persists real middleware compaction directly in agent st
   expect(costLedger.calls.some(call => call.kind === 'conversation_summary' && call.status === 'completed')).toBe(true);
   const persisted = await saver.get({ configurable: { thread_id: 'chat', checkpoint_id: result.checkpointId } });
   const state = persisted!.channel_values.messages as Array<{ text: string }>;
-  expect(state).toHaveLength(messages.length + 2);
-  expect(state.slice(0, messages.length).map(message => message.text)).toEqual(messages.map(message => message.text));
+  expect(state.length).toBeLessThan(messages.length + 2);
+  expect(state[0].text).toContain('The user is studying the dot product');
+  expect(state.slice(1, -2).map(message => message.text)).toEqual(messages.slice(-19).map(message => message.text));
   expect(state.at(-2)!.text).toBe(question);
   expect(state.at(-1)!.text).toBe(JSON.stringify(ANSWER));
-  const saved = persisted!.channel_values.optchat as { saved: { tree: Array<{ l: number; i: number; text: string }> } };
-  expect(saved.saved.tree.length).toBeGreaterThan(messages.length);
-  // Rebuilding the agent uses the existing tree without re-summarizing old nodes.
+  expect(summaries()).toHaveLength(1);
   const count = summaries().length;
   await runRag(ENV, params('Explain that again', memory(saver, 'chat', result.checkpointId)));
   expect(summaries()).toHaveLength(count);
-  const resumed = await saver.get({ configurable: { thread_id: 'chat' } });
-  const tree = (resumed!.channel_values.optchat as typeof saved).saved.tree;
-  for (const node of saved.saved.tree) expect(tree).toContainEqual(node);
   expect(requests.at(-1)?.messages.some(message => message.content.includes('The user is studying the dot product'))).toBe(true);
-});
-
-it.each(['failure', 'empty'])('preserves original committed history when the summary provider returns %s', async mode => {
-  const saver = new MemorySaver();
-  const { checkpointId, messages } = await seed(saver);
-  const warning = vi.spyOn(console, 'error').mockImplementation(() => {});
-  vi.stubGlobal('fetch', (_url: unknown, init: RequestInit) => {
-    const body = JSON.parse(requestBodyText(init.body));
-    if (body.response_format) return Promise.resolve(chatCompletionResponse({ choices: [{ finish_reason: 'stop', message: {
-      role: 'assistant', content: JSON.stringify(ANSWER),
-    } }] }, !!body.stream));
-    return Promise.resolve(mode === 'failure' ? new Response('unavailable', { status: 503 })
-      : chatCompletionResponse({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '' } }] }, false));
-  });
-  // OptChat follows upstream's retry/clipped-summary behavior; originals are retained.
-  const result = await runRag(ENV, params('Explain', memory(saver, 'chat', checkpointId)));
-  expect(warning).toHaveBeenCalled();
-  const committed = await saver.get({ configurable: { thread_id: 'chat', checkpoint_id: checkpointId } });
-  expect((committed!.channel_values.messages as HumanMessage[]).map(message => message.text)).toEqual(messages.map(message => message.text));
-  const latest = await saver.get({ configurable: { thread_id: 'chat', checkpoint_id: result.checkpointId } });
-  expect((latest!.channel_values.messages as HumanMessage[]).slice(0, messages.length).map(message => message.text)).toEqual(messages.map(message => message.text));
+  const parent = await saver.get({ configurable: { thread_id: 'chat', checkpoint_id: checkpointId } });
+  expect((parent!.channel_values.messages as HumanMessage[]).map(message => message.text)).toEqual(messages.map(message => message.text));
 });
 
 it('rejects a missing committed checkpoint before calling the model', async () => {
@@ -157,7 +134,7 @@ it('ignores an uncommitted first answer and its state on the next request', asyn
   await runRag(ENV, params('new question', memory(saver)));
   expect(requests.at(-1)?.messages.filter(message => message.role === 'user').map(message => message.content)).toEqual(['new question']);
   const checkpoint = await saver.get({ configurable: { thread_id: 'chat' } });
-  expect(JSON.stringify(checkpoint!.channel_values.optchat)).not.toContain('invisible answer');
+  expect(JSON.stringify(checkpoint!.channel_values.messages)).not.toContain('invisible answer');
 });
 
 it('cancels native agent streaming when the consumer stops reading', async () => {
@@ -167,7 +144,7 @@ it('cancels native agent streaming when the consumer stops reading', async () =>
     return Promise.resolve(stalledChatResponse(upstream, () => {}, true, '{"segments":[{"text":"First'));
   });
   const stream = streamRag(ENV, params('question', memory(new MemorySaver())));
-  expect((await stream.next()).value).toEqual({ generationProgress: { type: 'generation_progress', phase: 'thinking' } });
+  expect((await stream.next()).value).toEqual({ generationProgress: { type: 'generation_progress', phase: 'answering' } });
   expect((await stream.next()).value).toHaveProperty('part');
   await expect(stream.return(undefined)).resolves.toHaveProperty('done', true);
   expect(upstream?.aborted).toBe(true);
@@ -222,9 +199,9 @@ it.each([false, true])('retains native tool history and stable citations across 
   expect(next.answer.segments[0].sourceIds).toEqual([1, 2]);
   const snapshot = await saver.get({ configurable: { thread_id: 'sources', checkpoint_id: checkpointId } });
   expect((snapshot!.channel_values.messages as HumanMessage[]).filter(message => message.type === 'tool')).toHaveLength(2);
-  // Grow the saved tree across multiple agent instances.
+  // Continue across multiple agent instances.
   for (let i = 0; i < 6; i++) await execute(`Follow-up ${i}`);
-  // A large new question receives its own OptChat leaf summary.
+  // A large new question triggers official history summarization.
   const compacted = await execute('More detail '.repeat(4000));
   expect(requests.some(request => !request.response_format)).toBe(true);
   expect(compacted.answer.sources.map(source => source.id)).toEqual([1, 2]);
@@ -296,36 +273,20 @@ it('reports conversation organization while the summary model is still pending',
 });
 
 
-it.each([false, true])('retrieves a hidden original through optchat_zoom after restoring a checkpoint (stream=%s)', async streaming => {
+it.each([false, true])('keeps short conversations verbatim without summary calls (stream=%s)', async streaming => {
+  const requests = stubModel();
   const saver = new MemorySaver();
-  const { checkpointId } = await seed(saver, 'zoom');
-  const requests: Array<{ response_format?: unknown; messages: Array<{ role: string; content: string }>; stream?: boolean }> = [];
-  let answerCalls = 0;
-  vi.stubGlobal('fetch', (_url: unknown, init: RequestInit) => {
-    const body = JSON.parse(requestBodyText(init.body)); requests.push(body);
-    const message = !body.response_format
-      ? { role: 'assistant', content: 'Earlier discussion of vectors.' }
-      : ++answerCalls === 1
-        ? { role: 'assistant', content: null, tool_calls: [{ id: 'zoom-original', type: 'function',
-            function: { name: 'optchat_zoom', arguments: JSON.stringify({ id: 0, n: 1 }) } }] }
-        : { role: 'assistant', content: JSON.stringify(ANSWER) };
-    return Promise.resolve(chatCompletionResponse({ choices: [{
-      finish_reason: 'tool_calls' in message ? 'tool_calls' : 'stop', message,
-    }] }, !!body.stream, crypto.randomUUID()));
-  });
-  const input = params('What did I ask at the beginning?', memory(saver, 'zoom', checkpointId));
-  if (streaming) {
-    const chunks = [];
-    for await (const chunk of streamRag(ENV, input)) chunks.push(chunk);
-    expect(chunks.at(-1)).toHaveProperty('final.checkpointId');
-    expect(chunks.some(chunk => 'part' in chunk)).toBe(true);
-  } else await runRag(ENV, input);
-  const answers = requests.filter(request => request.response_format);
-  expect(answers).toHaveLength(2);
-  expect(JSON.stringify(answers[0].messages)).toContain('optchat_zoom');
-  expect(JSON.stringify(answers[0].messages)).not.toContain('Dot product question 0:');
-  expect(answers[1].messages.find(message => message.role === 'tool')?.content).toContain('Dot product question 0:');
-  const checkpoint = await saver.get({ configurable: { thread_id: 'zoom' } });
-  expect(checkpoint!.channel_values.optchat).toBeDefined();
-  expect((checkpoint!.channel_values.messages as HumanMessage[])[0].text).toContain('Dot product question 0:');
+  let checkpointId: string | null = null;
+  for (let turn = 0; turn < 12; turn++) {
+    const input = params(`Question ${turn}`, memory(saver, 'short', checkpointId));
+    let result: RagResult | undefined;
+    if (streaming) {
+      for await (const chunk of streamRag(ENV, input)) if ('final' in chunk) result = chunk.final;
+    } else result = await runRag(ENV, input);
+    checkpointId = result!.checkpointId!;
+  }
+  expect(requests.filter(request => !request.response_format)).toHaveLength(0);
+  const saved = await saver.get({ configurable: { thread_id: 'short', checkpoint_id: checkpointId } });
+  expect(saved!.channel_values.messages).toHaveLength(24);
+  expect(JSON.stringify(requests.at(-1)!.messages)).toContain('Question 0');
 });
