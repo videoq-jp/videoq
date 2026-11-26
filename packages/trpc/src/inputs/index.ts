@@ -1,4 +1,3 @@
-import { skillInputSchemas } from '../skills';
 import { qaInputSchemas } from '../qa';
 import { accountInputSchemas } from "./account";
 import { adminInputSchemas } from "./admin";
@@ -11,7 +10,6 @@ import { videosInputSchemas } from "./videos";
 /** The single source of validation and parsed handler input types. */
 
 export const inputSchemas = {
-  ...skillInputSchemas,
   ...qaInputSchemas,
   ...accountInputSchemas,
   ...adminInputSchemas,

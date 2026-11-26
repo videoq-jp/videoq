@@ -260,32 +260,6 @@ The hosted topology is Cloudflare Workers (separate frontend, API, and docs) + H
 
 Caddy accepts a public hostname through `SITE_ADDRESS`, but the checked-in stack runs `wrangler dev` with development settings and signs uploads for `http://127.0.0.1:9000`. Setting a domain in `.env` alone does not configure a public deployment: authentication origins, CORS, API variable forwarding, secrets, and a browser-accessible HTTPS storage endpoint also need configuration. Use the [single-server installer](docs/guides/on-premises-single-server.md) for on-prem hosting, or the production deployment guide above for the cloud setup.
 
-## Automatically generate and install course skills
-
-Open an owned course's **…** menu and select **Install skills** (also available on analyzed video pages). Select **Automatically generate course skills**; no task description is required. VideoQ processes every subtitle chunk, extracts evidence-backed knowledge, automatically groups it by reusable task, and generates an independent skill for each task. Topics may span several videos; unrelated tasks become separate skills instead of one broad course skill. Every skill includes concrete activation conditions, decision criteria, workflow, exceptions, checks and its own timestamped source quotations.
-
-A separate model call audits each generated skill against verbatim evidence and the course's other facts, including qualifications that could be lost at topic boundaries. Audit failures are fed back into synthesis automatically, with at most two repair attempts per skill; persistent failures reject the set. All extracted facts must be assigned to the plan, and every claim must cite valid facts with exact source quotations. Only after **every** skill passes is the immutable skill set automatically enabled for installation; there is no human approval step. The dialog displays each skill's purpose, content and evidence for optional inspection. Rejected sets cannot be downloaded. The automated audit is a quality gate, not proof that every model interpretation is correct. Visual-only content is outside coverage.
-
-Progress is saved after each extraction, planning, generation and audit step. Keep the dialog open while it runs; you can pause or resume after interruption, including between individual skills. Concurrent steps are fenced with a database lease. Each completed model call uses one unit of the owner's existing AI allowance, including completed calls whose output later fails validation. Failed calls without a completed provider response are refunded. Generation supports up to 30 completed videos, 180,000 subtitle characters, 180 extracted facts (120,000 serialized characters), and 12 skills per set; larger inputs are rejected instead of silently truncated. Each member uses at most 80 facts. A single coherent topic may produce one skill; multiple skills are generated when the material supports distinct tasks.
-
-Only the owner can download the resulting set. Incomplete or rejected generations, and artifacts whose source transcript, title or course membership changed, are unavailable to the installer. New generations receive new IDs; the dialog remembers the latest ID locally. Earlier generations with a manually specified objective retain their existing review/publication workflow for compatibility.
-
-Choose Codex, Claude Code, or both, copy the command, run it in your project terminal, and enter a **read-only integration API key** from Settings when prompted. Requires Node.js 22+ with npm/npx. No agent MCP configuration is required; installation only calls the read-only `get_skill` tool and never invokes a model or derives instructions again.
-
-The copied command downloads a small dependency-free npm tarball from your own VideoQ deployment. It binds the service origin and skill-set ID, so neither needs a separate flag. No npm registry publication is required, and the project’s dependencies are unchanged:
-
-```bash
-npx --yes --allow-remote=all https://your-domain.example.com/api/skills/YOUR-SKILL-UUID.tgz
-```
-
-The default installs into both Codex and Claude Code. Add `--agent codex` or `--agent claude` to select one, or `--global` for all projects. The tarball contains only installer code and the target ID; course content still requires the owner's API key and is downloaded through `get_skill`. The API obtains the canonical installer from the configured `FRONTEND_URL` static asset, with no redirects and a 64 KB size limit. Earlier direct `install.mjs --origin … --skill …` invocations remain supported.
-
-Project installs go to `.agents/skills` (Codex) and `.claude/skills` (Claude Code); `--global` uses those folders in your home directory. These paths follow the [Codex skill documentation](https://learn.chatgpt.com/docs/build-skills) and [Claude Code skill documentation](https://code.claude.com/docs/en/skills). One command installs all members into separate skill folders and prints their individual invocations. For unattended installation, supply `VIDEOQ_API_KEY` through your secret manager or process environment. It is never saved in the skill.
-
-Each skill folder contains `SKILL.md` with actual generated decisions and `references/sources.md` with their instructor quotations, video links and timestamps. Review private course content before sharing or committing. Existing skill folders are never overwritten: if any member conflicts, the whole install stops without installing earlier members. Explicitly remove the named folder before reinstalling. Source changes require a new generation; installed copies do not update automatically, and revoking an API key cannot recall exported copies.
-
-Apply the migration for your persistence backend before deploying this feature (PostgreSQL `0067_agent_skills.sql` or D1 `0020_agent_skills.sql`). Saved generations are owner-scoped and deleted with the account. Tests cover generation state transitions, factual citation integrity, rejection/publication, source changes, concurrency, AI quota accounting, D1 persistence, MCP downloads and local installation. An opt-in synthetic end-to-end evaluation is available through `npm exec --workspace @videoq/api -- tsx scripts/evaluate-agent-skill.ts /tmp/videoq-skill-evaluation`; it uses your authenticated Codex CLI for the production generation prompts and schemas, automatically separates API-client and SQL topics into multiple skills, then checks the generated API-client skill with Codex and Claude Code while both skills are installed. It consumes CLI usage, operates in temporary fixture projects, and does not exercise your deployed model provider or production database.
-
 ## MCP (Model Context Protocol) Integration
 
 VideoQ exposes a remote MCP server at `/api/mcp` (Streamable HTTP via `@hono/mcp`). Connect a compatible client using the endpoint URL and an API key, or use the OAuth authorization flow. Older clients can use the `mcp-remote` bridge below.
@@ -294,7 +268,7 @@ VideoQ exposes a remote MCP server at `/api/mcp` (Streamable HTTP via `@hono/mcp
 
 ### Available tools
 
-VideoQ exposes 7 read-only management tools, 5 write management tools, 7 evidence tools, and the read-only `get_skill` download tool. MCP metadata and tests enforce their schemas and access annotations.
+VideoQ exposes 7 read-only management tools, 5 write management tools, 7 evidence tools. MCP metadata and tests enforce their schemas and access annotations.
 
 | Tool | Purpose |
 |---|---|
@@ -305,7 +279,6 @@ VideoQ exposes 7 read-only management tools, 5 write management tools, 7 evidenc
 | `create_course` | Create a course |
 | `add_video_to_course` | Add an uploaded video to a course |
 | `list_tags` | List tags |
-| `get_skill` | Download an owned, source-checked generated skill set by UUID; rejects stale source material |
 | `get_chat_history` | Chat history for a course (with feedback) |
 | `get_chat_analytics` | Question counts, period, daily time series, feedback aggregates |
 

@@ -1,4 +1,3 @@
-import { skillHandlers } from './handlers/skills';
 import { qaHandlers } from './handlers/qa';
 import { requireFeature } from "../lib/deployment";
 import type { Context } from "hono";
@@ -36,7 +35,6 @@ export async function createTrpcContext(c: Context<AppEnv>): Promise<TrpcContext
     ...chatHandlers(c, userId),
     ...courseHandlers(c, userId),
     ...qaHandlers(c, userId),
-    ...skillHandlers(c, userId),
     ...mediaLibraryHandlers(c, userId),
   } satisfies ProcedureHandlers;
 

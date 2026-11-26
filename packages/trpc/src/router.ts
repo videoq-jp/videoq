@@ -1,4 +1,3 @@
-import { skillsRouter } from './routers/skills';
 import { qaRouter } from './routers/qa';
 import { t } from "./init";
 import { accountRouter } from "./routers/account";
@@ -14,7 +13,6 @@ import { tagsRouter } from "./routers/tags";
 import { videosRouter } from "./routers/videos";
 
 export const appRouter = t.router({
-  skills: skillsRouter,
   qa: qaRouter,
   account: accountRouter,
   admin: adminRouter,

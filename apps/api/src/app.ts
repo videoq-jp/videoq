@@ -14,7 +14,6 @@ import { onError } from "./middleware/error-handler";
 import { toErrorBody } from "./shared/errors";
 import { workerInternalRoutes } from "./features/worker-internal/routes";
 import { healthRoutes } from "./features/health/routes";
-import { skillInstallerRoutes } from "./features/skills/installer-routes";
 import { videoRoutes } from "./features/videos/routes";
 import { chatRoutes } from "./features/chat/routes";
 import { mcpRoutes } from "./features/mcp/routes";
@@ -143,7 +142,6 @@ export function createApp() {
   // Raw HTTP is reserved for protocol-specific transports and binary payloads.
   app.route("/api/billing", billingRoutes);
   app.route("/api/videos", videoRoutes);
-  app.route("/api/skills", skillInstallerRoutes);
   app.route("/api/chat", chatRoutes);
   app.route("/api/mcp", mcpRoutes);
   app.route("/api/lti", ltiRoutes);
