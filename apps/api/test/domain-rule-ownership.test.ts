@@ -5,7 +5,7 @@ import ts from 'typescript';
 import { expect, it } from 'vitest';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 type Rule = { path: string; symbols: string[]; consumers: string[] };
-const catalog = JSON.parse(readFileSync(resolve(root, 'docs/architecture/domain-rule-ownership.json'), 'utf8')) as { rules: { issue: number; rules: Rule[]; contracts: string[] }[] };
+const catalog = JSON.parse(readFileSync(resolve(root, 'docs/architecture/domain-rule-ownership.json'), 'utf8')) as { rules: { issue: number; rules: Rule[]; contracts: string[]; supersededBy?: number }[] };
 const sources = new Map<string, ts.SourceFile>();
 function scan(dir: string) {
   for (const entry of readdirSync(resolve(root, dir), { withFileTypes: true })) {
@@ -49,6 +49,16 @@ it('tracks every audited issue, the canonical rule declarations, consumers, and 
   expect(catalog.rules.map(x => x.issue)).toEqual(Array.from({ length: 27 }, (_, i) => 1703 + i));
   for (const entry of catalog.rules) {
     expect(entry.contracts.length, `#${entry.issue}`).toBeGreaterThan(0);
+    if (entry.supersededBy !== undefined) {
+      expect([1712, 1713]).toContain(entry.issue);
+      expect(entry.supersededBy).toBe(1701);
+      expect(entry.rules).toEqual([]);
+      for (const path of ['apps/api/src/domain/skills', 'apps/api/src/features/skills', 'apps/api/src/integrations/agent-skills.ts', 'packages/trpc/src/routers/skills.ts']) {
+        expect(existsSync(resolve(root, path)), `removed skill runtime: ${path}`).toBe(false);
+      }
+    } else if (entry.issue === 1727) {
+      expect(entry.contracts).toContain('apps/api/test/domain-rule-ownership.test.ts');
+    } else expect(entry.rules.length, `#${entry.issue}`).toBeGreaterThan(0);
     for (const path of entry.contracts) expect(existsSync(resolve(root, path)), path).toBe(true);
     for (const rule of entry.rules) {
       expect(existsSync(resolve(root, rule.path)), rule.path).toBe(true);

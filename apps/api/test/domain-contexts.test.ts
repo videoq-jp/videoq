@@ -17,7 +17,7 @@ const publishedDependencies: Record<string, readonly string[]> = {
 it('keeps domain contexts closed except for published upstream policies', () => {
   const contexts = readdirSync(root, { withFileTypes: true }).filter(entry => entry.isDirectory());
   expect(contexts.map(entry => entry.name).sort()).toEqual([
-    'billing', 'conversation', 'identity', 'learning', 'lms', 'media', 'operations', 'qa', 'search', 'skills',
+    'billing', 'conversation', 'identity', 'learning', 'lms', 'media', 'operations', 'qa', 'search',
   ]);
   for (const context of contexts) {
     for (const entry of readdirSync(resolve(root, context.name))) {

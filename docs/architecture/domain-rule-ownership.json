@@ -56,8 +56,7 @@
           ],
           "consumers": [
             "apps/api/src/features/chat/generation-service.ts",
-            "apps/api/src/features/evidence/external-service.ts",
-            "apps/api/src/integrations/agent-skills.ts"
+            "apps/api/src/features/evidence/external-service.ts"
           ]
         }
       ],
@@ -203,45 +202,27 @@
     },
     {
       "issue": 1712,
-      "rules": [
-        {
-          "path": "apps/api/src/domain/skills/lifecycle.ts",
-          "symbols": [
-            "initialSkillState",
-            "nextSkillStep",
-            "completeSkillStep",
-            "publishSkill",
-            "checkedSkillBundleMembers"
-          ],
-          "consumers": [
-            "apps/api/src/features/skills/service.ts"
-          ]
-        }
-      ],
+      "rules": [],
       "contracts": [
-        "apps/api/test/skill-lifecycle-policy.test.ts",
-        "apps/api/test/agent-skills.test.ts"
+        "apps/api/test/trpc-surface.test.ts",
+        "apps/api/test/mcp.test.ts"
       ],
-      "intentionalDifferences": []
+      "intentionalDifferences": [
+        "PR #1701 removed agent skill generation and installation on main; no skill runtime is restored."
+      ],
+      "supersededBy": 1701
     },
     {
       "issue": 1713,
-      "rules": [
-        {
-          "path": "apps/api/src/domain/skills/source-policy.ts",
-          "symbols": [
-            "acceptSkillSourcePage",
-            "checkedSkillSource"
-          ],
-          "consumers": [
-            "apps/api/src/features/skills/source-service.ts"
-          ]
-        }
-      ],
+      "rules": [],
       "contracts": [
-        "apps/api/test/agent-skill-model.test.ts"
+        "apps/api/test/trpc-surface.test.ts",
+        "apps/api/test/mcp.test.ts"
       ],
-      "intentionalDifferences": []
+      "intentionalDifferences": [
+        "PR #1701 removed agent skill generation and installation on main; no skill runtime is restored."
+      ],
+      "supersededBy": 1701
     },
     {
       "issue": 1714,

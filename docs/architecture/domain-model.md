@@ -16,7 +16,6 @@ VideoQは、業務の意味と整合性を中心に境界を設計する。ク�
 | billing | プラン、利用枠、容量・月次アップロード枠、課金による権利の更新 | billing、利用枠を予約する各ユースケース |
 | identity | ユーザー名、管理者権限、OAuth同意 | account、admin、認証アダプター |
 | lms | LMSによる管理権限、登録、連携、ネイティブ学習許可、リソース世代 | lms、lti |
-| skills | 教材由来のスキル、出典保証、生成状態と監査 | skills |
 | operations | ジョブ、失敗・再試行、外部タスク、保守期限、アカウント削除 | tasks、maintenance、バックグラウンド実行 |
 
 「講座」は教材をまとめ参加の境界になるもの。「教材の所属」は講座と動画の関連。「受講者」は講座に参加するユーザーであり、両者をコード上の `membership` という語だけで同一視しない。「学習許可」は現在の権限・教材範囲から導出するもので、ログイン済みというだけでは成立しない。「リソース世代」は同じ外部IDを再利用した古い処理から現在の教材を保護するための世代。
@@ -80,11 +79,10 @@ APIの型検査ではdomain全体もDOMなしでコンパイルする。ESLint�
 | media/content-read・material-management・material-mutation | 内容のサイズ上限、編集可能な状態、版・参照の整合性、更新と再処理の計画 |
 | conversation/citation-policy | 引用元IDと本文内の安全な引用位置 |
 | operations/retention-policy | 履歴保持期間・一度に処理する件数 |
-| skills/model・policy・batches | 生成状態、出典との一致、知識の欠落・重複、全主張の監査、処理分割 |
 
-skillsを独立したコンテキストに追加した。教材本文を入力として受け、生成状態と出典保証を所有する。永続化ポートがドメインの状態型を参照し、逆方向には依存しない。
+PR #1701でスキル生成・インストール機能が削除されたため、skillsコンテキストと実行コードは残さない。監査項目 #1712・#1713は削除による対応不要として追跡し、公開APIに再登場しないことを既存のsurface試験と所有先試験で検証する。
 
-`application/material-mutation`、`features/course-tags/policy`、`features/skills/core` に残る呼び出し口は、ドメインの違反を既存のApplicationErrorへ変換する。判定条件のコピーは持たない。タグの非同期判定もこの境界で変換する。セッション証明の検証、DTOの組み立て、Markdownの出力、DBの原子的更新は各外側の責務として残す。
+`application/material-mutation`、`features/course-tags/policy` に残る呼び出し口は、ドメインの違反を既存のApplicationErrorへ変換する。判定条件のコピーは持たない。タグの非同期判定もこの境界で変換する。セッション証明の検証、DTOの組み立て、Markdownの出力、DBの原子的更新は各外側の責務として残す。
 
 `domain-policy-ownership.test.ts` は期間の閾値、画面に提示する操作と状態遷移の整合性、同期・非同期のエラー変換を検証する。`domain-contexts.test.ts` と `architecture-boundaries.test.ts` は新しい所有先も含む全ドメインファイルの依存を検証する。
 
@@ -96,7 +94,7 @@ issue #1703〜#1729の正本・呼び出し元・契約試験は `domain-rule-ow
 
 AI枠の消費根拠は `billing/ai-consumption` に明示する。完成した回答、確定後の失敗、文章を一部生成したstream、provider呼び出しが完了した外部処理の違いを保持し、一律に課金タイミングを変更しない。
 
-スキル生成は `skills/lifecycle` が次の操作・再生成上限・全memberの監査・公開を決める。外部AIの呼び出し・キャンセル・lease・保存はユースケース側に残す。LMSの提供機能と操作権限、教材の世代・所有者・接続の不変条件もそれぞれドメインの正本から判断する。
+LMSの提供機能と操作権限、教材の世代・所有者・接続の不変条件もそれぞれドメインの正本から判断する。
 
 検索分割はdomainの同期generatorが必要なデータを要求し、applicationがembedding/境界の外部処理を実行して結果を返す。Otsuの数値計算もdomainにあり、バッチ取得とdurable checkpointの保存はapplicationが担当する。再索引のdomainはmessageを生成し、保存→配送はapplicationで行う。既存のメモリ上限・逐次加算順序・outbox・CASは維持する。
 

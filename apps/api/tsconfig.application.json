@@ -85,10 +85,6 @@
     "src/features/media/learning-playback-service.ts",
     "src/features/lms/installation-service.ts",
     "src/domain/lms/materials-snapshot-policy.ts",
-    "src/features/evidence/external-service.ts",
-    "src/features/skills/core.ts",
-    "src/features/skills/service.ts",
-    "src/features/skills/source-service.ts",
-    "src/domain/skills/batches.ts"
+    "src/features/evidence/external-service.ts"
   ]
 }

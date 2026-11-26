@@ -32,7 +32,7 @@
 
 ## 実装の対応先
 
-- CA01–CA04: `domain/`、`application/`、`persistence/contracts/`、`integrations/`の既存分離に加え、スキル生成のcore/serviceからtRPCとAbortSignalへの依存を除いた。外部AI出力のスキーマ検証はprovider adapterで維持する。入力→ユースケース→出力の境界は `trpc/handlers/course-procedures.ts` でも本番・in-memoryで共有する。
+- CA01–CA04: `domain/`、`application/`、`persistence/contracts/`、`integrations/`で判断・手順・永続化・外部能力を分離する。スキル生成は最新mainのPR #1701で削除されており、今回の統合では復元しない。入力→ユースケース→出力の境界は `trpc/handlers/course-procedures.ts` でも本番・in-memoryで共有する。
 - CA05–CA08: `application/use-case-bus.ts` と `application/scenario.ts`。既存の全JSON APIのdispatcherと講座ユースケースの本番compositionが同じ型付きbusを使う。`persistence/memory/course-repository.ts` は本物の講座ユースケースに差し込むローカル実装。D1/PostgreSQLは引き続き本番の構成が選ぶ。
 - CA09: `scripts/scaffold-use-case.mjs`。契約・ユースケース・型付きproduction/stub composition・JSON fixture・回帰テストを生成し、`integrations/generated/registry.ts` に自動登録する。二重生成・不正な型・書込先のsymlinkを拒否し、登録更新は排他的に行う。
 - CA10–CA11: `integrations/prototype/` と `runtime/prototype*.ts`。全82手続きの既存tRPCルーター・入力・出力スキーマを使う。JSONの成功/失敗と順序、変更時の再読込、認証済み/匿名/管理者の開発用コンテキスト、SSEなどraw HTTPのfixturesを扱う。
@@ -129,7 +129,7 @@ npm run build:node --workspace @videoq/api
 | --- | --- | --- |
 | API全体 `test:unit -- --maxWorkers=4` | 367ファイル成功、3,718テスト成功 | 既存API・業務ルール・D1・ツール・境界。外部環境を要する128ファイル/1,584テストは既存条件でskip |
 | Workers `test:workers` | 16ファイル、118テスト成功 | 実workerdでのAPI・ランタイム契約 |
-| PostgreSQLの講座/スキル保存 | 2ファイル、19テスト成功 | 一時ローカルDBで契約・ロールバック・分割保存 |
+| PostgreSQLの講座/スキル保存（統合前の記録） | 2ファイル、19テスト成功 | スキル保存はPR #1701で削除済み。統合後の検証対象から除外 |
 | Python worker境界 | 1テスト成功 | domain/use_casesから外部実装への依存禁止 |
 | busとscaffoldの型検査 | 成功 | 誤った名前・入力・出力はコンパイルで拒否。生成した別プロジェクトも型検査・テスト・CLIを実行 |
 | native HTTP smoke | memory/stubとも成功 | 実際のNodeサーバーでhealth、identity/session、講座作成・取得、JSON fixtureの応答。検証サーバーは終了済み |

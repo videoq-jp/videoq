@@ -1,4 +1,3 @@
-import { skillOutputSchemas } from './skills';
 import { qaOutputSchemas } from './qa';
 import { z } from "zod";
 import type { inputSchemas } from "./inputs";
@@ -17,7 +16,6 @@ const recoveryInspection=z.object({target:z.string(),fingerprint:recoveryHash,in
 export const outputSchemas = {
   'admin.inspectSearchRecovery': recoveryInspection,
   'admin.restartSearchWorkflow': z.object({auditId:z.string(),workflowId:recoveryHash,inspection:recoveryHash,outcome:z.literal('restart_accepted')}),
-  ...skillOutputSchemas,
   ...qaOutputSchemas,
   "account.me": models.userSchema,
   "account.integrationApiKeys": z.array(z.object({

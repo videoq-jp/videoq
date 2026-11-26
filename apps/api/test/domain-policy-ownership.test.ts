@@ -5,8 +5,6 @@ import { materialMutationKind, MaterialMutationError } from '../src/domain/media
 import { materialMutationKind as applicationMutationKind } from '../src/application/material-mutation';
 import { checkTagMutation, CourseTagConflict } from '../src/domain/learning/course-tags';
 import { checkTagMutation as applicationTagMutation } from '../src/features/course-tags/policy';
-import { checkedFacts, SkillPolicyError } from '../src/domain/skills/policy';
-import { checkedFacts as applicationFacts } from '../src/features/skills/core';
 import { ApplicationError } from '../src/application/errors';
 
 it('owns calendar validity and the exclusive 366-day report boundary in learning', () => {
@@ -43,10 +41,4 @@ it('maps asynchronous tag revision rejection without leaking a domain exception'
   const digest = async () => 'new';
   await expect(checkTagMutation(scope, input, [], digest)).rejects.toBeInstanceOf(CourseTagConflict);
   await expect(applicationTagMutation(scope, input, [], digest)).rejects.toMatchObject({ kind: 'conflict', code: 'CONFLICT' });
-});
-
-it('owns source grounding in skills while the application translates validation errors', () => {
-  const facts = { facts: [{ kind: 'principle' as const, claim: 'claim', appliesWhen: 'always', evidence: [{ cueId: 'missing', quote: 'quote' }] }] };
-  expect(() => checkedFacts(facts, [], 0)).toThrow(SkillPolicyError);
-  expect(() => applicationFacts(facts, [], 0)).toThrow(expect.objectContaining({ kind: 'validation', code: 'VALIDATION_ERROR' }));
 });
