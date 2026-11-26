@@ -16,6 +16,16 @@ SPEC.loader.exec_module(PROBE)
 
 
 class SourceIdentityTests(unittest.TestCase):
+    def test_reviewed_guard_pin_matches_production_source_and_locked_receipt(self):
+        import json
+        root = Path(__file__).resolve().parents[2]
+        guard = root / "apps/inference/whisper/audio_guard.py"
+        actual = hashlib.sha256(guard.read_bytes()).hexdigest()
+        self.assertEqual(actual, PROBE.REVIEWED_AUDIO_GUARD_SHA256,
+                         "Changed production guard requires explicit reviewed probe binding")
+        lock = json.loads((root / "charts/videoq-inference/files/vllm-audio-wheels.json").read_text())
+        self.assertEqual(lock["runtimeGuardSha256"], PROBE.REVIEWED_AUDIO_GUARD_SHA256)
+
     def test_exact_member_and_drift(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "module.py"

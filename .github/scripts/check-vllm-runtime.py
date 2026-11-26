@@ -21,6 +21,8 @@ REVIEWED_VLLM_SOURCES = {'vllm/entrypoints/speech_to_text/base/serving.py': 'ea0
  'vllm/entrypoints/speech_to_text/transcription/protocol.py': '354579ac9a05b28760f3c5401c367994bf9e84daf9ca833aa383f178efdcbe70',
  'vllm/multimodal/audio.py': '5a3f5c492e5ec6f9c213d0c2898b83573e39179a8cb8b6c9b920347e55ebf476',
  'vllm/multimodal/media/audio.py': 'cd88790d50e7feac9b94b89721cbf58e16dcf569020e4b08fa91da0efd6474e6'}
+# Reviewed production startup adapter; source/lock changes require explicit review.
+REVIEWED_AUDIO_GUARD_SHA256 = "bb52374777acff1a921c667bd116b3fbe4c010f5a01be13eeea0735c3fbce9a5"
 # Reviewed published PyAV19.0.2 rebuilt against FFmpeg9.1; all227
 # installed av/ and av.libs/ members are pinned from the exact wheel bytes.
 REVIEWED_PYAV_WHEEL_SHA256 = "75fd08d21f054bd7e1ca800f32799131926b43857e8fa2ffe43f8bc755043ffa"
@@ -539,7 +541,7 @@ def inspect_serving_audio_boundary(audio_root):
     guard = audio_root / "sitecustomize.py"
     if (Path(sitecustomize.__file__).resolve() != guard or
             hashlib.sha256(guard.read_bytes()).hexdigest() !=
-            "ea09f7753f1ad771f9d7acc6b1a33289e20b6f59e83ac367e03513ffb3a2bb5a"):
+            REVIEWED_AUDIO_GUARD_SHA256):
         raise ValueError("Unreviewed installed audio adapter")
     package_root = Path(vllm.__file__).resolve().parent.parent
     sources = verify_reviewed_files(package_root, REVIEWED_VLLM_SOURCES)
