@@ -1,6 +1,6 @@
 import { and, gt, sql } from "drizzle-orm";
 import { videos } from "../../db/schema";
-import { reindexCandidateAllowed } from "../../application/media-eligibility";
+import { reindexCandidateAllowed } from "../../domain/media/media-eligibility";
 import { mediaDrizzleLogic } from "../media-eligibility-sql";
 import { withDb } from "../../db/pool";
 import type { Bindings } from "../../types/bindings";

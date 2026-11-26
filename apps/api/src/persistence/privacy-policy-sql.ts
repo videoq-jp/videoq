@@ -1,6 +1,6 @@
 import { and, or, sql, type SQL } from "drizzle-orm";
-import { ORPHAN_CONTEXT } from "../application/privacy";
-import type { PrivacyLogic } from "../application/privacy-policy";
+import { ORPHAN_CONTEXT } from '../domain/lms/privacy';
+import type { PrivacyLogic } from '../domain/lms/privacy-policy';
 
 export const privacyDrizzleLogic: PrivacyLogic<SQL, SQL> = {
   and: (left, right) => and(left, right)!,

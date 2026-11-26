@@ -1,5 +1,5 @@
 import { allocateUniqueUsername } from './username';
-import type { SignupQuotaDefaults } from './signup-quota';
+import type { SignupQuotaDefaults } from '../billing/signup-quota';
 
 type RegistrationInput = {
   username?: unknown; displayUsername?: unknown; name?: unknown; email: string;

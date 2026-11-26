@@ -1,5 +1,5 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
-import type { UploadRefundLogic } from "../application/video-mutation";
+import type { UploadRefundLogic } from "../domain/media/video-mutation";
 
 export const videoMutationDrizzleLogic: UploadRefundLogic<SQLWrapper, SQL> = {
   statusIs: (status, expected) => sql`${status}=${expected}`,

@@ -2,7 +2,7 @@ import { and, eq, exists, notExists, inArray, sql } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { insertSelectFields, runD1Batch } from "../../db/d1/query-builders";
 import { ltiCredentials as credentials, users } from "../../db/schema/sqlite";
-import { nativeSessionMarkerExpiry } from "../../application/native-session-marker";
+import { nativeSessionMarkerExpiry } from "../../domain/lms/native-session-marker";
 import type { NativeSessionRepository } from "../contracts/native-session-repository";
 import {
   nativeSessionDenied,

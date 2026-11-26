@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { AnswerAgentBudget, MAX_TOOL_ROUNDS, hasAgentContext } from '../src/application/agent-execution';
+import { AnswerAgentBudget, MAX_TOOL_ROUNDS, hasAgentContext } from '../src/domain/conversation/agent-execution';
 
 it('bounds all model tool attempts and keeps the terminal model calls tool-free', () => {
   const budget = new AnswerAgentBudget();

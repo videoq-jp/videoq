@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import {
   lmsOwnerAvailable, materialTeacherConnectionAccess, materialTeacherConnectionStable,
   materialTeacherCourseMatches, type LmsOwnerLogic,
-} from '../src/application/lms-owner';
+} from '../src/domain/lms/lms-owner';
 
 const logic: LmsOwnerLogic<number | null, boolean> = {
   and: (left, right) => left && right,

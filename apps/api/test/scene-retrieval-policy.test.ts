@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { DEFAULT_SCENE_SEARCH_RESULTS, SceneCandidateRanking, sceneCandidateCurrent, sceneOwnerVisible, sceneSearchSelection, validateSceneSearchLimit, type SceneVisibilityLogic } from '../src/application/scene-retrieval';
+import { DEFAULT_SCENE_SEARCH_RESULTS, SceneCandidateRanking, sceneCandidateCurrent, sceneOwnerVisible, sceneSearchSelection, validateSceneSearchLimit, type SceneVisibilityLogic } from '../src/domain/search/scene-retrieval';
 it('preserves whole-course and explicit subset order while rejecting empty/foreign selections', () => {
   const allowed=new Set([4,2,1]);expect(sceneSearchSelection(allowed)).toEqual([4,2,1]);
   expect(sceneSearchSelection(allowed,[2,2,4])).toEqual([2,4]);expect(sceneSearchSelection(new Set())).toEqual([]);

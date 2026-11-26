@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./skills": { "types": "./src/skills.ts", "default": "./src/skills.ts" },
+    "./skills": {
+      "types": "./src/skills.ts",
+      "default": "./src/skills.ts"
+    },
     "./moodle-management": {
       "types": "./src/moodle-management.ts",
       "default": "./src/moodle-management.ts"
@@ -52,6 +55,22 @@
     "./tag-policy": {
       "types": "./src/tag-policy.ts",
       "default": "./src/tag-policy.ts"
+    },
+    "./contracts": {
+      "types": "./src/contracts.ts",
+      "default": "./src/contracts.ts"
+    },
+    "./outputs": {
+      "types": "./src/outputs.ts",
+      "default": "./src/outputs.ts"
+    },
+    "./inputs": {
+      "types": "./src/inputs/index.ts",
+      "default": "./src/inputs/index.ts"
+    },
+    "./course-name": {
+      "types": "./src/course-name.ts",
+      "default": "./src/course-name.ts"
     }
   },
   "scripts": {

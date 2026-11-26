@@ -1,4 +1,4 @@
-import { invitationInviterName } from '../../application/invitation-delivery';
+import { invitationInviterName } from '../../domain/learning/invitation-delivery';
 import {and,desc,eq} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {users,videoCourseInvitations,videoCourseMemberships,videoCourses} from '../../db/schema';

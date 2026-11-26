@@ -1,7 +1,7 @@
 """Visual preparation lifecycle without media, SQL or queue implementations."""
 from __future__ import annotations
 
-import math
+from worker_python.domain.visual_checkpoints import visual_plan
 from dataclasses import dataclass
 from typing import Callable, Generic, Protocol, TypeVar
 
@@ -43,10 +43,9 @@ def execute_visual_preparation(video_id: int, deps: VisualPreparationDependencie
     if existing and existing.file_key == file_key and existing.status == "ready":
         return {"video_id": video_id, "visual_preparation": "ready", "chunks": existing.chunk_count}
     duration = deps.duration(file_key)
-    if not math.isfinite(duration) or not 0 < duration <= deps.max_duration_seconds:
-        raise ValueError("Visual inspection supports videos up to 10 hours")
+    _, chunk_count = visual_plan(duration, deps.max_duration_seconds)
     if dry_run:
-        return {"video_id": video_id, "visual_preparation": "dry_run", "chunks": math.ceil(duration / 60)}
+        return {"video_id": video_id, "visual_preparation": "dry_run", "chunks": chunk_count}
     run = deps.initialize(video_id, file_key, duration)
     if not run:
         raise ValueError("Video source changed before preparation")

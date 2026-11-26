@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createNativeLearningService } from '../src/features/lms/native-learning-service';
-import type { NativeLearningAccess, NativeLearningClaims, NativeLearningRegistration, NativeSessionInput } from '../src/application/native-learning';
+import type { NativeLearningAccess, NativeLearningClaims, NativeLearningRegistration, NativeSessionInput } from '../src/domain/lms/native-learning';
 
 const reg: NativeLearningRegistration = {
   id: 'school', issuer: 'https://school.example', clientId: 'client', materialsService: {},

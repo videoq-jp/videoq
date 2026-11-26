@@ -6,7 +6,7 @@ import {
 } from "../../db/schema/sqlite";
 import { QueryBuilder } from "drizzle-orm/sqlite-core";
 import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
-import { nativeCourseExternalAllowed } from "../../application/native-course-access";
+import { nativeCourseExternalAllowed } from "../../domain/learning/native-course-access";
 /** Shared native access predicate for typed query builders. */
 export function nativeCourseExternalAccess() {
   const db = new QueryBuilder();

@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "repeatLast": true,
+  "session": {
+    "userId": "prototype-user",
+    "admin": false
+  },
+  "procedures": {
+    "account.me": [
+      {
+        "output": {
+          "id": "prototype-user",
+          "username": "prototype",
+          "email": "prototype@example.invalid",
+          "is_admin": false,
+          "video_count": 0,
+          "max_video_upload_size_mb": 100,
+          "plan_code": "free"
+        }
+      }
+    ],
+    "courses.list": [
+      {
+        "output": {
+          "data": [
+            {
+              "id": 1,
+              "name": "プロトタイプ講座",
+              "description": "JSONを変更して画面を確認できます。",
+              "display_order": 0,
+              "created_at": "2026-11-27T00:00:00Z",
+              "video_count": 0,
+              "access_role": "owner"
+            }
+          ],
+          "meta": {
+            "total": 1,
+            "limit": 24,
+            "offset": 0
+          }
+        }
+      }
+    ],
+    "courses.get": [
+      {
+        "output": {
+          "id": 1,
+          "name": "プロトタイプ講座",
+          "description": "JSONを変更して画面を確認できます。",
+          "display_order": 0,
+          "created_at": "2026-11-27T00:00:00Z",
+          "video_count": 0,
+          "access_role": "owner",
+          "videos": [],
+          "share_slug": null
+        }
+      }
+    ],
+    "courses.shared": [
+      {
+        "output": {
+          "id": 1,
+          "name": "プロトタイプ講座",
+          "description": "JSONを変更して画面を確認できます。",
+          "display_order": 0,
+          "created_at": "2026-11-27T00:00:00Z",
+          "video_count": 0,
+          "access_role": "public",
+          "videos": []
+        }
+      }
+    ],
+    "courses.create": [
+      {
+        "output": {
+          "id": 1,
+          "name": "プロトタイプ講座",
+          "description": "JSONを変更して画面を確認できます。",
+          "display_order": 0,
+          "created_at": "2026-11-27T00:00:00Z",
+          "video_count": 0,
+          "access_role": "owner"
+        }
+      }
+    ],
+    "courses.update": [
+      {
+        "output": {
+          "id": 1,
+          "name": "プロトタイプ講座",
+          "description": "JSONを変更して画面を確認できます。",
+          "display_order": 0,
+          "created_at": "2026-11-27T00:00:00Z",
+          "video_count": 0,
+          "access_role": "owner"
+        }
+      }
+    ],
+    "courses.delete": [
+      {
+        "output": {
+          "success": true
+        }
+      }
+    ],
+    "courses.reorder": [
+      {
+        "output": {
+          "courseIds": [
+            1
+          ]
+        }
+      }
+    ],
+    "courses.createShare": [
+      {
+        "output": {
+          "message": "Share link saved",
+          "share_slug": "prototype"
+        }
+      }
+    ],
+    "courses.deleteShare": [
+      {
+        "output": {
+          "success": true
+        }
+      }
+    ],
+    "videos.list": [
+      {
+        "output": {
+          "data": [],
+          "meta": {
+            "total": 0,
+            "limit": 24,
+            "offset": 0
+          }
+        }
+      }
+    ],
+    "tags.list": [
+      {
+        "output": {
+          "data": [],
+          "meta": {
+            "total": 0,
+            "limit": 24,
+            "offset": 0
+          }
+        }
+      }
+    ],
+    "chat.conversations": [
+      {
+        "output": {
+          "items": [],
+          "hasMore": false
+        }
+      }
+    ],
+    "account.integrationApiKeys": [
+      {
+        "output": []
+      }
+    ],
+    "account.connectedApps": [
+      {
+        "output": []
+      }
+    ],
+    "account.searchApiKeyStatus": [
+      {
+        "output": {
+          "has_api_key": false
+        }
+      }
+    ],
+    "billing.plans": [
+      {
+        "output": []
+      }
+    ],
+    "videos.statusCounts": [
+      {
+        "output": {
+          "total": 0,
+          "uploading": 0,
+          "pending": 0,
+          "processing": 0,
+          "indexing": 0,
+          "completed": 0,
+          "error": 0
+        }
+      }
+    ]
+  },
+  "http": {
+    "GET /api/auth/get-session": [
+      {
+        "body": {
+          "session": {
+            "id": "prototype-session",
+            "userId": "prototype-user",
+            "expiresAt": "2099-01-01T00:00:00Z",
+            "createdAt": "2026-11-27T00:00:00Z",
+            "updatedAt": "2026-11-27T00:00:00Z"
+          },
+          "user": {
+            "id": "prototype-user",
+            "name": "Prototype User",
+            "email": "prototype@example.invalid",
+            "emailVerified": true,
+            "createdAt": "2026-11-27T00:00:00Z",
+            "updatedAt": "2026-11-27T00:00:00Z"
+          }
+        }
+      }
+    ]
+  }
+}

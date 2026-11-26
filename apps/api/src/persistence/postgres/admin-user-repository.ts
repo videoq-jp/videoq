@@ -1,5 +1,5 @@
-import { adminAssignedRole, adminRoleIncludes, adminBooleanRoleLogic, adminDeletionAllowed, planAdminQuotaEdit, type AdminQuotaPatch, type AdminUsagePatch } from '../../application/admin';
-import { billingAccountAvailable } from '../../application/billing-state';
+import { adminAssignedRole, adminRoleIncludes, adminBooleanRoleLogic, adminDeletionAllowed, planAdminQuotaEdit, type AdminQuotaPatch, type AdminUsagePatch } from '../../domain/identity/admin';
+import { billingAccountAvailable } from '../../domain/billing/billing-state';
 import { billingDrizzleBanLogic } from '../billing-policy-sql';
 import { adminPostgresRoleLogic } from '../admin-policy-sql';
 import {createAuth} from "./auth";

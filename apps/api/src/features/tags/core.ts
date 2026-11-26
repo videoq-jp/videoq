@@ -3,7 +3,7 @@ import { TagNameConflictError } from '../../persistence/contracts/tag-repository
 import { conflict } from '../../application/errors';
 import {
   normalizeTagName, isValidTagColor, EMPTY_NAME_MESSAGE, INVALID_COLOR_MESSAGE,
-} from '../../application/tag-policy';
+} from '../../domain/learning/tag-policy';
 
 function rethrowConflict(error: unknown): never {
   if (error instanceof TagNameConflictError) {

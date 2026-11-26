@@ -22,7 +22,7 @@ import {
   qaNativeParticipationAllowed,
   qaLtiAccessAllowed,
   validLtiQaScope,
-} from "../../features/qa/policy";
+} from "../../domain/qa/policy";
 import type {
   QaAuthor,
   QaListInput,

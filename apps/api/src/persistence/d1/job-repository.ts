@@ -1,5 +1,6 @@
+import { jobReclaimAllowed, jobClaimRefusal, jobLeaseMutationAllowed, type JobLeaseOperation } from '../../domain/operations/job-execution';
 import { safeJobRepository } from '../job-failure';
-import { safeJobFailureCode } from '../../application/job-failure';
+import { safeJobFailureCode } from '../../domain/operations/job-failure';
 import { and, eq, ne, or, isNull, sql } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { jobExecutions } from "../../db/schema/sqlite";
@@ -9,8 +10,10 @@ export function createD1JobRepository(database: D1Database): JobRepository {
   const db = createD1Connection(database);
   const now = sql<string>`strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`;
   const leaseUntil = sql<string>`strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ${`+${JOB_LEASE_SECONDS} seconds`})`;
-  const owns = (jobId: string, token: string) => and(eq(jobExecutions.jobId, jobId),
-    eq(jobExecutions.status, "running"), eq(jobExecutions.leaseToken, token));
+  const owns = (jobId: string, token: string, operation: JobLeaseOperation = 'complete') =>
+    and(eq(jobExecutions.jobId, jobId), jobLeaseMutationAllowed(operation, {
+      running: eq(jobExecutions.status, 'running'), tokenMatches: eq(jobExecutions.leaseToken, token), leaseActive: sql`${jobExecutions.leaseUntil} > ${now}`,
+    }, { and: (...terms) => and(...terms)! }));
   return safeJobRepository({
     async claim(input) {
       validateJobIdentity(input);
@@ -20,15 +23,16 @@ export function createD1JobRepository(database: D1Database): JobRepository {
       }).onConflictDoUpdate({
         target: jobExecutions.jobId,
         set: { status: "running", attempts: sql`${jobExecutions.attempts} + 1`, leaseToken, leaseUntil, lastError: "", updatedAt: now },
-        setWhere: and(eq(jobExecutions.jobType, input.jobType), eq(jobExecutions.payloadSha256, input.payloadSha256),
-          ne(jobExecutions.status, "completed"),
-          or(ne(jobExecutions.status, "running"), isNull(jobExecutions.leaseUntil), sql`${jobExecutions.leaseUntil} <= ${now}`)),
+        setWhere: jobReclaimAllowed({
+          sameIdentity: and(eq(jobExecutions.jobType, input.jobType), eq(jobExecutions.payloadSha256, input.payloadSha256))!,
+          notCompleted: ne(jobExecutions.status, 'completed'), notRunning: ne(jobExecutions.status, 'running'),
+          noLease: isNull(jobExecutions.leaseUntil), expired: sql`${jobExecutions.leaseUntil} <= ${now}`,
+        }, { and: (...terms) => and(...terms)!, or: (...terms) => or(...terms)! }),
       }).returning({ id: jobExecutions.jobId });
       if (claimed.length) return { status: "claimed", leaseToken };
       const [existing] = await db.select().from(jobExecutions).where(eq(jobExecutions.jobId, input.jobId));
       if (!existing) throw new Error("Job execution disappeared");
-      if (existing.jobType !== input.jobType || existing.payloadSha256 !== input.payloadSha256) return { status: "conflict" };
-      return { status: existing.status === "completed" ? "completed" : "busy" };
+      return { status: jobClaimRefusal(existing.jobType === input.jobType && existing.payloadSha256 === input.payloadSha256, existing.status) };
     },
     async complete(jobId, token) {
       const rows = await db.update(jobExecutions).set({ status: "completed", leaseToken: null, leaseUntil: null,
@@ -37,12 +41,12 @@ export function createD1JobRepository(database: D1Database): JobRepository {
     },
     async fail(jobId, token, errorCode) {
       const rows = await db.update(jobExecutions).set({ status: "failed", leaseToken: null, leaseUntil: null,
-        lastError: safeJobFailureCode(errorCode), updatedAt: now }).where(owns(jobId, token)).returning({ id: jobExecutions.jobId });
+        lastError: safeJobFailureCode(errorCode), updatedAt: now }).where(owns(jobId, token, 'fail')).returning({ id: jobExecutions.jobId });
       return rows.length > 0;
     },
     async heartbeat(jobId, token) {
       const rows = await db.update(jobExecutions).set({ leaseUntil, updatedAt: now })
-        .where(and(owns(jobId, token), sql`${jobExecutions.leaseUntil} > ${now}`)).returning({ id: jobExecutions.jobId });
+        .where(owns(jobId, token, 'heartbeat')).returning({ id: jobExecutions.jobId });
       return rows.length > 0;
     },
   });

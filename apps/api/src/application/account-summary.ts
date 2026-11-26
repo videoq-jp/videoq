@@ -1,6 +1,7 @@
+import { adminRoleIncludes, adminBooleanRoleLogic } from '../domain/identity/admin';
 import { MAX_VIDEO_UPLOAD_BYTES } from '@videoq/domain/video-upload';
-import { normalizeStoredPlanCode } from './billing-state';
-import { QUOTA_GIB_BYTES } from './quota-policy';
+import { normalizeStoredPlanCode } from '../domain/billing/billing-state';
+import { QUOTA_GIB_BYTES } from '../domain/billing/quota-policy';
 
 export type CurrentUser = {
   id: string;
@@ -33,7 +34,7 @@ export function accountEntitlementSummary(input: {
 }): Pick<CurrentUser, 'is_admin' | 'plan_code' | 'quota_source' | 'max_video_upload_size_mb' |
   'monthly_upload_limit_bytes' | 'storage_limit_bytes' | 'processing_limit_seconds'> {
   return {
-    is_admin: input.role?.split(',').includes('admin') ?? false,
+    is_admin: adminRoleIncludes(input.role, adminBooleanRoleLogic),
     plan_code: normalizeStoredPlanCode(input.planCode),
     quota_source: input.quotaSource === 'admin' ? 'admin' : 'plan',
     // Compatibility field: per-account file caps no longer apply.

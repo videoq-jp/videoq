@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import {
   normalizeStoredPlanCode, selectBillingEntitlement, billingAccountAvailable,
   type BillingBanLogic, type BillingEntitlementChoice,
-} from '../src/application/billing-state';
+} from '../src/domain/billing/billing-state';
 
 it.each([
   { stored: 'free', expected: 'free' }, { stored: 'basic', expected: 'basic' }, { stored: 'pro', expected: 'pro' },

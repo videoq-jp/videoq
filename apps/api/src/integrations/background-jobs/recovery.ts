@@ -1,6 +1,6 @@
 import { embeddingFingerprint, resolveEmbeddingConfig } from '../../lib/embedding-contract';
 import { canonicalBackgroundJob, parseBackgroundJob, type BackgroundJob } from '../../application/background-job';
-import type { SceneIndexSource } from '../../application/scene-index-policy';
+import type { SceneIndexSource } from '../../domain/search/scene-index-policy';
 import { createJobRepository, createWorkerScenePersistence } from '../../persistence/factory';
 import type { Bindings } from '../../types/bindings';
 

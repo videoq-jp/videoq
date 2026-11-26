@@ -1,4 +1,4 @@
-import { SafeJobError } from '../../application/job-failure';
+import { SafeJobError } from '../../domain/operations/job-failure';
 import type { SceneIndexOutcome } from '../../application/scene-index-execution';
 
 type FailureOutcome = Exclude<SceneIndexOutcome, { status: 'completed' | 'skipped' }>;

@@ -108,3 +108,26 @@ def transcription_completion(
         logic.choose(logic.all(same_transcript, logic.negate(has_result)), error, logic.literal('')),
         processing,
     )
+
+
+def transcription_admission(status: str | None) -> str:
+    if status == 'completed':
+        return 'completed'
+    if status == 'indexing':
+        return 'handoff'
+    return 'process' if status in {'pending', 'processing', 'error'} else 'invalid'
+
+
+def transcription_failure_retry(status: str | None, provider_failed: bool) -> bool:
+    return status == 'error' and provider_failed
+
+
+@dataclass(frozen=True)
+class TranscriptionContent:
+    transcript: str | None
+    error: str
+    processing_status: str = 'processing'
+
+
+def prepared_transcription_content(transcript: str) -> TranscriptionContent:
+    return TranscriptionContent(transcript, '') if transcript.strip() else TranscriptionContent(None, 'Whisper returned an empty transcript')

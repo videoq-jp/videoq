@@ -32,8 +32,8 @@ import {
   transcriptionRunReusable,
   transcriptionSourceEligible,
   validTranscriptionSegments,
-} from "../../application/transcription-policy";
-import { quotaAllowsAdditional } from "../../application/quota-policy";
+} from "../../domain/media/transcription-policy";
+import { quotaAllowsAdditional } from "../../domain/billing/quota-policy";
 import { quotaDrizzleComparison } from "../quota-policy-sql";
 import { transcriptionDrizzleLogic as logic } from "../transcription-policy-sql";
 import type { TranscriptionCheckpoints } from "../contracts/transcription-checkpoints";

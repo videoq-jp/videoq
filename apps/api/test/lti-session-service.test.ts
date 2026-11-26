@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { authorizeLtiSession, exchangeLtiLogin, initiateLtiLogin, type LtiSessionDependencies } from '../src/features/lti/session-service';
-import type { LtiRegistration } from '../src/application/lti-registration';
-import type { LearningGrant } from '../src/application/native-learning';
+import type { LtiRegistration } from '../src/domain/lms/lti-registration';
+import type { LearningGrant } from '../src/domain/lms/native-learning';
 
 const reg: LtiRegistration = { id: 'school', issuer: 'https://school.test', clientId: 'client', authorizationUrl: 'https://school.test/auth', jwksUrl: 'https://school.test/keys', frameOrigins: ['https://school.test'],
   resources: [{ deploymentId: 'dep', contextId: 'ctx', resourceLinkId: 'res', courseId: 1, videoId: 2, generation: 3 }] };

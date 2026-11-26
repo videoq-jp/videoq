@@ -13,9 +13,9 @@ import { AnswerContentStream } from "./answer-content-stream";
 import { LlmProviderError } from "./openai";
 import { validateChatAnswer } from "./chat-citations";
 import { chatSourceSchema, modelAnswerSchema, chatToolNameSchema, chatToolProgressEventSchema, chatGenerationProgressEventSchema, type ChatGenerationProgressEvent, type ChatToolProgressEvent, type ChatSource, type ChatContentPart } from "@videoq/trpc/chat";
-import { MAX_COURSE_INFO_CALLS, MAX_SCENE_SEARCHES } from '../application/evidence';
-import { MAX_TOOL_ROUNDS, AnswerAgentBudget, hasAgentContext } from '../application/agent-execution';
-export { MAX_TOOL_ROUNDS } from '../application/agent-execution';
+import { MAX_COURSE_INFO_CALLS, MAX_SCENE_SEARCHES } from '../domain/conversation/evidence';
+import { MAX_TOOL_ROUNDS, AnswerAgentBudget, hasAgentContext } from '../domain/conversation/agent-execution';
+export { MAX_TOOL_ROUNDS } from '../domain/conversation/agent-execution';
 export { MAX_SCENE_SEARCHES } from "../tools/contract";
 import { loadRagMcpTools } from "./rag-mcp-tools";
 import { evidenceProgressSchema as searchProgressSchema } from "../tools/contract";
@@ -38,8 +38,8 @@ import type { AnswerCostLedger } from "./answer-cost-ledger";
  */
 type ChatMessageInput = { role: string; content: string };
 
-export type { GenerationResult as RagResult } from '../application/answer-generation';
-import type { GenerationResult as RagResult } from '../application/answer-generation';
+export type { GenerationResult as RagResult } from '../domain/conversation/answer-generation';
+import type { GenerationResult as RagResult } from '../domain/conversation/answer-generation';
 
 /**
  * 暴走時の保険。1 検索あたり model → tools の 2 ステップ進むので、

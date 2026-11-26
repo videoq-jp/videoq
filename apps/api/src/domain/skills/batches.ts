@@ -1,4 +1,4 @@
-import type { SkillFact } from '../../persistence/contracts/agent-skill-repository';
+import type { SkillFact } from './model';
 
 // A request-sized budget, never a course-sized budget. Each saved cursor moves
 // through every fact; larger inputs produce more resumable steps.

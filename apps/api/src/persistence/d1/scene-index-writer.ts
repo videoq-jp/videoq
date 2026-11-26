@@ -38,7 +38,7 @@ import {
   sceneStageAllowed,
   validateSceneEmbedding,
   validateSceneIndexRun,
-} from "../../application/scene-index-policy";
+} from "../../domain/search/scene-index-policy";
 import { sceneIndexDrizzleLogic as logic } from "../scene-index-policy-sql";
 import type { D1Database } from "@cloudflare/workers-types";
 import type {

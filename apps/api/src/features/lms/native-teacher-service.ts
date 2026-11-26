@@ -1,5 +1,5 @@
-import type { LtiRegistration, MaterialsService } from '../../application/lti-registration';
-import type { NativeLearningClaims } from '../../application/native-learning';
+import type { LtiRegistration, MaterialsService } from '../../domain/lms/lti-registration';
+import type { NativeLearningClaims } from '../../domain/lms/native-learning';
 import type { TeachingTicket } from '../../application/teaching';
 
 type TeacherClaims = Pick<NativeLearningClaims, 'contextId' | 'resourceLinkId' | 'subject' | 'author' | 'jti' | 'exp'>;

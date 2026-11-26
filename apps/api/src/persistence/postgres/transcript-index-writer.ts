@@ -1,7 +1,7 @@
-import { SafeJobError } from '../../application/job-failure';
+import { SafeJobError } from '../../domain/operations/job-failure';
 import pg from 'pg';
 import { PGEngine, PGVectorStore } from '@videoq-jp/langchainjs-postgres';
-import type { SearchScene } from '../../application/search-scene-splitting';
+import type { SearchScene } from '../../domain/search/search-scene-splitting';
 
 export interface PostgresTranscriptSnapshot {
   videoId: number;

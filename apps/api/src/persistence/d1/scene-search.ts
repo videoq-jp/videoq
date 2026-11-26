@@ -1,6 +1,6 @@
 import { assertEmbeddingFingerprint } from "../../lib/embedding-contract";
-import { validateSceneSearchLimit, SceneCandidateRanking, sceneCandidateCurrent, sceneOwnerVisible } from '../../application/scene-retrieval';
-import { learningVideoAllowed } from '../../application/media-eligibility';
+import { validateSceneSearchLimit, SceneCandidateRanking, sceneCandidateCurrent, sceneOwnerVisible } from '../../domain/search/scene-retrieval';
+import { learningVideoAllowed } from '../../domain/media/media-eligibility';
 import { mediaDrizzleLogic } from '../media-eligibility-sql';
 import { sceneVisibilityDrizzleLogic } from '../scene-retrieval-policy-sql';
 import type {D1Database} from "@cloudflare/workers-types";

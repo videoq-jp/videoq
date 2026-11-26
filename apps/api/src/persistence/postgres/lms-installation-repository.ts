@@ -1,4 +1,4 @@
-import { managementSystemAdministrator, managementConnectionActive } from '../../application/lms-management';
+import { managementSystemAdministrator, managementConnectionActive } from '../../domain/lms/lms-management';
 import { mediaDrizzleLogic } from '../media-eligibility-sql';
 import {and,eq,isNull,sql} from 'drizzle-orm';
 import {withDb} from '../../db/pool';

@@ -1,4 +1,4 @@
-import { teachingConnectionConflicts, teachingInstallationRequired, teachingResourceLinkAllowed, selectTeachingCourse } from '../../application/teaching';
+import { teachingConnectionConflicts, teachingInstallationRequired, teachingResourceLinkAllowed, selectTeachingCourse } from '../../domain/lms/teaching';
 import {and,eq,gt,sql} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {teachingConnections,lmsInstallations,ltiCredentials,users,videoCourses} from '../../db/schema';

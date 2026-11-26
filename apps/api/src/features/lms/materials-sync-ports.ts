@@ -1,7 +1,7 @@
 import type { MaterialsConnection, MaterialsSyncRepository } from '../../persistence/contracts/materials-sync-repository';
 import type { LmsResource, LmsResourceData } from '../../persistence/contracts/lms-resource-repository';
-import type { LmsGrant } from '../../application/lms-upload';
-import type { ResourceManifest } from '../../application/lms-resource';
+import type { LmsGrant } from '../../domain/lms/lms-upload';
+import type { ResourceManifest } from '../../domain/lms/lms-resource';
 
 export type MaterialsSnapshot = { contextId: string; complete: true; resources: Array<{ externalId: string; manifest: ResourceManifest }> };
 export type MaterialsExportStatus = { jobId: string; generation: number; status: 'queued' | 'uploading' | 'uploaded' | 'failed' | 'stale'; bytes?: number };

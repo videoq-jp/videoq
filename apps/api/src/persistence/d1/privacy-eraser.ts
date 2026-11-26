@@ -31,7 +31,7 @@ import {
 import {
   privacyErasurePlan,
   privacyOperationBarriers,
-} from "../../application/privacy-policy";
+} from '../../domain/lms/privacy-policy';
 import { ApiError } from "../../shared/errors";
 import {
   privacyRequest,

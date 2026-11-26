@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { courseOwnerPriority, courseAccessRole, courseArrayOrderPlanning, courseAuthenticatedRole, courseEditable, courseOrderAllowed, planSelectedCourseOrder, validCourseOrderInput } from '../src/application/course-management';
+import { courseOwnerPriority, courseAccessRole, courseArrayOrderPlanning, courseAuthenticatedRole, courseEditable, courseOrderAllowed, planSelectedCourseOrder, validCourseOrderInput } from '../src/domain/learning/course-management';
 const logic = { and: (a: boolean, b: boolean) => a && b };
 it('requires ownership and independent management for content mutations', () => {
   for (const owned of [false,true]) for (const native of [false,true]) expect(courseEditable(owned,native,logic)).toBe(owned&&native);

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { VideoMutationRepository } from "../../../src/persistence/contracts/video-mutation-repository";
-import { videoDeletionAllowed } from '../../../src/application/video-mutation';
+import { videoDeletionAllowed } from '../../../src/domain/media/video-mutation';
 
 export interface VideoMutationFixture {
   repository: VideoMutationRepository;

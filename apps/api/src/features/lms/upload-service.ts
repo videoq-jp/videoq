@@ -1,4 +1,5 @@
-import type { OwnedLmsGrant, LmsUploadSnapshot, LmsContentAttempt, LmsUploadSource } from '../../application/lms-upload';
+import { currentLmsUploadSource, lmsUploadActorAllowed, planLmsUploadSnapshot } from '../../domain/lms/lms-upload';
+import type { OwnedLmsGrant, LmsUploadSnapshot, LmsContentAttempt, LmsUploadSource } from '../../domain/lms/lms-upload';
 import { ApplicationError } from '../../application/errors';
 
 const failure = (code: string) => new ApplicationError('conflict', code, code);
@@ -6,18 +7,13 @@ const failure = (code: string) => new ApplicationError('conflict', code, code);
 export function validateLmsUploadResource<T extends LmsUploadSource & { ownerUserId: string }>(
   data: T | null, generation: number, operation: 'content' | 'confirm',
 ): asserts data is T & { video: NonNullable<T['video']> } {
-  if (!data?.video || data.resource.kind !== 'video' || !data.resource.enabled
-    || data.resource.generation !== generation || (operation === 'confirm' && !data.ownerUserId)) {
-    throw failure('STALE_GENERATION');
-  }
+  if (!currentLmsUploadSource(data, generation) || !lmsUploadActorAllowed(operation, data.ownerUserId)) throw failure('STALE_GENERATION');
 }
 
 export function createLmsUploadSnapshot(data: LmsUploadSource | null, externalId: string, generation: number): LmsUploadSnapshot {
-  if (!data?.video || data.resource.kind !== 'video' || !data.resource.enabled || data.resource.generation !== generation || data.resource.fileSize === null || !data.resource.contentType) {
-    throw failure('STALE_GENERATION');
-  }
-  return { resourceId: data.resource.id, externalId, generation, videoId: data.video.id,
-    fileKey: data.video.file, size: data.resource.fileSize, contentType: data.resource.contentType };
+  const snapshot = planLmsUploadSnapshot(data, externalId, generation);
+  if (!snapshot) throw failure('STALE_GENERATION');
+  return snapshot;
 }
 
 export interface LmsUploadExecution {

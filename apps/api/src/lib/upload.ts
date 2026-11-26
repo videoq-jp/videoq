@@ -1,6 +1,6 @@
-import { buildPendingUploadFileKey as serializeUploadFileKey } from "../application/upload";
+import { buildPendingUploadFileKey as serializeUploadFileKey } from "../domain/media/upload";
 export { fileExtension, isAllowedExtension, isAllowedContentType, parseReservedBytesFromFileKey,
-  unsupportedTypeMessage, invalidContentTypeMessage } from "../application/upload";
+  unsupportedTypeMessage, invalidContentTypeMessage } from "../domain/media/upload";
 
 /** Runtime adapter for callers that need a fresh upload identity. */
 export function buildPendingUploadFileKey(

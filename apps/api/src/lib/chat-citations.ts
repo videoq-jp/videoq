@@ -1,7 +1,7 @@
 import { chatSourceSchema, modelAnswerSchema } from "@videoq/trpc/chat";
 import type { ChatAnswer, ChatSource } from "@videoq/domain/chat";
-import { normalizeAnswerTexts } from "../application/answer-normalization";
-import { validateAnswerCitations } from "../features/chat/citation-policy";
+import { normalizeAnswerTexts } from "../domain/conversation/answer-normalization";
+import { validateAnswerCitations } from "../domain/conversation/citation-policy";
 
 /** Decode transport values and log counts only; source metadata never enters logs. */
 export function validateChatAnswer(value: unknown, sources: readonly ChatSource[]): ChatAnswer {

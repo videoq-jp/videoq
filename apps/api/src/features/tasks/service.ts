@@ -1,6 +1,6 @@
 import type { ExternalTaskDependencies } from './ports';
 import type { ClaimedExternalTask } from '../../persistence/contracts/external-task-repository';
-import { JOB_DELETE_ACCOUNT_DATA } from '../../application/job-message';
+import { JOB_DELETE_ACCOUNT_DATA } from '../../domain/operations/job-message';
 
 export type ExternalTaskRunResult = {
   claimed: number;

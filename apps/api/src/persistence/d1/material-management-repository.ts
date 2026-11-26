@@ -47,7 +47,7 @@ import {
 import {
   inlineTranscript,
   inlineMaterialDescription,
-} from "../../application/content-read";
+} from '../../domain/media/content-read';
 import { contentDrizzleLogic } from "../content-read-policy-sql";
 import { activeD1LmsOwner } from "./lms-owner-policy";
 import type {

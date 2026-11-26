@@ -14,7 +14,7 @@ import {
   membershipCourseAllowed,
   membershipVideoAllowed,
   membershipOrderAllowed,
-} from "../../application/membership-policy";
+} from "../../domain/learning/membership-policy";
 import { membershipDrizzleLogic } from "../membership-policy-sql";
 import type { MembershipRepository } from "../contracts/membership-repository";
 

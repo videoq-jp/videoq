@@ -51,3 +51,39 @@ export function planInvitationControl(status: InvitationStatus, expiresAt: Date,
   return outcome === 'apply' ? { kind: 'apply' }
     : { kind: 'deny', status: outcome === 'expired' ? 'expired' : status, markExpired: outcome === 'expired' };
 }
+
+/** A persisted invitation is an entity, identified independently of its token.
+ * Restore only after the adapter has fenced current course authority and locked
+ * the invitation. Acceptance and its membership must commit together.
+ */
+export type CourseInvitation = Readonly<{
+  id: number;
+  courseId: number;
+  status: InvitationStatus;
+  expiresAt: string;
+  acceptedByUserId: string | null;
+}>;
+
+export type InvitationDecision =
+  | { kind: 'replay'; courseId: number }
+  | { kind: 'invalidState'; status: InvitationStatus }
+  | { kind: 'expired' }
+  | { kind: 'verifyRecipient'; effects: ReturnType<typeof invitationDecisionEffects> };
+
+/** Decide from a transaction-consistent snapshot, without fetching or mutating it.
+ * SQL backends use the same decision algebra inside conditional writes.
+ */
+export function decideCourseInvitation(invitation: CourseInvitation, action: 'accept' | 'decline',
+  actorId: string, now: Date): InvitationDecision {
+  const state = invitationDecisionState({
+    accepting: action === 'accept', accepted: invitation.status === 'accepted',
+    acceptedByActor: invitation.acceptedByUserId === actorId,
+    notPending: invitation.status !== 'pending',
+    expired: isInvitationExpired(new Date(invitation.expiresAt), now),
+  }, { replay: 'replay', invalidState: 'state', expired: 'expired', recipient: 'recipient' } as const,
+  invitationBooleanChoice<'replay' | 'state' | 'expired' | 'recipient'>());
+  if (state === 'replay') return { kind: 'replay', courseId: invitation.courseId };
+  if (state === 'state') return { kind: 'invalidState', status: invitation.status };
+  if (state === 'expired') return { kind: 'expired' };
+  return { kind: 'verifyRecipient', effects: invitationDecisionEffects(action) };
+}

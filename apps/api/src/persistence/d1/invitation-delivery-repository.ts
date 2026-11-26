@@ -17,14 +17,14 @@ import {
   invitationDeliveryCutoff,
   invitationDeliveryStranded,
   invitationInviterName,
-} from "../../application/invitation-delivery";
+} from "../../domain/learning/invitation-delivery";
 import { invitationDrizzleLogic } from "../invitation-policy-sql";
 import {
   ExternalTaskLeaseLostError,
   type ExternalTaskLease,
 } from "../contracts/external-task-repository";
 import type { InvitationDeliveryRepository } from "../contracts/invitation-delivery-repository";
-import type { InvitationStatus } from "../../application/course-invitations";
+import type { InvitationStatus } from "../../domain/learning/course-invitations";
 
 export function createD1InvitationDeliveryRepository(
   database: D1Database,

@@ -11,8 +11,8 @@ import {
 } from "better-auth/oauth2";
 import { decodeProtectedHeader, errors as jwtErrors } from "jose";
 import { z } from "zod";
-import { apiKeyResourceAccess, oauthResourceAccess, parseResourceScopes, type ResourceAccessResult } from "../application/resource-access";
-export type { ResourceAccessResult } from "../application/resource-access";
+import { apiKeyResourceAccess, oauthResourceAccess, parseResourceScopes, type ResourceAccessResult } from "../domain/lms/resource-access";
+export type { ResourceAccessResult } from "../domain/lms/resource-access";
 
 /**
  * Resource-server policy exposed only through auth.api, never HTTP endpoints.

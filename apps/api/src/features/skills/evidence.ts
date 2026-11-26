@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { extractedFactsSchema } from '@videoq/trpc/skills';
-import type { SkillCue } from '../../persistence/contracts/agent-skill-repository';
+import type { SkillCue } from '../../domain/skills/model';
 
 /** The model selects source passages; only the server writes verbatim quotes. */
 export function extractionEvidence(cues: SkillCue[]) {

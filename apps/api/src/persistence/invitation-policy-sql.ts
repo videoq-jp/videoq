@@ -1,5 +1,5 @@
 import { sql, type SQL } from 'drizzle-orm';
-import type { InvitationChoice } from '../application/invitation-lifecycle';
+import type { InvitationChoice } from '../domain/learning/invitation-lifecycle';
 
 /** All expressions are adapter-owned; caller values stay bound parameters. */
 export const invitationStringChoice: InvitationChoice<string, string> = {

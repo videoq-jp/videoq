@@ -3,7 +3,7 @@ import {
   normalizeStoredPlanCode,
   selectBillingEntitlement,
   billingAccountAvailable,
-} from "../../application/billing-state";
+} from "../../domain/billing/billing-state";
 import {
   billingDrizzleEntitlementChoice,
   billingDrizzleBanLogic,

@@ -1,0 +1,170 @@
+[
+  {
+    "operation": "complete",
+    "running": false,
+    "tokenMatches": false,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "complete",
+    "running": false,
+    "tokenMatches": false,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "complete",
+    "running": false,
+    "tokenMatches": true,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "complete",
+    "running": false,
+    "tokenMatches": true,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "complete",
+    "running": true,
+    "tokenMatches": false,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "complete",
+    "running": true,
+    "tokenMatches": false,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "complete",
+    "running": true,
+    "tokenMatches": true,
+    "leaseActive": false,
+    "allowed": true
+  },
+  {
+    "operation": "complete",
+    "running": true,
+    "tokenMatches": true,
+    "leaseActive": true,
+    "allowed": true
+  },
+  {
+    "operation": "fail",
+    "running": false,
+    "tokenMatches": false,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "fail",
+    "running": false,
+    "tokenMatches": false,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "fail",
+    "running": false,
+    "tokenMatches": true,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "fail",
+    "running": false,
+    "tokenMatches": true,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "fail",
+    "running": true,
+    "tokenMatches": false,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "fail",
+    "running": true,
+    "tokenMatches": false,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "fail",
+    "running": true,
+    "tokenMatches": true,
+    "leaseActive": false,
+    "allowed": true
+  },
+  {
+    "operation": "fail",
+    "running": true,
+    "tokenMatches": true,
+    "leaseActive": true,
+    "allowed": true
+  },
+  {
+    "operation": "heartbeat",
+    "running": false,
+    "tokenMatches": false,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "heartbeat",
+    "running": false,
+    "tokenMatches": false,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "heartbeat",
+    "running": false,
+    "tokenMatches": true,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "heartbeat",
+    "running": false,
+    "tokenMatches": true,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "heartbeat",
+    "running": true,
+    "tokenMatches": false,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "heartbeat",
+    "running": true,
+    "tokenMatches": false,
+    "leaseActive": true,
+    "allowed": false
+  },
+  {
+    "operation": "heartbeat",
+    "running": true,
+    "tokenMatches": true,
+    "leaseActive": false,
+    "allowed": false
+  },
+  {
+    "operation": "heartbeat",
+    "running": true,
+    "tokenMatches": true,
+    "leaseActive": true,
+    "allowed": true
+  }
+]

@@ -2,7 +2,7 @@ import { forbidden } from '../../application/errors';
 import type {
   LearningGrant, LearningCourse, NativeLearningAccess, NativeLearningClaims,
   NativeLearningRegistration, NativeSessionInput,
-} from '../../application/native-learning';
+} from '../../domain/lms/native-learning';
 
 export interface NativeLearningDependencies<Registration, Access> {
   digest(value: string): Promise<string>;

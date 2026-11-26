@@ -1,5 +1,5 @@
 import { createLmsUploadRepository } from '../persistence/factory';
-import type { OwnedLmsGrant, LmsUploadSnapshot } from '../application/lms-upload';
+import type { OwnedLmsGrant, LmsUploadSnapshot } from '../domain/lms/lms-upload';
 import { createLmsUploadService } from '../features/lms/upload-service';
 import { buildPendingUploadFileKey, fileExtension } from '../lib/upload';
 import { deadlineSignal } from '../lib/request-timeout';

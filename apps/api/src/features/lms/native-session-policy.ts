@@ -1,6 +1,6 @@
-import { nativeSessionMarkerExpiry } from '../../application/native-session-marker';
+import { nativeSessionInputAllowed, nativeSessionMatches } from '../../domain/lms/native-session-policy';
 import { forbidden } from '../../application/errors';
-import type { LearningGrant, NativeSessionInput } from '../../application/native-learning';
+import type { LearningGrant, NativeSessionInput } from '../../domain/lms/native-learning';
 
 export interface NativeSessionPolicyDependencies {
   decode(value: unknown): LearningGrant | null;
@@ -8,18 +8,8 @@ export interface NativeSessionPolicyDependencies {
 }
 export const nativeSessionDenied = () => forbidden('The LMS learning session is unavailable.');
 export function validateNativeSessionInput(input: NativeSessionInput, deps: NativeSessionPolicyDependencies): void {
-  const grant = deps.decode(input.grant);
-  if (!grant || grant.transport !== 'native' || !input.ownerUserId
-    || new Set([input.sessionHash, input.markerHash, input.nonceHash]).size !== 3
-    || [input.sessionHash, input.markerHash, input.nonceHash].some(id => !id)
-    || !Number.isFinite(nativeSessionMarkerExpiry(input.expiresAt).getTime())
-    || !Number.isFinite(input.nonceExpiresAt.getTime())) throw nativeSessionDenied();
+  if (!nativeSessionInputAllowed(input, deps.decode(input.grant))) throw nativeSessionDenied();
 }
 export function matchesNativeSession(payload: unknown, expiresAt: Date, input: NativeSessionInput, deps: NativeSessionPolicyDependencies): boolean {
-  const stored = deps.decode(payload);
-  if (!stored || stored.transport !== 'native' || expiresAt.getTime() <= deps.now() || expiresAt.getTime() !== input.expiresAt.getTime()) return false;
-  for (const field of ['registrationId', 'registrationHash', 'subjectHash', 'deploymentId', 'contextId', 'resourceLinkId', 'courseId', 'videoId', 'resourceGeneration', 'serviceSubject'] as const) {
-    if (stored[field] !== input.grant[field]) return false;
-  }
-  return true;
+  return nativeSessionMatches(deps.decode(payload), expiresAt, input, deps.now());
 }

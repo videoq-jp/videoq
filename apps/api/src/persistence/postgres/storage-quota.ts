@@ -1,4 +1,4 @@
-import { failedStorageReservation, failedUploadReservation, quotaAllowsAdditional, validateStorageReservationBytes, validateUploadReservationBytes } from '../../application/quota-policy';
+import { failedStorageReservation, failedUploadReservation, quotaAllowsAdditional, validateStorageReservationBytes, validateUploadReservationBytes } from '../../domain/billing/quota-policy';
 import { quotaDrizzleComparison } from '../quota-policy-sql';
 import {and,eq,sql} from "drizzle-orm";
 import type {Db} from "../../db/pool";

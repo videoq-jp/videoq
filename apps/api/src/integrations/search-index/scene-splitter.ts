@@ -1,4 +1,4 @@
-import { splitSearchScenes } from '../../application/search-scene-splitting';
+import { splitSearchScenes } from '../../application/scene-splitting';
 import { embedTexts, type EmbeddingEnv } from '../../lib/embeddings';
 import { EmbeddingValidationError, resolveEmbeddingConfig } from '../../lib/embedding-contract';
 import { LlmConfigurationError } from '../../lib/openai';

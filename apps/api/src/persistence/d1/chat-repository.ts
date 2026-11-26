@@ -13,7 +13,7 @@ import {
   mutationReceipts as receipts,
   chatConversations,
 } from "../../db/schema/sqlite";
-import { nativeCourseAccessAllowed } from "../../application/native-course-access";
+import { nativeCourseAccessAllowed } from "../../domain/learning/native-course-access";
 import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
 import { activeD1LmsOwner } from "./lms-owner-policy";
 import { chatAnswerSchema, chatAnswerText } from "@videoq/trpc/chat";

@@ -3,8 +3,8 @@ import { requestCourseAuthority } from '../features/lms/authority';
 import { linkedLearningCourse } from '../repositories/linked-learning-repository';
 import type { Bindings } from '../types/bindings';
 import type { LtiRegistration } from '../features/lti/config';
-import type { CourseGrant } from '../application/lms-authority';
-export type { CourseAccess, CourseVideo } from '../application/lms-authority';
+import type { CourseGrant } from '../domain/lms/lms-authority';
+export type { CourseAccess, CourseVideo } from '../domain/lms/lms-authority';
 
 /** Fresh authority I/O and persistence are composed outside the access policy. */
 export function courseAccessContext(reg: LtiRegistration, grant: CourseGrant, env?: Bindings) {

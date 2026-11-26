@@ -13,7 +13,7 @@ const SCHEDULER_NAME = "default";
 
 export { ARM_FLOOR_MS, DISPATCH_SAFETY_NET_MS, IDLE_BACKOFF_BASE_MS, IDLE_BACKOFF_CAP_MS,
   idleBackoffMs, nextIdleStrikes, chooseWakeup,
-} from '../application/maintenance-scheduling';
+} from '../domain/operations/maintenance-scheduling';
 
 function scheduler(env: Bindings) {
   if (!env.TASK_SCHEDULER) throw new Error("Maintenance scheduler is not configured");

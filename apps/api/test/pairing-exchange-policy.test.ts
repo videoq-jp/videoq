@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { pairingCanReplay, matchingPairingPayload, pairingConnectionConflict, pairingExchangeAllowed, pairingExchangeFailure,
-  pairingBooleanLogic, pairingProofMatches, validPairingAuthentication, pairingInstallationFields, pairingSyncTokenHash, pairingExpiry } from '../src/application/pairing-exchange';
-import type { PairingExchangeInput } from '../src/application/moodle-pairing';
+  pairingBooleanLogic, pairingProofMatches, validPairingAuthentication, pairingInstallationFields, pairingSyncTokenHash, pairingExpiry } from '../src/domain/lms/pairing-exchange';
+import type { PairingExchangeInput } from '../src/domain/lms/moodle-pairing';
 
 const input: PairingExchangeInput = { mode: 'materials', issuer: 'https://school.test', clientId: 'client', deploymentId: '2', secret: 'secret',
   materialsService: { tokenEndpoint: 'https://school.test/token', endpoint: 'https://school.test/materials' } };

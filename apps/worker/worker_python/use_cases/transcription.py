@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 from typing import Callable, Generic, Protocol, TypeVar
 
+from worker_python.domain.video_processing import transcription_admission, transcription_failure_retry
 from worker_python.domain.video_status import VideoStatus
 
 logger = logging.getLogger(__name__)
@@ -46,17 +47,18 @@ def execute_transcription(video_id: int, deps: TranscriptionDependencies[Video],
         return
 
     parent_job_id = job_id or f"transcribe-video:{video_id}"
-    if video.status == VideoStatus.INDEXING.value:
+    admission = transcription_admission(video.status)
+    if admission == 'handoff':
         logger.info("Resuming indexing handoff for video %d", video_id)
         deps.handoff(video_id, parent_job_id)
         return
-    if video.status == VideoStatus.COMPLETED.value:
+    if admission == 'completed':
         logger.info("Skipping duplicate transcription for completed video %d", video_id)
         return
     already_processing = video.status == VideoStatus.PROCESSING.value
     if already_processing:
         logger.info("Resuming interrupted transcription for video %d", video_id)
-    elif video.status not in {VideoStatus.PENDING.value, VideoStatus.ERROR.value}:
+    elif admission == 'invalid':
         raise TranscriptionExecutionFailedError(
             f"Video {video_id} is not ready for transcription (status={video.status})"
         )
@@ -90,8 +92,7 @@ def execute_transcription(video_id: int, deps: TranscriptionDependencies[Video],
     status = deps.finish(video, transcript, str(failure) if failure else "")
 
     if (
-        status == VideoStatus.ERROR.value and failure
-        and not isinstance(failure, ProcessingQuotaExceededError)
+        transcription_failure_retry(status, failure is not None and not isinstance(failure, ProcessingQuotaExceededError))
     ):
         raise TranscriptionExecutionFailedError(
             f"Transcription failed for video {video_id}: {failure}"

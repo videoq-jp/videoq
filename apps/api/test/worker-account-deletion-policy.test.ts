@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { accountDeletionDrainOutcome, accountDeletionForbidden, accountDeletionVideoOutcome } from '../src/application/worker-account-deletion';
+import { accountDeletionDrainOutcome, accountDeletionForbidden, accountDeletionVideoOutcome } from '../src/domain/operations/worker-account-deletion';
 const logic = { or: (...terms: boolean[]) => terms.some(Boolean), not: (term: boolean) => !term };
 
 it('requires a permanent ban and refuses administrators for an existing user', () => {

@@ -1,4 +1,4 @@
-import type {InvitationDeliveryStatus,InvitationStatus} from '../../application/course-invitations';
+import type {InvitationDeliveryStatus,InvitationStatus} from '../../domain/learning/course-invitations';
 import type {ExternalTaskLease} from './external-task-repository';
 export type InvitationDeliveryOutcome = {
   invitationId: number;

@@ -4,10 +4,10 @@ import {z} from 'zod';
 import {lmsIdentity} from '../features/lms/contracts';
 import {digest} from '../features/lti/store';
 import { derivePrivacySubject } from '../application/subject-identity';
-import { privacyCollections } from '../application/privacy';
-import type { PrivacyInstallation, PrivacySubject } from '../application/privacy';
-export { ORPHAN_CONTEXT, privacyCollections } from '../application/privacy';
-export type { PrivacyInstallation, PrivacySubject } from '../application/privacy';
+import { privacyCollections } from '../domain/lms/privacy';
+import type { PrivacyInstallation, PrivacySubject } from '../domain/lms/privacy';
+export { ORPHAN_CONTEXT, privacyCollections } from '../domain/lms/privacy';
+export type { PrivacyInstallation, PrivacySubject } from '../domain/lms/privacy';
 const subject = lmsIdentity;
 const contexts = z.array(lmsIdentity).min(1).max(100).refine(ids => new Set(ids).size === ids.length);
 const cursor = z.object({ after:z.string().min(1).max(2048).optional(),

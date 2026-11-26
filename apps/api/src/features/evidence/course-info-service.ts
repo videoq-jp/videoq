@@ -1,11 +1,12 @@
+import { EvidenceBudget } from '../../domain/conversation/evidence-budget';
 import type { CourseInfo, CourseInfoOptions } from '../../persistence/contracts/course-repository';
-import { MAX_COURSE_INFO_CALLS, COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from '../../application/evidence';
+import { COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from '../../domain/conversation/evidence';
 
 /** Scope is captured by the outer capability; model arguments cannot select an owner or course. */
 export function createCourseInfoService(load: (options: Omit<CourseInfoOptions, 'videoIds'>) => Promise<CourseInfo | null>) {
-  let used = 0;
+  const budget = new EvidenceBudget();
   return async ({ video_limit, video_offset }: { video_limit: number; video_offset: number }) => {
-    if (used++ >= MAX_COURSE_INFO_CALLS) {
+    if (budget.reserveTool('course') === 'limit') {
       return "Course information limit reached. Answer using the information already retrieved; " +
         "state any missing pages or details instead of guessing.";
     }

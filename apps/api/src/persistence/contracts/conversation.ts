@@ -1,4 +1,4 @@
-import type { GenerationResult } from "../../application/answer-generation";
+import type { GenerationResult } from "../../domain/conversation/answer-generation";
 import type {CreateChatLogInput} from "./chat-repository";
 export const CONVERSATION_CHECKPOINT_SCHEMA='chat_memory';
 export type { ConversationScope, ConversationListInput, ConversationDetailInput, ConversationSummary, ConversationTurn, ConversationRepository } from './conversation-read';

@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
 import {
-  teachingConnectionConflicts, teachingInstallationRequired, teachingResourceLinkAllowed, selectTeachingCourse,
 } from '../src/application/teaching';
+import {
+  teachingConnectionConflicts, teachingInstallationRequired, teachingResourceLinkAllowed, selectTeachingCourse} from '../src/domain/lms/teaching';
 
 const binding = { ownerUserId: 'alice', teacherSubject: 'teacher', courseId: 10 };
 

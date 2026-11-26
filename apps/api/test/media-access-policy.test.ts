@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { mediaAccessMode, mediaAuthenticatedPermission, mediaSharedPermission, mediaSharedPathValue } from '../src/application/media-access';
+import { mediaAccessMode, mediaAuthenticatedPermission, mediaSharedPermission, mediaSharedPathValue } from '../src/domain/media/media-access';
 it('gives explicit shares priority even for owners, empty slugs and unsafe paths', () => {
   expect(mediaAccessMode('lesson.mp4',{userId:'owner',shareSlug:''})).toEqual({kind:'shared',shareSlug:'',safePath:true});
   expect(mediaAccessMode('../lesson.mp4',{userId:'owner',shareSlug:'public'})).toEqual({kind:'shared',shareSlug:'public',safePath:false});

@@ -1,4 +1,5 @@
-import { SafeJobError } from '../../application/job-failure';
+import { sceneIndexAdmission, sceneTranscriptState, sceneTranscriptRequired } from '../../domain/search/index-lifecycle';
+import { SafeJobError } from '../../domain/operations/job-failure';
 import pg from 'pg';
 import { executeTranscriptIndex } from '../../application/search-index-execution';
 import { executeSceneIndex } from '../../application/scene-index-execution';
@@ -41,10 +42,11 @@ export async function indexTranscript(env: Bindings, videoId: number, options: {
     );
     const source = rows[0];
     if (!source) return 0;
-    if (options.finishIndexing && source.status === 'completed') return 0;
-    if (options.finishIndexing && source.status !== 'indexing') throw new SafeJobError('INDEX_NOT_READY', true, 'Video is not ready for indexing');
-    const empty = !(source.transcript ?? '').trim();
-    if (empty && options.finishIndexing && !options.allowEmpty) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Video has no transcript');
+    const admission = sceneIndexAdmission(source.status, !!options.finishIndexing);
+    if (admission === 'completed') return 0;
+    if (admission === 'not_ready') throw new SafeJobError('INDEX_NOT_READY', true, 'Video is not ready for indexing');
+    const empty = sceneTranscriptState(source.transcript) === 'empty';
+    if (empty && sceneTranscriptRequired(!!options.finishIndexing, !!options.allowEmpty)) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Video has no transcript');
     const result = empty ? await clearPostgresTranscriptIndex(pool, { videoId, userId: source.user_id, transcript: source.transcript ?? '' }) : await executeTranscriptIndex(videoId, source.transcript, {
       prepareReplacement: async () => {
         await validateTranscriptVectorStorage(pool, storage);
@@ -60,7 +62,7 @@ export async function indexTranscript(env: Bindings, videoId: number, options: {
       );
       if (!updated.rowCount) {
         const current = await pool.query<{ status: string }>('SELECT status FROM videos WHERE id=$1 AND user_id=$2', [videoId, source.user_id]);
-        if (current.rows[0]?.status === 'indexing') throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Video changed before indexing completion; retry');
+        if (sceneIndexAdmission(current.rows[0]?.status, true) === 'proceed') throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Video changed before indexing completion; retry');
       }
     }
     return result;

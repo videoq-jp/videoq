@@ -1,10 +1,10 @@
-import { planInvitationControl } from "../../application/invitation-lifecycle";
+import { planInvitationControl } from "../../domain/learning/invitation-lifecycle";
 import {
   invitationDeliveryCutoff,
   invitationDeliveryStranded,
   invitationDeliveryWasSent,
   invitationInviterName,
-} from "../../application/invitation-delivery";
+} from "../../domain/learning/invitation-delivery";
 import { invitationDrizzleLogic } from "../invitation-policy-sql";
 import { and, eq, lt, sql, notExists, isNull } from "drizzle-orm";
 import { withDb } from "../../db/pool";

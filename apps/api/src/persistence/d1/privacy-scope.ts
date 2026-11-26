@@ -16,7 +16,7 @@ import {
   ltiCredentials,
 } from "../../db/schema/sqlite";
 import { courseQaAuthorInput } from "../../application/subject-identity";
-import { privacyHistoryNeedsUpgrade } from "../../application/privacy-policy";
+import { privacyHistoryNeedsUpgrade } from '../../domain/lms/privacy-policy';
 import { privacyDrizzleLogic } from "../privacy-policy-sql";
 import { assertPrivacyRecovery } from "../../shared/privacy";
 import { ApiError } from "../../shared/errors";

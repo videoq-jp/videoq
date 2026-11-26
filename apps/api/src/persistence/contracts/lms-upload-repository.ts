@@ -1,5 +1,5 @@
-import type { OwnedLmsGrant, LmsUploadSnapshot, LmsContentAttempt } from '../../application/lms-upload';
-export type { LmsUploadSnapshot, LmsContentAttempt } from '../../application/lms-upload';
+import type { OwnedLmsGrant, LmsUploadSnapshot, LmsContentAttempt } from '../../domain/lms/lms-upload';
+export type { LmsUploadSnapshot, LmsContentAttempt } from '../../domain/lms/lms-upload';
 import type {OutboxedVideoJob} from './video-upload-repository';
 export type LmsUploadConfirmation={status:'stale'}|{status:'already'}|{status:'queued';job:OutboxedVideoJob};
 export interface LmsUploadRepository{

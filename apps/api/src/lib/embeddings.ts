@@ -1,4 +1,4 @@
-import { classifyJobFailure } from '../application/job-failure';
+import { classifyJobFailure } from '../domain/operations/job-failure';
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { workersAiEmbeddingFetch } from "./workers-ai-embedding-transport";
 import {

@@ -4,8 +4,8 @@ import {
   invitationControlState,
   invitationDecisionEffects,
   invitationControlEffects,
-} from "../../application/invitation-lifecycle";
-import { nativeCourseExternalAllowed } from "../../application/native-course-access";
+} from "../../domain/learning/invitation-lifecycle";
+import { nativeCourseExternalAllowed } from "../../domain/learning/native-course-access";
 import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
 import {
   sql,
@@ -32,7 +32,7 @@ import {
   externalTasks,
 } from "../../db/schema/sqlite";
 import { normalizeInvitationEmail } from "@videoq/domain/course-invitations";
-import type { InvitationStatus } from "../../application/course-invitations";
+import type { InvitationStatus } from "../../domain/learning/course-invitations";
 import type {
   InvitationDecisionResult,
   InvitationControlResult,

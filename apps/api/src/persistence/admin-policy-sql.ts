@@ -1,5 +1,5 @@
 import { sql, type SQL, type SQLWrapper } from 'drizzle-orm';
-import type { SubscriptionChoice } from '../application/billing-catalog';
+import type { SubscriptionChoice } from '../domain/billing/billing-catalog';
 
 export const adminPostgresRoleLogic = {
   includes: (role: SQLWrapper, expected: 'admin') => sql<boolean>`COALESCE(${expected} = ANY(string_to_array(${role}, ',')), false)`,

@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
-import { validateAnswerCitations } from '../src/features/chat/citation-policy';
+import { validateAnswerCitations } from '../src/domain/conversation/citation-policy';
 import { AnswerContentService, type AnswerTextParser } from '../src/features/chat/answer-content-service';
-import { StructuredAnswerError } from '../src/application/answer-generation';
+import { StructuredAnswerError } from '../src/domain/conversation/answer-generation';
 
 const source = { id: 12, video_id: 1, title: 'private title', start_time: null, end_time: null };
 it('retains prose while removing unauthorized citation identities and reports counts only', () => {

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql, type SQL } from 'drizzle-orm';
-import { quotaAllowsAdditional, quotaAllowsNext, type QuotaComparison } from '../../../src/application/quota-policy';
-import { videoAbortRefundAllowed, videoRefundBooleanLogic } from '../../../src/application/video-mutation';
+import { quotaAllowsAdditional, quotaAllowsNext, type QuotaComparison } from '../../../src/domain/billing/quota-policy';
+import { videoAbortRefundAllowed, videoRefundBooleanLogic } from '../../../src/domain/media/video-mutation';
 import { quotaDrizzleComparison } from '../../../src/persistence/quota-policy-sql';
 import { videoMutationDrizzleLogic } from '../../../src/persistence/video-mutation-policy-sql';
 

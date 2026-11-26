@@ -1,5 +1,5 @@
-export * from '../application/job-message';
-import type { JobType, JobMessage, JobMessageArguments, JobPayloadMap } from '../application/job-message';
+export * from '../domain/operations/job-message';
+import type { JobType, JobMessage, JobMessageArguments, JobPayloadMap } from '../domain/operations/job-message';
 
 export function buildJobMessage(...args: JobMessageArguments): JobMessage;
 export function buildJobMessage(

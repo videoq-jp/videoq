@@ -1,3 +1,4 @@
+import { courseNameSchema } from '../course-name';
 import { z } from "zod";
 
 const id = z.number().int().positive();
@@ -10,12 +11,12 @@ export const coursesInputSchemas = {
   "courses.get": z.object({ id }),
   "courses.shared": z.object({ slug: z.string().min(1).max(255) }),
   "courses.create": z.object({
-    name: z.string().min(1).max(255),
+    name: courseNameSchema,
     description: z.string().default(""),
   }),
   "courses.update": z.object({
     id,
-    name: z.string().min(1).max(255).optional(),
+    name: courseNameSchema.optional(),
     description: z.string().optional(),
   }),
   "courses.delete": z.object({ id }),

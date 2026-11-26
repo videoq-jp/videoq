@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { creationReceiptResult, validateCreationIdempotency } from '../src/application/creation-idempotency';
-import { videoCreationReplayAllowed } from '../src/application/video-creation';
+import { videoCreationReplayAllowed } from '../src/domain/media/video-creation';
 
 it('checks a stored request before allowing any receipt resource reuse', () => {
   expect(creationReceiptResult(undefined, 'expected')).toEqual({ found: false });

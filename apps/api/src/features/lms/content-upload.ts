@@ -1,5 +1,5 @@
 import type { LmsResourceData } from '../../persistence/contracts/lms-resource-repository';
-import type { LmsUploadSnapshot } from '../../application/lms-upload';
+import type { LmsUploadSnapshot } from '../../domain/lms/lms-upload';
 import { createLmsUploadSnapshot, validateLmsUploadResource } from './upload-service';
 import { asLmsSyncError } from './resource';
 export { uploadLmsContent, confirmLmsUpload } from '../../integrations/lms-upload';

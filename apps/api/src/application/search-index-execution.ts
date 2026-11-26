@@ -1,5 +1,6 @@
-import { SafeJobError } from './job-failure';
-import { parseSearchScenes, type SearchScene } from './search-scene-splitting';
+import { sceneTranscriptState, sceneSplitResultValid, sceneEmbeddingCountValid } from '../domain/search/index-lifecycle';
+import { SafeJobError } from '../domain/operations/job-failure';
+import { parseSearchScenes, type SearchScene } from '../domain/search/search-scene-splitting';
 
 export interface TranscriptIndexDependencies {
   prepareReplacement(): Promise<(scenes: SearchScene[], vectors: number[][]) => Promise<number>>;
@@ -8,12 +9,12 @@ export interface TranscriptIndexDependencies {
 }
 /** Provider work finishes before opening the atomic replacement transaction. */
 export async function executeTranscriptIndex(videoId: number, transcript: string | null, deps: TranscriptIndexDependencies): Promise<number> {
-  if (!transcript || !parseSearchScenes(transcript).length) throw new SafeJobError('INVALID_TRANSCRIPT', false, `Video ${videoId} transcript contains no valid SRT scenes`);
+  if (sceneTranscriptState(transcript) !== 'valid') throw new SafeJobError('INVALID_TRANSCRIPT', false, `Video ${videoId} transcript contains no valid SRT scenes`);
   const replace = await deps.prepareReplacement();
-  const scenes = parseSearchScenes(await deps.split(transcript));
-  if (!scenes.length) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Scene splitting produced no valid SRT scenes');
+  const scenes = parseSearchScenes(await deps.split(transcript!));
+  if (!sceneSplitResultValid(true, scenes.length)) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Scene splitting produced no valid SRT scenes');
   const vectors = await deps.embed(scenes.map(s => s.text));
-  if (vectors.length !== scenes.length) throw new SafeJobError('INVALID_EMBEDDINGS', true, 'Embedding row count mismatch');
+  if (!sceneEmbeddingCountValid(scenes.length, vectors.length)) throw new SafeJobError('INVALID_EMBEDDINGS', true, 'Embedding row count mismatch');
   return replace(scenes, vectors);
 }
 

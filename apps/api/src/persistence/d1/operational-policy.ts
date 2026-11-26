@@ -1,5 +1,5 @@
 import {CURRENT_POLICY_READINESS} from './policy-readiness';
-import type {CleanupObservation,ReadinessObservation} from '../../application/operational-policy';
+import type {CleanupObservation,ReadinessObservation} from '../../domain/operations/operational-policy';
 import type {OperationalPolicyRepository} from '../contracts/operational-policy';
 /** All observations/leases stay in the same D1 authority as the lifecycle facts. */
 export function createD1OperationalPolicyRepository(database:D1Database,identity?:{fingerprint:string;dimensions:number}):OperationalPolicyRepository {

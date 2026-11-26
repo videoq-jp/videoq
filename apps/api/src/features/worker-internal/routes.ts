@@ -2,7 +2,7 @@ import { WORKERS_AI_TRANSCRIPTION_MODEL, transcriptionAudioRequest, transcribeWo
 import { parseBackgroundJob } from '../../application/background-job';
 import { createJobTask } from '../../repositories/external-task-repository';
 import { processExternalTaskById } from '../../lib/external-tasks';
-import { transcriptionFailureAllowed, validTranscriptionPlan, validTranscriptionSegments } from '../../application/transcription-policy';
+import { transcriptionFailureAllowed, validTranscriptionPlan, validTranscriptionSegments } from '../../domain/media/transcription-policy';
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";

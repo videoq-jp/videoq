@@ -32,7 +32,7 @@ import {
   pairingExpiry,
   pairingExchangeAllowed,
   pairingExchangeFailure,
-} from "../../application/pairing-exchange";
+} from "../../domain/lms/pairing-exchange";
 import { pairingDrizzleLogic as logic } from "../pairing-policy-sql";
 import { activeD1LmsOwner } from "./lms-owner-policy";
 import type { Bindings } from "../../types/bindings";

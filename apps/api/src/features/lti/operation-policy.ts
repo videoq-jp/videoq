@@ -1,8 +1,9 @@
+import { qaOperationPrecheck } from '../../domain/qa/policy';
 import { courseQaAuthorInput } from '../../application/subject-identity';
 import type { LtiQaPrincipal } from '../../persistence/contracts/qa-repository';
-import type { CourseAccess } from '../../application/lms-authority';
-import type { LearningGrant, LearningCourse } from '../../application/native-learning';
-import type { LtiRegistration } from '../../application/lti-registration';
+import type { CourseAccess } from '../../domain/lms/lms-authority';
+import type { LearningGrant, LearningCourse } from '../../domain/lms/native-learning';
+import type { LtiRegistration } from '../../domain/lms/lti-registration';
 import type { LtiSessionProof } from '../../application/lti-session-proof';
 import type { ConversationScope } from '../../persistence/contracts/conversation-read';
 import type { CourseReportScope } from '../../persistence/contracts/course-report-repository';
@@ -13,11 +14,7 @@ export type LearningOperationAccess = {
   current: CourseAccess; reg: LtiRegistration; grant: LearningGrant; sessionHash: string;
   course: Pick<LearningCourse, 'userId' | 'memberVideoIds'>;
 };
-export const canUseLearningConversations = (access: LearningOperationAccess) => access.current.permissions.manageOwnHistory;
-export const canUseLearningTags = (access: LearningOperationAccess) => access.reg.id.startsWith('db:');
-export const canChangeLearningTags = (access: LearningOperationAccess, action: string) => action === 'list' || access.current.permissions.manageContent;
-export const canManageLearningMaterials = (access: LearningOperationAccess) => access.reg.id.startsWith('db:') && access.current.permissions.manageContent;
-export const canReadLearningReports = (access: LearningOperationAccess) => access.current.permissions.viewReports && access.reg.id.startsWith('db:');
+export { canUseLearningConversations, canUseLearningTags, canChangeLearningTags, canManageLearningMaterials, canReadLearningReports } from '../../domain/lms/learning-features';
 
 export function learningConversationScope(access: LearningOperationAccess, subjectKey: string, sessionProof: LtiSessionProof): ConversationScope {
   const { course, grant, current } = access;
@@ -69,12 +66,8 @@ export function learningManagedMaterialScope(access: LearningOperationAccess, vi
 export type LearningQaAccess = Omit<LearningOperationAccess, 'reg'>;
 export function canUseLearningQa(access: LearningQaAccess, action: string): boolean {
   const permissions = access.current.permissions;
-  if (!permissions.viewQa) return false;
-  if (['ask', 'reply', 'updateQuestion', 'updateReply'].includes(action) && !permissions.postQa) return false;
-  if (action === 'vote' && !permissions.voteQa) return false;
-  if (action === 'feature' && !permissions.moderateQa) return false;
-  if (['deleteQuestion', 'deleteReply'].includes(action) && !permissions.deleteOwnQa && !permissions.moderateQa) return false;
-  return true;
+  return qaOperationPrecheck(action, { view: permissions.viewQa, canPost: permissions.postQa,
+    canVote: permissions.voteQa, canDeleteOwn: permissions.deleteOwnQa, canModerate: permissions.moderateQa });
 }
 export const learningQaAuthorIdentity = (grant: LearningGrant) => courseQaAuthorInput(grant);
 export function learningQaPrincipal(access: LearningQaAccess, authorId: string, sessionProof: LtiSessionProof): LtiQaPrincipal {

@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { Tiktoken, getEncodingNameForModel, type TiktokenBPE, type TiktokenModel } from 'js-tiktoken/lite';
-import type { SceneEncoding } from '../../application/search-scene-splitting';
+import type { SceneEncoding } from '../../domain/search/search-scene-splitting';
 
 /** Use the published rank data for strict decoding rather than library internals. */
 export function sceneEncoding(ranks: TiktokenBPE): SceneEncoding {

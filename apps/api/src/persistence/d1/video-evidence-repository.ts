@@ -2,8 +2,8 @@ import {
   evidenceVideoSelected,
   inlineTranscript,
   visualEvidenceReady,
-} from "../../application/content-read";
-import { learningVideoAllowed } from "../../application/media-eligibility";
+} from '../../domain/media/content-read';
+import { learningVideoAllowed } from "../../domain/media/media-eligibility";
 import { mediaDrizzleLogic } from "../media-eligibility-sql";
 import {
   contentDrizzleLogic,

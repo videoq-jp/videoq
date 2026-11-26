@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import type { LtiRegistration } from '../src/application/lti-registration';
+import type { LtiRegistration } from '../src/domain/lms/lti-registration';
 import { bootstrapNativeTeacher, type NativeTeacherDependencies } from '../src/features/lms/native-teacher-service';
 
 const registration: LtiRegistration = {

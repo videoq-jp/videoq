@@ -1,4 +1,4 @@
-import type {PolicySnapshot} from '../../application/operational-policy';
+import type {PolicySnapshot} from '../../domain/operations/operational-policy';
 export interface OperationalPolicyRepository {
  read(observedAt:string):Promise<PolicySnapshot>;
  claim(id:string,severity:string):Promise<number|null>;

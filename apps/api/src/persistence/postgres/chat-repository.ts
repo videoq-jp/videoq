@@ -1,6 +1,6 @@
 import { alias } from "drizzle-orm/pg-core";
 import { insertSelectValues } from "../../db/postgres/query-builders";
-import { nativeCourseAccessAllowed } from "../../application/native-course-access";
+import { nativeCourseAccessAllowed } from "../../domain/learning/native-course-access";
 import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
 import { activeLmsOwner } from "./lms-owner-policy";
 import { lockLtiDataSessionWithDb } from "./lti-session-lock";

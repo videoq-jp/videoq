@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { initializeAccount } from '../src/application/account-registration';
+import { initializeAccount } from '../src/domain/identity/account-registration';
 
 const quota = {
   maxVideoUploadSizeMb: 100, aiAnswersLimit: 0, processingLimitMinutes: null,

@@ -1,4 +1,4 @@
-import type { LtiLaunchClaims, LtiLaunchLogin, LtiLaunchRegistration } from '../../application/lti-launch';
+import type { LtiLaunchClaims, LtiLaunchLogin, LtiLaunchRegistration } from '../../domain/lms/lti-launch';
 
 const rolePrefix = 'http://purl.imsglobal.org/vocab/lis/v2/membership#';
 const allowedRoles = new Set(['Learner', 'Instructor', 'Administrator', 'ContentDeveloper', 'Mentor'].map(role => rolePrefix + role));

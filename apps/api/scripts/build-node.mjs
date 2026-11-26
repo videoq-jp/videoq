@@ -18,3 +18,8 @@ for (const output of Object.values(bundle.metafile.outputs)) {
   const unresolved = output.imports.find(dependency => dependency.external && dependency.path.startsWith('@videoq/'));
   if (unresolved) throw new Error(`Workspace dependency was not bundled: ${unresolved.path}`);
 }
+
+// Local fixture identities and in-memory adapters are separate entrypoints.
+const prototype = Object.keys(bundle.metafile.inputs).find(path =>
+  /src\/(runtime\/prototype|integrations\/prototype\/|persistence\/memory\/)/.test(path));
+if (prototype) throw new Error(`Prototype implementation entered a production bundle: ${prototype}`);

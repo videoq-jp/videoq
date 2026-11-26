@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./agent-skills": { "types": "./src/agent-skills.ts", "default": "./src/agent-skills.ts" },
+    "./agent-skills": {
+      "types": "./src/agent-skills.ts",
+      "default": "./src/agent-skills.ts"
+    },
     "./video-upload": {
       "types": "./src/video-upload.ts",
       "default": "./src/video-upload.ts"
@@ -45,7 +48,11 @@
       "types": "./src/transcript-quality.ts",
       "default": "./src/transcript-quality.ts"
     },
-    "./billing-catalog": "./src/billing-catalog.ts"
+    "./billing-catalog": "./src/billing-catalog.ts",
+    "./course-name": {
+      "types": "./src/course-name.ts",
+      "default": "./src/course-name.ts"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

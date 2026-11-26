@@ -7,6 +7,7 @@ import json
 import uuid
 from typing import Any
 
+from worker_python.domain.jobs import job_claim_decision, job_lease_mutation_allowed
 from worker_python.db import db_connection
 from worker_python.internal_api import call_internal_api, uses_internal_persistence
 
@@ -84,13 +85,13 @@ def claim_job_execution(
         ).fetchone()
         if existing is None:
             raise RuntimeError(f"Job execution disappeared: {job_id}")
-        if existing["job_type"] != job_type or existing["payload_sha256"] != payload_hash:
-            raise JobIdentityConflictError(
-                f"job_id {job_id!r} was reused with a different type or payload"
-            )
-        if existing["status"] == "completed":
+        decision = job_claim_decision(existing["job_type"] == job_type and existing["payload_sha256"] == payload_hash,
+                                      existing["status"], existing["lease_active"])
+        if decision == 'conflict':
+            raise JobIdentityConflictError(f"job_id {job_id!r} was reused with a different type or payload")
+        if decision == 'completed':
             return None
-        if existing["status"] == "running" and existing["lease_active"]:
+        if decision == 'busy':
             raise JobExecutionBusyError(f"Job execution is still running: {job_id}")
 
         claimed = conn.execute(
@@ -112,6 +113,12 @@ def claim_job_execution(
         return lease_token
 
 
+def _job_mutation_predicate(operation: str) -> str:
+    # Adapter-owned SQL fragments only; job identity/token remain parameters.
+    return job_lease_mutation_allowed(operation, "status = 'running'", 'lease_token = %s', 'lease_until > NOW()',
+                                      lambda *terms: ' AND '.join(terms))
+
+
 def complete_job_execution(job_id: str, lease_token: str) -> None:
     if uses_internal_persistence():
         result = call_internal_api("complete", {"jobId": job_id, "leaseToken": lease_token})
@@ -120,7 +127,7 @@ def complete_job_execution(job_id: str, lease_token: str) -> None:
         return
     with db_connection() as conn:
         completed = conn.execute(
-            """
+            f"""
             UPDATE job_executions
                SET status = 'completed',
                    lease_token = NULL,
@@ -129,8 +136,7 @@ def complete_job_execution(job_id: str, lease_token: str) -> None:
                    last_error = '',
                    updated_at = NOW()
              WHERE job_id = %s
-               AND status = 'running'
-               AND lease_token = %s
+               AND {_job_mutation_predicate('complete')}
             RETURNING job_id
             """,
             (job_id, lease_token),
@@ -146,7 +152,7 @@ def fail_job_execution(job_id: str, lease_token: str, error: str) -> None:
         return
     with db_connection() as conn:
         conn.execute(
-            """
+            f"""
             UPDATE job_executions
                SET status = 'failed',
                    lease_token = NULL,
@@ -154,8 +160,7 @@ def fail_job_execution(job_id: str, lease_token: str, error: str) -> None:
                    last_error = %s,
                    updated_at = NOW()
              WHERE job_id = %s
-               AND status = 'running'
-               AND lease_token = %s
+               AND {_job_mutation_predicate('fail')}
             """,
             (error[:2000], job_id, lease_token),
         )

@@ -3,7 +3,7 @@ import {
   courseHistoryScopeIds,
   courseHistoryAttribution,
   retainedCourseHistory,
-} from "../../application/course-history-append";
+} from "../../domain/learning/course-history";
 import { historyDrizzleChoice } from "../course-history-policy-sql";
 import { and, eq, inArray, sql, desc } from "drizzle-orm";
 import { withDb } from "../../db/pool";

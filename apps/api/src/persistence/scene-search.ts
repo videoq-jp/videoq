@@ -1,4 +1,4 @@
-import { DEFAULT_SCENE_SEARCH_RESULTS, sceneSearchSelection } from '../application/scene-retrieval';
+import { DEFAULT_SCENE_SEARCH_RESULTS, sceneSearchSelection } from '../domain/search/scene-retrieval';
 import type { Bindings } from "../types/bindings";
 import type { UsageRecorder } from "../tools/usage";
 import type { SceneHit } from "./contracts/scene-search";

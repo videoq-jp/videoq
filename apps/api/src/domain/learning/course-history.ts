@@ -1,4 +1,4 @@
-import type { CourseHistoryScope } from './course-history';
+export type CourseHistoryIdentity = { registrationId: string; subjectHash: string; courseId: number; contextId?: string };
 
 export const COURSE_HISTORY_MAX_TURNS = 50;
 
@@ -6,7 +6,7 @@ export function courseHistoryScopeIds(ids: readonly number[]): number[] {
   return [...new Set(ids)].sort((a, b) => a - b);
 }
 
-export function courseHistoryAttribution(scope: CourseHistoryScope) {
+export function courseHistoryAttribution(scope: CourseHistoryIdentity) {
   return { registrationId: scope.registrationId, subjectHash: scope.subjectHash, courseId: scope.courseId,
     ...(scope.contextId ? { contextId: scope.contextId } : {}) };
 }

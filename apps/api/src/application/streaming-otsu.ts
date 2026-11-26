@@ -1,8 +1,5 @@
-export interface OtsuCheckpoint {
-  sum: number[];
-  criterion: number;
-  boundary: number;
-}
+import { normalizedOtsuVector, accumulateOtsuTotal, accumulateOtsuBoundary, type OtsuCheckpoint } from '../domain/search/streaming-otsu';
+export type { OtsuCheckpoint } from '../domain/search/streaming-otsu';
 export interface StreamingOtsuDependencies {
   dimensions: number;
   batchSize: number;
@@ -27,9 +24,7 @@ export async function streamingOtsuBoundary(start: number, end: number, deps: St
       if (vectors.length < upper - batch) throw new Error('Missing scene splitting vectors');
       for (let index = Math.max(start, batch); index < upper; index++) {
         const vector = vectors[index - batch];
-        if (vector.length !== deps.dimensions || vector.some(value => !Number.isFinite(value))) throw new Error('Invalid scene splitting vector');
-        const norm = Math.max(Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0)), 1e-12);
-        operation(index, vector.map(value => value / norm));
+        operation(index, normalizedOtsuVector(vector, deps.dimensions));
       }
     }
   };
@@ -38,7 +33,7 @@ export async function streamingOtsuBoundary(start: number, end: number, deps: St
     const previous = total;
     total = await deps.checkpoint(`split-total-${start}-${end}-${offset}`, async () => {
       const state = { ...previous, sum: [...previous.sum] };
-      await visit(offset, (_index, vector) => { for (let d = 0; d < vector.length; d++) state.sum[d] += vector[d]; });
+      await visit(offset, (_index, vector) => { accumulateOtsuTotal(state, vector); });
       return state;
     });
   }
@@ -48,17 +43,7 @@ export async function streamingOtsuBoundary(start: number, end: number, deps: St
     prefix = await deps.checkpoint(`split-boundary-${start}-${end}-${offset}`, async () => {
       const state = { ...previous, sum: [...previous.sum] };
       await visit(offset, (index, vector) => {
-        const tau = index - start + 1;
-        let squared = 0;
-        for (let d = 0; d < vector.length; d++) {
-          state.sum[d] += vector[d];
-          const difference = state.sum[d] * count - tau * total.sum[d];
-          squared += difference * difference;
-        }
-        if (tau < count) {
-          const criterion = squared / (tau * (count - tau));
-          if (criterion > state.criterion) { state.criterion = criterion; state.boundary = tau; }
-        }
+        accumulateOtsuBoundary(state, total, vector, index - start + 1, count);
       });
       return state;
     });

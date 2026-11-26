@@ -27,7 +27,7 @@ import {
   visualSourceCurrent,
   validateVisualCheckpoint,
   visualAttemptAllowed,
-} from "../../application/visual-checkpoint-policy";
+} from "../../domain/media/visual-checkpoint-policy";
 import { visualDrizzleLogic as logic } from "../visual-policy-sql";
 import { beginVisualObject } from "./visual-objects";
 import type {

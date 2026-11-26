@@ -12,13 +12,13 @@ import {
   courseAccessRole,
   courseAuthenticatedRole,
   courseOwnerPriority,
-} from "../../application/course-management";
+} from "../../domain/learning/course-management";
 import {
   courseManagementDrizzleLogic,
   courseDrizzleRoleChoice,
   courseDrizzlePriorityChoice,
 } from "../course-management-policy-sql";
-import { nativeCourseAccessAllowed } from "../../application/native-course-access";
+import { nativeCourseAccessAllowed } from "../../domain/learning/native-course-access";
 import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
 import {
   and,

@@ -1,4 +1,4 @@
-import { normalizeStoredPlanCode, selectBillingEntitlement, billingAccountAvailable } from '../../application/billing-state';
+import { normalizeStoredPlanCode, selectBillingEntitlement, billingAccountAvailable } from '../../domain/billing/billing-state';
 import { billingDrizzleEntitlementChoice, billingDrizzleBanLogic } from '../billing-policy-sql';
 import { and, eq, sql, type SQLWrapper } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";

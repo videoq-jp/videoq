@@ -1,4 +1,4 @@
-import { adminSelfLockout, type AdminDeleteResult, type AdminFlagsPatch } from '../../application/admin';
+import { adminSelfLockout, type AdminDeleteResult, type AdminFlagsPatch } from '../../domain/identity/admin';
 
 export interface AdminDependencies<User> {
   patchFlags(actorId: string, targetId: string, patch: AdminFlagsPatch): Promise<User | null>;

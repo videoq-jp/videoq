@@ -1,6 +1,6 @@
-import { SafeJobError, classifyJobFailure } from './job-failure';
+import { SafeJobError, classifyJobFailure } from '../domain/operations/job-failure';
 import type { JobRepository } from './job-execution-port';
-import type { JobMessage } from './job-message';
+import type { JobMessage } from '../domain/operations/job-message';
 
 export type BackgroundJob = Extract<JobMessage, { type:
   'delete_account_data' | 'reindex_video_transcript' | 'index_video_transcript' | 'reindex_all_videos_embeddings'

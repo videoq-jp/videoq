@@ -1,5 +1,5 @@
-import type { MultipartParts } from '../../application/multipart-upload';
-export { UploadSessionError, type MultipartParts } from '../../application/multipart-upload';
+import type { MultipartParts } from '../../domain/media/multipart-upload';
+export { UploadSessionError, type MultipartParts } from '../../domain/media/multipart-upload';
 export interface MultipartUploadRepository {
  initialize(videoId:number,userId:string,contentType:string):Promise<{part_size:number;part_count:number}>;
  partUrl(videoId:number,userId:string,partNumber:number):Promise<{upload_url:string}>;

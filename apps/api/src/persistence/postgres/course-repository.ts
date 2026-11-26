@@ -8,7 +8,7 @@ import {
   courseAccessRole,
   courseAuthenticatedRole,
   courseOwnerPriority,
-} from "../../application/course-management";
+} from "../../domain/learning/course-management";
 import {
   courseManagementDrizzleLogic,
   courseDrizzleRoleChoice,

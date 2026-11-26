@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { qaBooleanLogic, qaMutationEffects, type QaOperation } from '../src/features/qa/policy';
+import { qaBooleanLogic, qaMutationEffects, type QaOperation } from '../src/domain/qa/policy';
 
 const facts = { ownQuestion: false, ownReply: false, featureChanged: true, featured: true };
 it.each<QaOperation>(['qa.ask', 'qa.updateQuestion', 'qa.deleteQuestion', 'qa.reply', 'qa.updateReply', 'qa.deleteReply', 'qa.vote', 'qa.feature'])('touches parent timestamps only for reply changes: %s', operation => {

@@ -1,6 +1,6 @@
-import { normalizeAnswerTexts } from "../../application/answer-normalization";
+import { normalizeAnswerTexts } from "../../domain/conversation/answer-normalization";
 import type { ModelAnswer } from '@videoq/domain/chat';
-import { StructuredAnswerError } from '../../application/answer-generation';
+import { StructuredAnswerError } from '../../domain/conversation/answer-generation';
 
 export interface AnswerTextDecoding {
   decodeComplete(text: string): ModelAnswer;

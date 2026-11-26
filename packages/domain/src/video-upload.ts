@@ -66,3 +66,28 @@ export function multipartPartSize(fileSize: number): number {
 export function isValidUploadPartEtag(value:unknown):value is string {
   return typeof value==='string'&&/^[\x21\x23-\x7e]{1,1024}$/.test(value);
 }
+
+/** Public metadata uses 255 UTF-16 units, consistent with API and HTML limits. */
+export const MAX_VIDEO_TITLE_LENGTH = 255;
+export function videoTitleFailure(value: string): string | null {
+  const title = value.trim();
+  if (!title) return 'This field may not be blank.';
+  return title.length > MAX_VIDEO_TITLE_LENGTH ? 'Ensure this field has no more than 255 characters.' : null;
+}
+export function uploadFilenameFailure(value: string): string | null {
+  const filename = value.trim(), ext = fileExtension(filename);
+  if (!filename || filename.length > 255) return 'Filename must contain 1 to 255 characters.';
+  return isAllowedExtension(ext) ? null : `Unsupported file type: '${ext}'. Allowed types: ${Object.keys(VIDEO_UPLOAD_TYPES).join(', ')}`;
+}
+export function uploadContentTypeFailure(value: string): string | null {
+  const contentType = value.trim();
+  return contentType.length <= 100 && isAllowedContentType(contentType) ? null
+    : `Invalid content type: '${contentType}'. Only video files are allowed.`;
+}
+export function uploadSizeFailure(bytes: number, singlePut = false): string | null {
+  if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > MAX_VIDEO_UPLOAD_BYTES) return 'Invalid file size (exceeds the storage provider object limit).';
+  return singlePut && bytes > MAX_SINGLE_UPLOAD_BYTES ? 'Files larger than 5 GiB require multipart upload.' : null;
+}
+export function transcriptionLanguageFailure(value: string | undefined): string | null {
+  return value === undefined || Object.hasOwn(TRANSCRIPTION_LANGUAGES, value) ? null : 'Invalid transcription language.';
+}

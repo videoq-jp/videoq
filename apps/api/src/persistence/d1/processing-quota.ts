@@ -6,7 +6,7 @@ import {
   videos,
   mutationReceipts as receipts,
 } from "../../db/schema/sqlite";
-import { quotaAllowsAdditional } from "../../application/quota-policy";
+import { quotaAllowsAdditional } from "../../domain/billing/quota-policy";
 import { quotaDrizzleComparison } from "../quota-policy-sql";
 import {
   validateProcessingReservation,

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { mergeLtiRegistrations } from '../src/features/lti/registration-service';
-import { ltiRegistrationSnapshotAllowed } from '../src/application/lti-registration';
+import { mergeLtiRegistrations } from '../src/domain/lms/registration-policy';
+import { ltiRegistrationSnapshotAllowed } from '../src/domain/lms/lti-registration';
 import type { LtiRegistrationRepository, LtiResourceRegistration } from '../src/persistence/contracts/lti-registration-repository';
 
 const installation = { id: 'school', ownerUserId: 'owner', issuer: 'https://school.test/path', clientId: 'client', deploymentId: 'deployment', authorizationUrl: 'https://school.test/auth', jwksUrl: 'https://school.test/keys', materialsService: null };

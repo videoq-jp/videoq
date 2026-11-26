@@ -11,7 +11,7 @@ const httpsEndpoint = z.url().max(2048).refine(value => {
   return url.protocol === 'https:' && !url.username && !url.password && !url.hash;
 });
 export const materialsServiceSchema = z.object({ tokenEndpoint: httpsEndpoint, endpoint: httpsEndpoint }).strict();
-export type { MaterialsService } from "../../application/lti-registration";
+export type { MaterialsService } from "../../domain/lms/lti-registration";
 export const materialManagementSchema = z.object({ generation: z.number().int().positive().safe() }).strict();
 export const courseEntryAccessSchema = z.object({ generation: z.number().int().positive().safe() }).strict();
 
@@ -28,7 +28,7 @@ export const coursePermissionsSchema = z.object({
   moderateQa: z.boolean().default(false),
   instructorQa: z.boolean().default(false),
 });
-export { deniedCoursePermissions, type CoursePermissions } from "../../application/lms-authority";
+export { deniedCoursePermissions, type CoursePermissions } from "../../domain/lms/lms-authority";
 
 const authorityResource = z.object({
   resourceLinkId: lmsIdentity, lesson: lmsIdentity, title: z.string().max(500),
@@ -44,4 +44,4 @@ export const courseAuthorityResponse = z.object({
 export const materialsAccessResponse = courseAuthorityResponse.extend({
   resources: z.array(authorityResource.extend({ externalId: lmsIdentity }).strict()).max(1000),
 }).strict();
-export type { CourseAuthorityResponse } from "../../application/lms-authority";
+export type { CourseAuthorityResponse } from "../../domain/lms/lms-authority";

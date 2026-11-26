@@ -13,7 +13,7 @@ import {
   linkedCourseAllowed,
   learningVideoAllowed,
   linkedLessonTitle,
-} from "../../application/media-eligibility";
+} from "../../domain/media/media-eligibility";
 import { mediaDrizzleLogic } from "../media-eligibility-sql";
 import type { LinkedLearningRepository } from "../contracts/linked-learning-repository";
 export function createPostgresLinkedLearningRepository(

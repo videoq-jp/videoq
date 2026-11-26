@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { users, ltiCredentials as credentials } from "../../db/schema";
-import { nativeSessionMarkerExpiry } from "../../application/native-session-marker";
+import { nativeSessionMarkerExpiry } from "../../domain/lms/native-session-marker";
 import type { Bindings } from "../../types/bindings";
 import type { NativeSessionRepository } from "../contracts/native-session-repository";
 import {

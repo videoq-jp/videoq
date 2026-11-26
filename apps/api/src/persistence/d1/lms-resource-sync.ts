@@ -36,14 +36,14 @@ import {
 import {
   materialTeacherConnectionAccess,
   materialTeacherCourseMatches,
-} from "../../application/lms-owner";
+} from "../../domain/lms/lms-owner";
 import { activeD1LmsOwner } from "./lms-owner-policy";
 import {
   planResourceRemoval,
   resourceContentValues,
   resourceCourseTitle,
   resourceUploadError,
-} from "../../application/resource-mutation";
+} from "../../domain/lms/resource-mutation";
 import { resourceDrizzleErrorChoice } from "../resource-policy-sql";
 import {
   planResourceReconciliation,
@@ -51,11 +51,11 @@ import {
   resourceCourseOwnerMatches,
   resourceRevisionConflict,
   resourceVideoBindingMatches,
-} from "../../application/resource-reconciliation";
+} from "../../domain/lms/resource-reconciliation";
 import {
   quotaAllowsAdditional,
   validateUploadReservationBytes,
-} from "../../application/quota-policy";
+} from "../../domain/billing/quota-policy";
 import { quotaDrizzleComparison } from "../quota-policy-sql";
 import { MaterialsLeaseLostError } from "../contracts/materials-sync-repository";
 import { d1MaterialsLease } from "./materials-sync-repository";

@@ -2,10 +2,10 @@ import type { LearningAuthorization } from '../../application/lti-authorization'
 import type { VideoEvidence } from '../../persistence/contracts/video-evidence-repository';
 import type { ChatRepository } from '../../persistence/contracts/chat-repository';
 import { transcriptPage } from './transcript';
-import type { CourseAccess } from '../../application/lms-authority';
-import type { LearningCourse, LearningGrant } from '../../application/native-learning';
-import type { LtiRegistration } from '../../application/lti-registration';
-import { learningFeatures } from '../../application/lti-authorization';
+import type { CourseAccess } from '../../domain/lms/lms-authority';
+import type { LearningCourse, LearningGrant } from '../../domain/lms/native-learning';
+import type { LtiRegistration } from '../../domain/lms/lti-registration';
+import { learningFeatures } from '../../domain/lms/learning-features';
 import { playbackCueHint } from './playback-context';
 
 export type LearningChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };

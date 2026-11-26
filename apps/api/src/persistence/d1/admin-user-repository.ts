@@ -7,8 +7,8 @@ import {
   adminBooleanRoleLogic,
   adminDeletionAllowed,
   planAdminQuotaEdit,
-} from "../../application/admin";
-import { billingAccountAvailable } from "../../application/billing-state";
+} from "../../domain/identity/admin";
+import { billingAccountAvailable } from "../../domain/billing/billing-state";
 import { billingDrizzleBanLogic } from "../billing-policy-sql";
 import {
   adminD1RoleLogic,
@@ -45,7 +45,7 @@ import {
 import {
   PLAN_CATALOG,
   subscriptionEntitlement,
-} from "../../application/billing-catalog";
+} from "../../domain/billing/billing-catalog";
 import type {
   AdminUser,
   AdminUserRepository,

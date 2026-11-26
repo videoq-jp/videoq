@@ -10,10 +10,14 @@ const ENV = {
   CORS_ALLOW_ORIGIN: "http://localhost:5173",
 } as unknown as Parameters<ReturnType<typeof createApp>["request"]>[2];
 
-vi.mock("../src/integrations/courses", () => ({
-  listCourses: vi.fn(async () => ({ count: 0, results: [] })),
-  reorderUserCourses: vi.fn(async () => ({ ok: true })),
-}));
+vi.mock("../src/integrations/courses", async () => {
+  const { createUseCaseBus } = await import('../src/application/use-case-bus');
+  const methods = {
+    listCourses: vi.fn(async () => ({ count: 0, results: [] })),
+    reorderUserCourses: vi.fn(async () => ({ ok: true })),
+  };
+  return { ...methods, createCourseUseCases: async () => createUseCaseBus(methods) };
+});
 
 vi.mock("../src/features/videos/service", () => ({
   getUserVideoStats: vi.fn(async () => ({
@@ -59,7 +63,7 @@ describe("video/course JSON endpoints use tRPC", () => {
       data: [],
       meta: { total: 0, limit: 100, offset: 0 },
     });
-    expect(courseService.listCourses).toHaveBeenCalledWith(ENV, TEST_USER_ID, 100, 0);
+    expect(courseService.listCourses).toHaveBeenCalledWith(TEST_USER_ID, 100, 0);
   });
 
   it("reorders courses through courses.reorder", async () => {
@@ -72,7 +76,7 @@ describe("video/course JSON endpoints use tRPC", () => {
     );
     expect(response.status).toBe(200);
     expect(await trpcData(response)).toEqual({ courseIds: [2, 1] });
-    expect(courseService.reorderUserCourses).toHaveBeenCalledWith(ENV, TEST_USER_ID, [2, 1]);
+    expect(courseService.reorderUserCourses).toHaveBeenCalledWith(TEST_USER_ID, [2, 1]);
   });
 
   it("loads video status counts through videos.statusCounts", async () => {

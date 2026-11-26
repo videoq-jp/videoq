@@ -1,5 +1,5 @@
-import type { VisualRun, VisualChunk } from '../../application/visual-checkpoint-policy';
-export type { VisualRun, VisualChunk } from '../../application/visual-checkpoint-policy';
+import type { VisualRun, VisualChunk } from '../../domain/media/visual-checkpoint-policy';
+export type { VisualRun, VisualChunk } from '../../domain/media/visual-checkpoint-policy';
 export interface VisualCheckpoints {
   load(videoId: number, runId?: string): Promise<VisualRun | null>;
   initialize(videoId: number, fileKey: string, durationMs: number): Promise<VisualRun | null>;

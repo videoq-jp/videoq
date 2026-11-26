@@ -1,7 +1,7 @@
 import { asApiError } from './errors';
 import { sessionRecord } from '../features/lti/protocol';
 import * as policy from '../features/lms/native-session-policy';
-import type { NativeSessionInput } from '../application/native-learning';
+import type { NativeSessionInput } from '../domain/lms/native-learning';
 const dependencies: policy.NativeSessionPolicyDependencies = {
   decode: value => { const result = sessionRecord.safeParse(value); return result.success ? result.data : null; },
   now: () => Date.now(),

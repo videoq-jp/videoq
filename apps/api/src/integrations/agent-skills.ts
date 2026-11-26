@@ -1,10 +1,12 @@
+import { createSkillSourceService } from '../features/skills/source-service';
+import { aiQuotaConsumed } from '../domain/billing/ai-consumption';
 import { z } from 'zod';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { skillDraftSchema, skillPlanSchema, skillAuditSchema } from '@videoq/trpc/skills';
 import { createSkillService, type SkillDependencies } from '../features/skills/service';
 import { extractionEvidence } from '../features/skills/evidence';
 import { draftClaims } from '../features/skills/core';
-import type { SkillTarget, SkillMaterial } from '../persistence/contracts/agent-skill-repository';
+import type { SkillTarget, SkillMaterial } from '../domain/skills/model';
 import { createAgentSkillRepository } from '../persistence/factory';
 import { getCourseDetail } from '../repositories/course-repository';
 import { reserveAiAnswerUsage, releaseAiAnswerReservation } from '../repositories/quota-repository';
@@ -15,40 +17,17 @@ import { deadlineSignal } from '../lib/request-timeout';
 import { LlmConfigurationError } from '../lib/openai';
 import { sha256Hex } from '../shared/crypto';
 import { ApiError } from '../shared/errors';
-import { notFound, validationFailure, conflict } from '../application/errors';
+import { validationFailure } from '../application/errors';
 import type { Bindings } from '../types/bindings';
 
 export async function readSkillMaterial(env: Bindings, ownerId: string, target: SkillTarget): Promise<SkillMaterial> {
-  let title = '', ids: number[] = [];
-  if (target.kind === 'course') {
-    let offset = 0, expected = -1;
-    do {
-      const course = await getCourseDetail(env, target.resourceId, ownerId, { includeFileUrls: false, includeTags: false, videoLimit: 100, videoOffset: offset });
-      if (!course || course.access_role !== 'owner') throw notFound('Owned course not found.');
-      if (expected !== -1 && (course.video_count !== expected || course.name !== title)) throw conflict('Source videos changed. Retry generation.');
-      title = course.name; expected = course.video_count;
-      const page = course.videos.map(video => video.id);
-      if (page.some(id => ids.includes(id)) || (!page.length && offset < expected)) throw conflict('Source videos changed. Retry generation.');
-      ids.push(...page); offset += page.length;
-    } while (offset < expected);
-    if (ids.length !== expected) throw conflict('Source videos changed. Retry generation.');
-  } else ids = [target.resourceId];
-  const sources: SkillMaterial['sources'] = [];
-  const repository = await createAgentSkillRepository(env);
-  // A bounded number of parameters/queries per page replaces one detailed
-  // multi-query video read for every course member.
-  for (let offset = 0; offset < ids.length; offset += 90) {
-    const page = ids.slice(offset, offset + 90);
-    const rows = await repository.sources(ownerId, page);
-    const byId = new Map(rows.map(row => [row.id, row]));
-    for (const id of page) {
-      const video = byId.get(id);
-      if (!video) throw notFound('An owned source video is no longer available.');
-      if (video.status !== 'completed' || !video.transcript.trim()) throw validationFailure(`Finish analysis for video ${id} before generating a skill.`);
-      sources.push({ id: video.id, title: video.title, transcript: video.transcript });
-    }
-  }
-  return { title: title || sources[0]?.title || '', sources };
+  return createSkillSourceService({
+    coursePage: async (ownerId, courseId, offset) => {
+      const course = await getCourseDetail(env, courseId, ownerId, { includeFileUrls: false, includeTags: false, videoLimit: 100, videoOffset: offset });
+      return course ? { role: course.access_role, title: course.name, count: course.video_count, ids: course.videos?.map(video => video.id) ?? [] } : null;
+    },
+    sources: async (ownerId, ids) => (await createAgentSkillRepository(env)).sources(ownerId, ids),
+  })(ownerId, target);
 }
 
 export const skillFingerprint = (material: SkillMaterial) => sha256Hex(JSON.stringify(material));
@@ -82,14 +61,14 @@ export async function skillModelCall<S extends z.ZodType>(env: Bindings, ownerId
     throw new ApiError(503, 'SKILL_GENERATION_FAILED', 'The model could not produce a valid result. Your saved progress is unchanged; retry this step.');
   } finally {
     // A completed provider call still costs money if output validation fails.
-    const consumed = ledger.calls.some(call => call.status === 'completed');
+    const consumed = aiQuotaConsumed({ kind: 'provider_work', calls: ledger.calls });
     if (!consumed) await releaseAiAnswerReservation(env, quota.reservation);
     if (started) await finishAnswerCostLedger(env, ledger, { status: succeeded ? 'completed' : requestSignal.aborted ? 'interrupted' : 'failed', quotaConsumed: consumed });
   }
 }
 
 export async function agentSkillService(env: Bindings, origin: string) {
-  return createSkillService({
+  return createSkillService<AbortSignal>({
     repository: await createAgentSkillRepository(env), material: (ownerId, target) => readSkillMaterial(env, ownerId, target),
     fingerprint: skillFingerprint, newId: () => crypto.randomUUID(), now: () => Date.now(),
     ...skillGenerators(env),
@@ -97,7 +76,7 @@ export async function agentSkillService(env: Bindings, origin: string) {
 }
 
 /** Shared production prompts; offline evaluations can supply a different model transport. */
-export function skillGenerators(env: Bindings, call: typeof skillModelCall = skillModelCall): Pick<SkillDependencies, 'extract' | 'plan' | 'synthesize' | 'audit'> {
+export function skillGenerators(env: Bindings, call: typeof skillModelCall = skillModelCall): Pick<SkillDependencies<AbortSignal>, 'extract' | 'plan' | 'synthesize' | 'audit'> {
   return {
     extract: async (ownerId, objective, language, cues, signal) => {
       const evidence = extractionEvidence(cues);

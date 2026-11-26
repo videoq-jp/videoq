@@ -1,4 +1,4 @@
-import { invitationInviterName } from "../../application/invitation-delivery";
+import { invitationInviterName } from "../../domain/learning/invitation-delivery";
 import { nativeCourseExternalAccess } from "./course-access";
 import { and, desc, eq, exists } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";

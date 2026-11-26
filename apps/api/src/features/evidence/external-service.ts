@@ -1,5 +1,6 @@
+import { aiQuotaConsumed } from '../../domain/billing/ai-consumption';
 import type { AiAnswerReservation, AiAnswerReservationResult } from '../../persistence/contracts/ai-quota';
-import type { LearningCourse } from '../../application/native-learning';
+import type { LearningCourse } from '../../domain/lms/native-learning';
 import type { ProviderCallRecord } from '../../persistence/contracts/answer-cost-repository';
 
 export type ExternalEvidenceValue = string | Record<string, unknown>;
@@ -24,11 +25,8 @@ export interface ExternalEvidenceDependencies {
   reportFailure(kind: 'quota_release' | 'usage_finish'): void;
 }
 
-export function externalEvidencePlan(tool: string, args: Record<string, unknown>) {
-  const visual = tool === 'inspect_clip' || tool === 'focus_clip' || args.include_visuals === true;
-  return { paid: tool === 'search_scenes' || visual,
-    cost: visual ? (tool === 'overview_video' || tool === 'focus_clip' ? 16 : 8) : 1 };
-}
+export { externalEvidencePlan } from '../../domain/conversation/evidence-budget';
+import { externalEvidencePlan } from '../../domain/conversation/evidence-budget';
 
 /** Reserve the account unit before paid work; completed provider calls determine consumption. */
 export async function executeExternalEvidence(deps: ExternalEvidenceDependencies,
@@ -59,7 +57,7 @@ export async function executeExternalEvidence(deps: ExternalEvidenceDependencies
     const interrupted = execution.interrupted();
     execution.abort();
     await execution.close();
-    const consumed = execution.providerCalls().some(call => call.status === 'completed');
+    const consumed = aiQuotaConsumed({ kind: 'provider_work', calls: execution.providerCalls() });
     if (reservation && !consumed) {
       try { await deps.release(reservation); }
       catch { deps.reportFailure('quota_release'); }

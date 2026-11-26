@@ -55,7 +55,7 @@ const schema = z.object({
     }
   }
 });
-export type { LtiRegistration } from "../../application/lti-registration";
+export type { LtiRegistration } from "../../domain/lms/lti-registration";
 export type LtiConfig = z.infer<typeof schema>;
 
 type ConfigurationEnv = Pick<Bindings, "LTI_CONFIG"> & Partial<Pick<Bindings, "BETTER_AUTH_URL" | "USER_SECRET_ENCRYPTION_KEY" | "USE_S3_STORAGE">>;

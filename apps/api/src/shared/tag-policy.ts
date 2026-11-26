@@ -1,1 +1,1 @@
-export * from "../application/tag-policy";
+export * from "../domain/learning/tag-policy";

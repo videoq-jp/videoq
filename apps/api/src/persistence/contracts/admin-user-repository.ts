@@ -18,10 +18,10 @@ export type AdminUser = {
   quota_source: "plan" | "admin";
 };
 
-export type { AdminQuotaPatch, AdminUsagePatch } from '../../application/admin';
-import type { AdminQuotaPatch, AdminUsagePatch } from '../../application/admin';
-export type { AdminDeleteResult, AdminFlagsPatch } from "../../application/admin";
-import type { AdminDeleteResult, AdminFlagsPatch } from "../../application/admin";
+export type { AdminQuotaPatch, AdminUsagePatch } from '../../domain/identity/admin';
+import type { AdminQuotaPatch, AdminUsagePatch } from '../../domain/identity/admin';
+export type { AdminDeleteResult, AdminFlagsPatch } from "../../domain/identity/admin";
+import type { AdminDeleteResult, AdminFlagsPatch } from "../../domain/identity/admin";
 
 export interface AdminUserRepository {
   patchFlags(actorId:string,targetId:string,patch:AdminFlagsPatch):Promise<AdminUser|null>;

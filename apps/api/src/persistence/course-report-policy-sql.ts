@@ -1,5 +1,5 @@
 import { and, sql, type SQL, type SQLWrapper } from "drizzle-orm";
-import type { ReportLogic } from "../application/course-report";
+import type { ReportLogic } from "../domain/learning/course-report";
 
 export const reportDrizzleLogic: ReportLogic<SQL> & {
   statusIs(status: SQLWrapper, expected: "completed"): SQL;

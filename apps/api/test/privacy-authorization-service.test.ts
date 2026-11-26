@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { authorizePrivacyRequest, type PrivacyAuthorizationDependencies } from '../src/features/lms/privacy-authorization-service';
-import type { PrivacyAssertionClaims } from '../src/application/privacy';
+import type { PrivacyAssertionClaims } from '../src/domain/lms/privacy';
 
 const installation = { id: 'school', ownerUserId: 'owner', issuer: 'https://school.test', clientId: 'client', deploymentId: 'dep', jwksUrl: 'https://school.test/keys' };
 const claims: PrivacyAssertionClaims = { iss: installation.issuer, sub: 'client', deploymentId: 'dep', aud: 'https://tool.test/api/lms/privacy', exp: 100, jti: 'nonce', request: { action: 'catalog' } };

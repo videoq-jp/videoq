@@ -1,4 +1,4 @@
-import { classifyJobFailure, type Failure } from '../../application/job-failure';
+import { classifyJobFailure, type Failure } from '../../domain/operations/job-failure';
 
 export type JobStage = 'decode' | 'validate' | 'execute' | 'handoff' | 'ack' | 'visibility';
 export function jobFailure(error: unknown, stage: JobStage): Failure {

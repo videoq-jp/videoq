@@ -1,4 +1,4 @@
-import type { SkillDraft as DomainSkillDraft, ExtractedFacts as DomainExtractedFacts } from '@videoq/domain/agent-skills';
+import type { SkillDraft as DomainSkillDraft, ExtractedFacts as DomainExtractedFacts, SkillAudit as DomainSkillAudit, SkillPlan as DomainSkillPlan } from '@videoq/domain/agent-skills';
 import { z } from 'zod';
 
 const text = z.string().trim().min(1).max(1200);
@@ -23,13 +23,13 @@ export const skillDraftSchema = z.object({
 export const skillAuditSchema = z.object({
   routingAppropriate: z.boolean(),
   checks: z.array(z.object({ claimId: z.string().max(80), grounded: z.boolean(), actionable: z.boolean(), reason: text })).min(1).max(40),
-});
+}) satisfies z.ZodType<DomainSkillAudit>;
 export type SkillDraft = z.infer<typeof skillDraftSchema>;
 export type ExtractedFacts = z.infer<typeof extractedFactsSchema>;
 export type SkillAudit = z.infer<typeof skillAuditSchema>;
 export const skillPlanSchema = z.object({ skills: z.array(z.object({
   objective: z.string().trim().min(5).max(500), factIds: z.array(z.string().min(1).max(80)).min(1).max(80),
-})).min(1).max(12) });
+})).min(1).max(12) }) satisfies z.ZodType<DomainSkillPlan>;
 export type SkillPlan = z.infer<typeof skillPlanSchema>;
 export const skillMemberViewSchema = z.object({
   objective: z.string(), status: z.enum(['pending', 'auditing', 'passed', 'rejected']), issues: z.array(z.string()),

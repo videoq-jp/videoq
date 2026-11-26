@@ -1,4 +1,4 @@
-import { nativeCourseExternalAllowed, nativeCourseAccessAllowed } from '../../application/native-course-access';
+import { nativeCourseExternalAllowed, nativeCourseAccessAllowed } from '../learning/native-course-access';
 
 /** Q&A policy is independent of transport, persistence and runtime configuration.
  * Adapters supply boolean facts or atomic SQL predicates through this algebra.
@@ -62,17 +62,31 @@ export function qaContentAbilities<T>(permissions: Pick<QaPermissions<T>, "canPo
   };
 }
 
+const qaOperationPermission = {
+  'qa.ask': 'post', 'qa.reply': 'post', 'qa.vote': 'vote', 'qa.feature': 'moderate',
+  'qa.updateQuestion': 'editQuestion', 'qa.deleteQuestion': 'deleteQuestion',
+  'qa.updateReply': 'editReply', 'qa.deleteReply': 'deleteReply',
+} as const satisfies Record<QaOperation, string>;
+
 export function qaMutationAllowed<T>(operation: QaOperation, permissions: QaPermissions<T>,
   ownQuestion: T, ownReply: T, logic: QaLogic<T>): T {
-  switch (operation) {
-    case "qa.ask": case "qa.reply": return permissions.canPost;
-    case "qa.vote": return permissions.canVote;
-    case "qa.feature": return permissions.canModerate;
-    case "qa.updateQuestion": return qaContentAbilities(permissions, ownQuestion, logic).canEdit;
-    case "qa.deleteQuestion": return qaContentAbilities(permissions, ownQuestion, logic).canDelete;
-    case "qa.updateReply": return qaContentAbilities(permissions, ownReply, logic).canEdit;
-    case "qa.deleteReply": return qaContentAbilities(permissions, ownReply, logic).canDelete;
+  switch (qaOperationPermission[operation]) {
+    case 'post': return permissions.canPost;
+    case 'vote': return permissions.canVote;
+    case 'moderate': return permissions.canModerate;
+    case 'editQuestion': return qaContentAbilities(permissions, ownQuestion, logic).canEdit;
+    case 'deleteQuestion': return qaContentAbilities(permissions, ownQuestion, logic).canDelete;
+    case 'editReply': return qaContentAbilities(permissions, ownReply, logic).canEdit;
+    case 'deleteReply': return qaContentAbilities(permissions, ownReply, logic).canDelete;
   }
+}
+/** A coarse request guard; the final write still checks ownership atomically.
+ * Read operations have no mutation permission beyond view. */
+export function qaOperationPrecheck(action: string, permissions: QaPermissions<boolean> & { view: boolean }): boolean {
+  if (!permissions.view) return false;
+  const operation = 'qa.' + action;
+  if (!Object.hasOwn(qaOperationPermission, operation)) return true;
+  return qaMutationAllowed(operation as QaOperation, permissions, true, true, qaBooleanLogic);
 }
 
 /** A share always uses native access rules, even for the authenticated owner. */

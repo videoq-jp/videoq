@@ -15,8 +15,7 @@ import {
   reportMediaAllowed,
   reportGrantMatches,
   reportLogAllowed,
-  courseReportVideoIds,
-} from "../../application/course-report";
+  courseReportVideoIds} from '../../domain/learning/course-report';
 import { reportDrizzleLogic as logic } from "../course-report-policy-sql";
 import { lockLmsGrant } from "./lms-resource-repository";
 import { lockLtiDataSessionWithDb } from "./lti-session-lock";

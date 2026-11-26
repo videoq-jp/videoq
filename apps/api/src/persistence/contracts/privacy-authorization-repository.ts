@@ -1,4 +1,4 @@
-import type { PrivacyInstallation, PrivacyRequest } from '../../application/privacy';
+import type { PrivacyInstallation, PrivacyRequest } from '../../domain/lms/privacy';
 export type PrivacyRegistration=PrivacyInstallation&{jwksUrl:string};
 export interface PrivacyAuthorizationRepository{
  findInstallation(identity:{issuer:string;clientId:string;deploymentId:string}):Promise<PrivacyRegistration|null>;

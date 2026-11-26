@@ -1,6 +1,6 @@
-import type { ManagementIdentity, ManagementAccess } from "../../application/lms-management";
-import type {ProvisionInstallation} from '../../application/lti-registration';
-import type {MaterialsService} from '../../application/lti-registration';
+import type { ManagementIdentity, ManagementAccess } from "../../domain/lms/lms-management";
+import type {ProvisionInstallation} from '../../domain/lms/lti-registration';
+import type {MaterialsService} from '../../domain/lms/lti-registration';
 export type InstallationRegistration=ProvisionInstallation & {syncTokenHash:string|null;materialsService?:MaterialsService};
 export type InstallationGrant={id:string;issuer:string;clientId:string;deploymentId:string};
 export interface LmsInstallationRepository {

@@ -1,5 +1,5 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
-import type { ContentReadLogic } from "../application/content-read";
+import type { ContentReadLogic } from '../domain/media/content-read';
 
 /** Operands are adapter-owned expressions; limits are application constants. */
 export const contentDrizzleLogic: ContentReadLogic<SQL, SQLWrapper, SQL> = {

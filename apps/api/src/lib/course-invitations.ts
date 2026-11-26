@@ -1,11 +1,11 @@
 import { isValidInvitationEmail } from "@videoq/trpc/course-invitations";
-import { planInvitationEmails as plan } from "../application/course-invitations";
+import { planInvitationEmails as plan } from "../domain/learning/course-invitations";
 
 export function planInvitationEmails(emails: readonly string[]) {
   return plan(emails, isValidInvitationEmail);
 }
 
-export * from "../application/course-invitations";
+export * from "../domain/learning/course-invitations";
 import { sha256Hex } from "../shared/crypto";
 
 export function createInvitationToken(): string {
@@ -27,7 +27,7 @@ import {
   isInvitationExpired as expired,
   effectiveInvitationStatus as effectiveStatus,
   type InvitationStatus,
-} from "../application/course-invitations";
+} from "../domain/learning/course-invitations";
 
 export function isInvitationExpired(expiresAt: Date, now = new Date()): boolean {
   return expired(expiresAt, now);

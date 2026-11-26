@@ -1,6 +1,6 @@
-import { pairingExpiry } from '../../application/pairing-exchange';
+import { pairingExpiry } from '../../domain/lms/pairing-exchange';
 import { ApplicationError } from '../../application/errors';
-import { type PairingMode, type PairingExchangeInput, type PairingSettings } from '../../application/moodle-pairing';
+import { type PairingMode, type PairingExchangeInput, type PairingSettings } from '../../domain/lms/moodle-pairing';
 import type { MoodlePairingRepository } from '../../persistence/contracts/moodle-pairing-repository';
 
 export interface MoodlePairingDependencies {

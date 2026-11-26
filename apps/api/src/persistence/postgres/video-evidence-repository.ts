@@ -1,5 +1,5 @@
-import { evidenceVideoSelected, inlineTranscript } from '../../application/content-read';
-import { learningVideoAllowed } from '../../application/media-eligibility';
+import { evidenceVideoSelected, inlineTranscript } from '../../domain/media/content-read';
+import { learningVideoAllowed } from '../../domain/media/media-eligibility';
 import { mediaDrizzleLogic } from '../media-eligibility-sql';
 import { contentDrizzleLogic } from '../content-read-policy-sql';
 import type { EvidenceScope, VideoEvidenceRepository } from "../contracts/video-evidence-repository";

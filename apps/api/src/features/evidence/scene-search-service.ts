@@ -1,6 +1,6 @@
 import type { SceneHit } from '../../persistence/contracts/scene-search';
 import { transcriptQuality } from '@videoq/domain/transcript-quality';
-import { MAX_SCENE_SEARCHES } from '../../application/evidence';
+import { EvidenceBudget } from '../../domain/conversation/evidence-budget';
 
 export interface SceneSearchExecution {
   checkCancelled(): void;
@@ -19,17 +19,20 @@ const SEARCH_LIMIT_REACHED =
 
 export function createSceneSearchService(videoIds: readonly number[]) {
   let used = 0;
+  const budget = new EvidenceBudget();
   const allowedVideoIds = new Set(videoIds);
   return async ({ query, video_ids }: { query: string; video_ids: number[] | null }, deps: SceneSearchExecution) => {
     const { reportProgress } = deps;
     deps.checkCancelled();
     // 上限はツール側で数える。middleware で打ち切るとモデルが最終回答を
     // 生成する前にグラフが終わってしまう。
-    if (used >= MAX_SCENE_SEARCHES) return SEARCH_LIMIT_REACHED;
+
+    if (!budget.hasCapacity('search')) return SEARCH_LIMIT_REACHED;
     if (video_ids?.some((id) => !allowedVideoIds.has(id))) {
       return "Invalid video_ids: only videos in the current course may be searched. " +
         "Use get_course_info to find valid IDs; this search was not executed.";
     }
+    if (budget.reserveTool('search') === 'limit') return SEARCH_LIMIT_REACHED;
     const searchId = ++used;
     await reportProgress?.({ searching: query, searchId });
     const hits = await deps.search(query, video_ids ?? undefined);

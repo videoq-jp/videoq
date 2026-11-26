@@ -2,7 +2,7 @@ import { z } from "zod";
 import { resourceManifestSchema } from "./resource";
 import { toolClientAssertion, type ToolKeyEnvironment } from "../lti/tool-keys";
 import { lmsIdentity, materialsServiceSchema, materialsAccessResponse, type MaterialsService } from './contracts';
-import { materialsSnapshotIssues, MAX_MATERIAL_VIDEOS, MAX_MATERIAL_COURSE_ENTRIES } from './materials-snapshot-policy';
+import { materialsSnapshotIssues, MAX_MATERIAL_VIDEOS, MAX_MATERIAL_COURSE_ENTRIES } from '../../domain/lms/materials-snapshot-policy';
 
 export const MATERIALS_SCOPE = "https://videoq.org/spec/lti-materials/v1";
 export { materialsServiceSchema, materialManagementSchema, courseEntryAccessSchema, type MaterialsService } from './contracts';

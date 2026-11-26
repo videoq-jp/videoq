@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { activeMultipartSession, assertMultipartInitialization, multipartReservation, multipartPartLength,
-  orderedMultipartParts, multipartObjectMatches, assertMultipartObjectSize, uploadConfirmed } from '../src/application/multipart-upload';
+  orderedMultipartParts, multipartObjectMatches, assertMultipartObjectSize, uploadConfirmed } from '../src/domain/media/multipart-upload';
 
 it('permits completion replay only after confirmation and refuses new session controls', () => {
   for (const status of ['pending', 'processing', 'indexing', 'completed', 'error']) {

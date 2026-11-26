@@ -1,5 +1,5 @@
 import type { ChatGenerationProgressEvent } from "@videoq/domain/chat";
-import type { CancellationState } from '../../application/answer-generation';
+import type { CancellationState } from '../../domain/conversation/answer-generation';
 import type { ChatAnswer, ChatSource } from "../../application/models";
 import type { LtiSessionProof } from "../../application/lti-session-proof";
 import type {

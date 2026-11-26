@@ -14,6 +14,10 @@ New contributors should start with [development environment setup](../../docs/ge
 For API changes, start with the [API development guide](../../docs/guides/api.md).
 The following reference covers details specific to the API package.
 
+See [the domain model and context map](../../docs/architecture/domain-model.md) for business terms, aggregate invariants and dependency ownership.
+
+For API-first development without a database or provider, see [the local prototype and use-case scaffolding guide](../../docs/architecture/video-clean-architecture-adoption.md). Run `npm run dev:prototype` from the repository root.
+
 ## Structure
 
 The router in `packages/trpc` is the source of truth for the regular JSON API.
@@ -31,7 +35,8 @@ src/
 │       ├── routes.ts      # Protocol-specific HTTP endpoints only
 │       ├── schemas.ts     # Zod schemas for raw transports
 │       └── service.ts     # use case orchestration
-├── application/           # Transport-independent models, failures and proof types
+├── domain/                # Business policies owned by bounded context
+├── application/           # Use-case models, failures and proof types
 ├── repositories/          # Compatibility facades over persistence contracts
 ├── persistence/
 │   ├── contracts/         # Backend-independent persistence capabilities
@@ -65,10 +70,10 @@ an identical set of layers:
   request through an injected atomic session capability. `native-auth.ts` verifies
   JWT signatures, endpoint/body binding and claim lifetimes before invoking it;
   `integrations/native-learning.ts` supplies authority, hashing and persistence.
-  `application/native-learning.ts` owns grant/session models. Normal typechecking
+  `domain/lms/native-learning.ts` owns grant/session models. Normal typechecking
   checks their compatibility with the transport schemas. Management-only videos
   never enter the learning scope, and a session rejection cannot return a grant.
-- `features/qa/policy.ts` owns the shared access and mutation rules. PostgreSQL
+- `domain/qa/policy.ts` owns the shared access and mutation rules. PostgreSQL
   evaluates these rules on transaction-scoped facts; D1 composes them into SQL
   predicates inside its atomic batch. Session validity, membership, current video
   scope, locking and audit writes remain in the persistence implementations.
@@ -103,7 +108,7 @@ an identical set of layers:
 - `features/membership/core.ts` accepts a `MembershipRepository`. Its integration
   supplies the existing atomic membership operations; insertion counts and reuse
   outcomes come from the committed operation, not a preceding read.
-  `application/membership-policy.ts` owns tag-link reuse, native/LMS membership
+  `domain/learning/membership-policy.ts` owns tag-link reuse, native/LMS membership
   eligibility, first-occurrence deduplication and complete-permutation checks.
   PostgreSQL applies those rules to locked rows; D1 compiles the same predicates
   inside its atomic batch. SQL keeps append positions, generated IDs and actual
@@ -138,7 +143,7 @@ an identical set of layers:
   `answer-content-service.ts` checks provisional text/citations against the final
   answer. SDK partial-JSON parsing, Zod decoding, count-only logging and provider
   error formatting remain in the `lib` adapters.
-- `application/quota-policy.ts` owns quota capacity comparisons, reservation
+- `domain/billing/quota-policy.ts` owns quota capacity comparisons, reservation
   amount validation, result types and account/storage/monthly failure precedence.
   Persistence implements the comparison algebra with bound SQL expressions so
   admission still executes inside conditional writes and atomic batches. Database
@@ -183,11 +188,11 @@ an identical set of layers:
   `features/course-reports/service.ts` validates and aggregates report data.
   `features/material-management/service.ts` attempts dispatch after a committed
   operation and retains acceptance when immediate dispatch must be deferred.
-- `application/resource-reconciliation.ts` owns LMS resource revision conflicts,
+- `domain/lms/resource-reconciliation.ts` owns LMS resource revision conflicts,
   course/media binding coherence, idempotent replay, reuse/replacement, language
   locks and membership/vocabulary change decisions. PostgreSQL evaluates it on
   transaction-scoped snapshots; D1 fences the same snapshots in its mutation
-  batch before applying the plan. `application/lms-resource.ts` owns resource data;
+  batch before applying the plan. `domain/lms/lms-resource.ts` owns resource data;
   persistence contracts preserve their existing type exports.
 - `application/resource-mutation.ts` owns shared-material deletion refusal,
   unfinished-upload refund and late-cleanup eligibility, content identity retention,
@@ -227,8 +232,8 @@ an identical set of layers:
 - `features/worker-internal/transcription-service.ts` owns run/source consistency
   and duplicate-completion decisions. The persistence factory only supplies ports;
   the repository still commits run completion, subtitles and the outbox atomically.
-- `application/resource-access.ts` owns account-ban expiry, scope-claim parsing
-  and read/write authorization for verified OAuth credentials. `application/admin.ts`
+- `domain/lms/resource-access.ts` owns account-ban expiry, scope-claim parsing
+  and read/write authorization for verified OAuth credentials. `domain/identity/admin.ts`
   owns supported-role and administrator self-demotion rules. Better Auth adapters
   retain JWT/DPoP validation, fresh account lookup, native permission checks and
   error/challenge formatting. Policy failures preserve the existing HTTP response.
@@ -247,15 +252,15 @@ an identical set of layers:
   the compatibility entrypoint supplies runtime composition. PostgreSQL and D1
   delivery adapters delegate to the same policy and keep their existing deletion
   SQL, including protection for executions with pending delivery.
-- `application/username.ts` owns username normalization and collision candidates.
+- `domain/identity/username.ts` owns username normalization and collision candidates.
   Better Auth profile/user hooks supply the existing uniqueness lookup and UUID
   generator. Fifty attempted candidates, suffix truncation, fallback format and
   failure propagation are preserved; `lib/auth.ts` keeps the public normalization
   export for compatibility.
-  `application/account-registration.ts` applies creation-time quota, usage and
+  `domain/identity/account-registration.ts` applies creation-time quota, usage and
   display-identity defaults; runtime configuration is resolved before invoking it.
   Client/provider fields cannot override the existing fresh-account usage defaults.
-- `application/oauth-consent.ts` owns current-consent scope checks and renewal
+- `domain/identity/oauth-consent.ts` owns current-consent scope checks and renewal
   decisions over credential-free grant metadata. `lib/auth-security.ts` retains
   credential decoding, provider rotation, endpoint hooks and OAuth error mapping.
   Missing or already consumed credentials still defer to the native provider;
@@ -263,12 +268,12 @@ an identical set of layers:
 - `application/agent-execution.ts` owns per-answer tool-round budgets and capability
   selection from an already-authorized course/video scope. `lib/rag.ts` retains
   LangGraph-specific step accounting and middleware composition. Visible-text
-  acceptance is in `application/answer-generation.ts`; SDK schema decoding and
+  acceptance is in `domain/conversation/answer-generation.ts`; SDK schema decoding and
   provider error translation stay in `lib/structured-answer.ts`.
-- `application/answer-tool-policy.ts` owns the explicit tool capabilities available
+- `domain/conversation/answer-tool-policy.ts` owns the explicit tool capabilities available
   to answer generation. The MCP/LangChain adapter consumes it directly. Tool
   annotations remain descriptive and do not grant answer capabilities.
-- `application/reindex-job.ts` owns the durable all-video reindex enqueue order:
+- `domain/operations/reindex-job.ts` owns the durable all-video reindex enqueue order:
   generate identity, persist the job, then attempt dispatch. `lib/jobs.ts` supplies
   UUID, outbox and delivery implementations; deferred delivery retains the saved ID.
 - `application/conversation-scope.ts` owns user/course/share/visitor and LTI scope
@@ -329,7 +334,7 @@ service registrations create no sync-token secret, and generated tokens are
 returned only after the insert or owner-bound rotation succeeds.
 Snapshot duplicate/context/count rules live in
 `features/lms/materials-snapshot-policy.ts`; source-kind, deletion and language
-coherence live in `application/lms-resource.ts`. Connector Zod schemas delegate
+coherence live in `domain/lms/lms-resource.ts`. Connector Zod schemas delegate
 those decisions while retaining field decoding, schema errors and canonical JSON
 field order. File and YouTube sources share the existing 1000-material limit,
 with one additional course entry.
@@ -363,7 +368,7 @@ pairing repository, clock, secret/hash, code encoding, maintenance and settings
 capabilities. `integrations/moodle-pairing.ts` supplies runtime implementations;
 `features/lms/providers/moodle/pairing.ts` retains input validation and the existing
 connector error format. Application pairing data lives in
-`application/moodle-pairing.ts`, independent of Zod and connector schemas. Code
+`domain/lms/moodle-pairing.ts`, independent of Zod and connector schemas. Code
 consumption and installation provisioning remain one repository operation;
 maintenance and upload settings run only after it succeeds. Boundary checks cover
 the workflow and repository contract. `test/moodle-pairing-service.test.ts` covers

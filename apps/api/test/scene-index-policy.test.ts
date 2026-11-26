@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import {
   canonicalSceneVectorInput, sceneFinishAllowed, sceneIndexCompletionOutcome, scenePublishAllowed, sceneRunCurrent,
   sceneStageAllowed, validateSceneEmbedding, validateSceneIndexRun, type SceneEmbedding,
-} from '../src/application/scene-index-policy';
+} from '../src/domain/search/scene-index-policy';
 
 const scene = (embedding = Array<number>(768).fill(0.25)): SceneEmbedding => ({
   id: 'scene', content: '本文', startTime: '00:01', endTime: '00:02', embedding,

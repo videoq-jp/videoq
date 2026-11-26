@@ -1,3 +1,5 @@
+import { accountDeletionForbidden, accountDeletionVideoOutcome, accountDeletionDrainOutcome } from '../../domain/operations/worker-account-deletion';
+import { adminRoleIncludes, adminBooleanRoleLogic } from '../../domain/identity/admin';
 import { and, eq, sql } from 'drizzle-orm';
 import { withDb } from '../../db/pool';
 import { users, videos, jobExecutions as jobs, externalTasks } from '../../db/schema';
@@ -22,11 +24,11 @@ export function createPostgresWorkerAccountDeletion(env: Bindings): WorkerAccoun
       ));
       if (!task) return { status: 'denied' as const };
       const [user] = await tx.select({ banned: users.banned, banExpires: users.banExpires, role: users.role }).from(users).where(eq(users.id, grant.userId)).for('update');
-      if (user && (!user.banned || user.banExpires !== null || (user.role ?? '').split(',').includes('admin'))) return { status: 'denied' as const };
+      if (user && accountDeletionForbidden({ banned: user.banned ?? false, noExpiry: user.banExpires === null, administrator: adminRoleIncludes(user.role, adminBooleanRoleLogic) }, { or: (...terms) => terms.some(Boolean), not: term => !term })) return { status: 'denied' as const };
       const [video] = await tx.select({ id: videos.id }).from(videos).where(eq(videos.userId, grant.userId)).orderBy(videos.id).limit(1);
       if (video) {
         const deleted = await deleteVideoInTransaction(tx, Number(video.id), grant.userId);
-        return { status: deleted.deleted ? 'progress' as const : 'denied' as const };
+        return accountDeletionVideoOutcome(deleted.deleted);
       }
       // Vector tables have no FK. Both profiles must be cleaned even when the
       // user switched models or was removed by an earlier successful attempt.
@@ -42,7 +44,7 @@ export function createPostgresWorkerAccountDeletion(env: Bindings): WorkerAccoun
       // Remaining owned rows use the canonical FK cascades, including sessions
       // and encrypted user credentials. Durable cleanup outbox rows are retained.
       await tx.delete(users).where(eq(users.id, grant.userId));
-      return { status: 'completed' as const };
+      return accountDeletionDrainOutcome(true, false);
     })),
   };
 }

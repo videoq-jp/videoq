@@ -1,4 +1,4 @@
-import { learningVideoAllowed } from '../../application/media-eligibility';
+import { learningVideoAllowed } from '../../domain/media/media-eligibility';
 import { mediaDrizzleLogic } from '../media-eligibility-sql';
 import {and,eq,inArray,asc} from 'drizzle-orm';
 import {withDb} from '../../db/pool';

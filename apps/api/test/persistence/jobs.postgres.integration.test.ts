@@ -38,7 +38,7 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
 
 import { createServer } from 'node:net';
 import { expect,it } from 'vitest';
-import { classifyJobFailure } from '../../src/application/job-failure';
+import { classifyJobFailure } from '../../src/domain/operations/job-failure';
 it('classifies an actual refused PostgreSQL connection without retaining connection details',async()=>{
  const server=createServer();await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
  const address=server.address();if(!address || typeof address==='string')throw new Error('fixture address');

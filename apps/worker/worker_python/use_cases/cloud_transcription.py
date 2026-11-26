@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Generic, TypeVar
 
+from worker_python.domain.video_processing import transcription_admission, transcription_failure_retry
 from worker_python.use_cases.transcription import (
     ProcessingQuotaExceededError, TranscriptionExecutionFailedError,
 )
@@ -30,10 +31,11 @@ def execute_cloud_transcription(video_id: int, deps: CloudTranscriptionDependenc
     if source is None:
         return
     status = deps.status(source)
-    if status in {"indexing", "completed"}:
+    admission = transcription_admission(status)
+    if admission in {'handoff', 'completed'}:
         # The committed save already owns its indexing outbox.
         return
-    if status not in {"pending", "processing", "error"}:
+    if admission == 'invalid':
         raise TranscriptionExecutionFailedError("Video is not ready for transcription")
     video = deps.prepare(source)
     if deps.is_uploaded(video) and deps.segmented_enabled:
@@ -50,5 +52,5 @@ def execute_cloud_transcription(video_id: int, deps: CloudTranscriptionDependenc
     except Exception:
         error_code = "TRANSCRIPTION_FAILED"
     status = deps.finish(video, transcript, error_code)
-    if status == "error" and error_code == "TRANSCRIPTION_FAILED":
+    if transcription_failure_retry(status, error_code == "TRANSCRIPTION_FAILED"):
         raise TranscriptionExecutionFailedError("Cloud transcription failed; retry")
