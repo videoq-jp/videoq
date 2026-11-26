@@ -183,18 +183,24 @@ test('required actual-render gate has locked dependency and Helm prerequisites b
 });
 
 // Historical unit evidence only. No production module/cache/global is changed.
-// Substitute exactly one source-identity read in a separately compiled module;
-// every evidence, inventory and other filesystem read remains the real reader.
+// Substitute only the two exact historical source/proof paths in a separate
+// compiled module; every other filesystem read remains the real reader.
 function historicalMaskedEvaluator() {
   const fs = require('node:fs'), path = require('node:path');
   const evaluator = path.join(__dirname, 'check-vllm-applicability.cjs');
   const runtime = path.join(__dirname, 'check-vllm-runtime.py');
   const archived = fs.readFileSync(path.join(__dirname, 'fixtures/vllm-historical/check-vllm-runtime-eec22a49.py.txt'));
   assert.equal(hash(archived), '511807d5a341b681c6ff6658c058cfcb049f7fa59dd1d68264b1cd153fc9264b');
+  const proofPath = path.join(__dirname, '../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
+  const oldProof = fs.readFileSync(path.join(__dirname, 'fixtures/vllm-historical/masked-ffmpeg-eec22a49-review.json.txt'));
+  assert.equal(hash(oldProof), '92c1a5eb3848dc77178b439e4be47e274b576170106af10f2ca556c373effc63');
   const isolated = {exports: {}};
-  const readFileSync = (file, ...options) => path.resolve(String(file)) === runtime
-    ? (options[0] ? archived.toString(typeof options[0] === 'string' ? options[0] : options[0].encoding) : archived)
-    : fs.readFileSync(file, ...options);
+  const readFileSync = (file, ...options) => {
+    const target = path.resolve(String(file));
+    const bytes = target === runtime ? archived : target === proofPath ? oldProof : undefined;
+    return bytes ? (options[0] ? bytes.toString(typeof options[0] === 'string' ? options[0] : options[0].encoding) : bytes)
+      : fs.readFileSync(file, ...options);
+  };
   const compile = require('node:vm').compileFunction(fs.readFileSync(evaluator, 'utf8'),
     ['require', 'module', 'exports', '__dirname'], {filename: evaluator});
   compile(name => name === 'node:fs' ? {...fs, readFileSync} : require(name), isolated, isolated.exports, __dirname);
@@ -204,10 +210,16 @@ const historicalAssess = historicalMaskedEvaluator();
 
 function exactMaskedFixture(historical = true) {
   const policy = structuredClone(require('../../apps/inference/vllm/security/runtime-assessment.json'));
-  const evidence = require('../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
+  const evidence = historical
+    ? JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,
+      'fixtures/vllm-historical/masked-ffmpeg-eec22a49-review.json.txt'), 'utf8'))
+    : require('../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
   const f = fixture();
   f.policy = policy;
-  if (historical) f.policy.runtimeProbeSourceSha256 = '511807d5a341b681c6ff6658c058cfcb049f7fa59dd1d68264b1cd153fc9264b';
+  if (historical) {
+    f.policy.runtimeProbeSourceSha256 = '511807d5a341b681c6ff6658c058cfcb049f7fa59dd1d68264b1cd153fc9264b';
+    f.policy.maskedFfmpegReview.sha256 = '92c1a5eb3848dc77178b439e4be47e274b576170106af10f2ca556c373effc63';
+  }
   f.native = {status: 'passed', inventory: structuredClone(evidence.nativeInventory)};
   f.runtime = {status: 'passed', checks: structuredClone(evidence.requiredRuntimeChecks)};
   const documents = f.profiles[0];
@@ -284,16 +296,21 @@ test('historical masked-proof unit controls reject mutated native/source/locatio
 
 // This calls the actual production evaluator and current source; no archived
 // source substitution is in its path. The old actual receipt must stay blocked.
-test('active production evaluator rejects the historical overlay proof until fresh review', () => {
+test('active production evaluator still rejects historical proof after explicit fresh proof review', () => {
   const f = exactMaskedFixture(false);
+  const old = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,
+    'fixtures/vllm-historical/masked-ffmpeg-eec22a49-review.json.txt'), 'utf8'));
+  f.runtime = {status: 'passed', checks: structuredClone(old.requiredRuntimeChecks)};
   const activeSourceHash = hash(require('node:fs').readFileSync(require('node:path').join(__dirname, 'check-vllm-runtime.py')));
   assert.equal(f.policy.runtimeProbeSourceSha256, activeSourceHash);
   assert.equal(hash(require('node:fs').readFileSync('charts/videoq-inference/files/vllm-audio-wheels.json')), f.policy.audioLockSha256);
   const oldSourceHash = '511807d5a341b681c6ff6658c058cfcb049f7fa59dd1d68264b1cd153fc9264b';
   assert.notEqual(activeSourceHash, oldSourceHash);
+  const current = require('../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
   assert.throws(() => assess(f.report, f.policy, f.native, f.profiles,
     new Date('2026-11-26T00:00:00Z'), f.runtime), error => error.code === 'ERR_ASSERTION'
-      && error.actual === oldSourceHash && error.expected === activeSourceHash);
+      && error.actual === f.runtime.checks
+      && hash(JSON.stringify(error.expected)) === hash(JSON.stringify(current.requiredRuntimeChecks)));
 });
 
 test('current policy guard identity matches production source, locked adapter and probe pin', () => {
@@ -308,4 +325,39 @@ test('current policy guard identity matches production source, locked adapter an
   assert.equal(policy.audioGuardSha256, actualGuard);
   assert.equal(lock.runtimeGuardSha256, actualGuard);
   assert.equal(pin[1], actualGuard);
+});
+
+test('active exact 9.1 proof accepts only the reviewed masked-image tuples and rejects mutated evidence', () => {
+  const evaluate = f => assess(f.report, f.policy, f.native, f.profiles,
+    new Date('2026-11-26T00:00:00Z'), f.runtime);
+  assert.equal(evaluate(exactMaskedFixture(false)).accepted.length, 11);
+  const current = require('../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
+  const historical = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,
+    'fixtures/vllm-historical/masked-ffmpeg-eec22a49-review.json.txt'), 'utf8'));
+  assert.deepEqual(current.rows, historical.rows, 'No CVE/tuple/primary-record expansion');
+  assert.equal(current.artifactId, 15080457487);
+  assert.equal(current.workflowJobConclusion, 'failure');
+  assert.equal(current.nativeStepConclusion, 'success');
+  for (const mutate of [
+    f => f.runtime = undefined,
+    f => f.runtime.status = 'failed',
+    f => f.runtime.checks['security.audio'].details.guardSha256 = '0'.repeat(64),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.pyavRelease.ffmpegVersion = '9.0.2',
+    f => f.runtime.checks['security.servingAudioBoundary'].details.pyavRelease.wheelSha256 = '0'.repeat(64),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.validCases.pop(),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.pyavWheelMembers['av/filter/graph.abi3.so'] = '0'.repeat(64),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.diagnosticImportMaps.afterMediaAudioImport.push('/usr/lib/libswscale.so'),
+    f => f.runtime.checks['security.maskedNative'].details.pop(),
+    f => f.runtime.checks['security.maskedNativeDenial'].details.absoluteLoadsDenied.pop(),
+    f => f.runtime.checks['security.maskedNativeDenial'].details.torchcodec.importsDenied.pop(),
+    f => f.native.inventory.kernelHeaders.files[0].mode = 0o755,
+    f => f.report.Results[0].Vulnerabilities[0].Locations.push('/unmasked/libavcodec.so'),
+    f => f.profiles[0][1].spec.template.spec.containers[0].volumeMounts.at(-1).readOnly = false,
+    f => f.policy.runtimeProbeSourceSha256 = '0'.repeat(64),
+  ]) { const f = exactMaskedFixture(false); mutate(f); assert.throws(() => evaluate(f)); }
+  for (const mutate of [
+    f => f.report.Results[0].Vulnerabilities[0].VulnerabilityID = 'CVE-unreviewed',
+    f => f.report.Results[0].Vulnerabilities[0].InstalledVersion = '9.1',
+    f => f.report.Results[0].Vulnerabilities[0].PkgIdentifier.PURL = 'pkg:generic/ffmpeg@9.1',
+  ]) { const f = exactMaskedFixture(false); mutate(f); assert.equal(evaluate(f).blocking.length, 1); }
 });
