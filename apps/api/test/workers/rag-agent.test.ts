@@ -70,7 +70,7 @@ describe("RAG agent in the Workers runtime", () => {
       ownerUserId: "00000000-0000-4000-8000-000000000005", videoIds: null, locale: null,
     });
     try {
-      expect((await stream.next()).value).toEqual({ generationProgress: { type: "generation_progress", phase: "thinking" } });
+      expect((await stream.next()).value).toEqual({ generationProgress: { type: "generation_progress", phase: "answering" } });
       expect((await stream.next()).value).toEqual({ part: { type: "text", segmentIndex: 0, text: "First" } });
       await stream.return();
       expect(upstream?.aborted).toBe(true);
