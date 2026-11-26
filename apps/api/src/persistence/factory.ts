@@ -559,13 +559,3 @@ export async function createLearningMediaRepository(env:Bindings):Promise<import
  }
  const {createPostgresLearningMediaRepository}=await import('./postgres/learning-media-repository');return createPostgresLearningMediaRepository(env);
 }
-
-export async function createAgentSkillRepository(env: Bindings): Promise<import('./contracts/agent-skill-repository').AgentSkillRepository> {
-  if (persistenceBackend(env) === 'd1') {
-    if (!env.DB) throw new Error('D1 DB binding is required');
-    const { createD1AgentSkillRepository } = await import('./d1/agent-skill-repository');
-    return createD1AgentSkillRepository(env.DB);
-  }
-  const { createPostgresAgentSkillRepository } = await import('./postgres/agent-skill-repository');
-  return createPostgresAgentSkillRepository(env);
-}

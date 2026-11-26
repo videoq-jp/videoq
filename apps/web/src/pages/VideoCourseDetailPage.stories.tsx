@@ -8,7 +8,7 @@ import { course } from '../../.storybook/fixtures/detail';
 import { success, trpcQuery } from '../../.storybook/mocks/network';
 
 const meta = {
-  title: 'Pages/Course skill menu', component: VideoCourseDetailPage,
+  title: 'Pages/Course management menu', component: VideoCourseDetailPage,
   render: () => <Routes><Route path="videos/courses/:id" element={<VideoCourseDetailPage />} /></Routes>,
   parameters: { pathname: '/videos/courses/42', api: { auth: authFixtures.user, trpc: [
     trpcQuery('courses.get', () => success(course)),
@@ -16,20 +16,12 @@ const meta = {
     trpcQuery('chat.conversations', () => success({ items: [], hasMore: false })),
     trpcQuery('qa.list', () => success({ items: [], total: 0, canPost: true, canModerate: true })),
   ] } },
-  beforeEach() { localStorage.removeItem('videoq:skill-job:course:42'); },
 } satisfies Meta<typeof VideoCourseDetailPage>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const SkillsInManagementMenu: Story = {
+export const ManagementMenu: Story = {
   async play({ canvas, userEvent }) {
     await userEvent.click(await canvas.findByRole('button', { name: i18n.t('videos.courseDetail.manage') }));
-    await expect(canvas.getByRole('button', { name: i18n.t('skills.open') })).toBeVisible();
-  },
-};
-export const OpenGeneration: Story = {
-  async play(context) {
-    await SkillsInManagementMenu.play!(context);
-    await context.userEvent.click(context.canvas.getByRole('button', { name: i18n.t('skills.open') }));
-    await expect(await context.canvas.findByRole('button', { name: i18n.t('skills.generate') })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: /skills|スキル/i })).not.toBeInTheDocument();
   },
 };
