@@ -217,6 +217,9 @@ function exactMaskedFixture(historical = true) {
   if (historical) {
     assert.equal(hash(lock), '4bd306454e793d6e2dcb67a94db771e703e9b5c2f7202ae98d8b53b4d27b4f7e');
     f.policy.audioLockSha256 = hash(lock);
+    // This receipt exercised the historical guard, never the current adapter.
+    f.policy.audioGuardSha256 = 'ea09f7753f1ad771f9d7acc6b1a33289e20b6f59e83ac367e03513ffb3a2bb5a';
+    assert.equal(JSON.parse(lock).runtimeGuardSha256, f.policy.audioGuardSha256);
   }
   documents[0].data['wheels.json'] = lock;
   const pod = documents[1].spec.template.spec, container = pod.containers[0];
@@ -291,4 +294,18 @@ test('active production evaluator rejects the historical overlay proof until fre
   assert.throws(() => assess(f.report, f.policy, f.native, f.profiles,
     new Date('2026-11-26T00:00:00Z'), f.runtime), error => error.code === 'ERR_ASSERTION'
       && error.actual === oldSourceHash && error.expected === activeSourceHash);
+});
+
+test('current policy guard identity matches production source, locked adapter and probe pin', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const policy = require('../../apps/inference/vllm/security/runtime-assessment.json');
+  const root = path.join(__dirname, '../..');
+  const actualGuard = hash(fs.readFileSync(path.join(root, 'apps/inference/whisper/audio_guard.py')));
+  const lock = JSON.parse(fs.readFileSync(path.join(root, 'charts/videoq-inference/files/vllm-audio-wheels.json'), 'utf8'));
+  const probe = fs.readFileSync(path.join(__dirname, 'check-vllm-runtime.py'), 'utf8');
+  const pin = probe.match(/^REVIEWED_AUDIO_GUARD_SHA256 = "([a-f0-9]{64})"$/m);
+  assert.ok(pin, 'Probe must explicitly pin the reviewed production adapter');
+  assert.equal(policy.audioGuardSha256, actualGuard);
+  assert.equal(lock.runtimeGuardSha256, actualGuard);
+  assert.equal(pin[1], actualGuard);
 });
