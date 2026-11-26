@@ -11,10 +11,17 @@ import wave
 ROOT = Path(__file__).resolve().parent
 CODECS = {'mp3', 'mp3float', 'pcm_s16le', 'flac'}
 FILTERS = {'abuffer', 'abuffersink', 'buffer', 'buffersink', 'aformat', 'aresample'}
+# Explicit reviewed production guard; changes require source/lock regression review.
+REVIEWED_GUARD_SHA256 = 'bb52374777acff1a921c667bd116b3fbe4c010f5a01be13eeea0735c3fbce9a5'
 
 
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def verify_serving_guard(path):
+    if sha(path) != REVIEWED_GUARD_SHA256:
+        raise ValueError('Unreviewed serving audio adapter')
 
 
 def verify_members(site_root, members):
@@ -152,8 +159,7 @@ def inspect(serving=False):
                 raise ValueError(f'Unreviewed installed serving source: {path}')
         # Existing production admission guard remains required in the overlay.
         import sitecustomize
-        if sha(sitecustomize.__file__) != 'ea09f7753f1ad771f9d7acc6b1a33289e20b6f59e83ac367e03513ffb3a2bb5a':
-            raise ValueError('Unreviewed serving audio adapter')
+        verify_serving_guard(sitecustomize.__file__)
         from types import SimpleNamespace
         from vllm.entrypoints.speech_to_text.base.serving import SpeechToTextBaseServing
         server = SimpleNamespace(asr_config=SimpleNamespace(sample_rate=16000, allow_audio_chunking=False),

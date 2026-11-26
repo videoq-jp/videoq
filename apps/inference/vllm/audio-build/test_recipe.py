@@ -3,6 +3,7 @@ import ctypes
 import hashlib
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import tarfile
@@ -211,6 +212,24 @@ class RecipeTests(unittest.TestCase):
 
 
 class NativeVerificationTests(unittest.TestCase):
+    def test_reviewed_guard_pin_matches_production_source_and_lock(self):
+        source = ROOT.parents[1] / 'whisper/audio_guard.py'
+        production_lock = ROOT.parents[3] / 'charts/videoq-inference/files/vllm-audio-wheels.json'
+        self.assertEqual(verify.REVIEWED_GUARD_SHA256, recipe.digest(source))
+        self.assertEqual(verify.REVIEWED_GUARD_SHA256,
+                         json.loads(production_lock.read_text())['runtimeGuardSha256'])
+        verify.verify_serving_guard(source)
+
+    def test_guard_mutation_and_old_source_fail_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sitecustomize.py'
+            path.write_bytes(b'unknown or stale adapter')
+            with self.assertRaisesRegex(ValueError, 'Unreviewed serving audio adapter'):
+                verify.verify_serving_guard(path)
+            with patch.object(verify, 'sha', return_value='ea09f7753f1ad771f9d7acc6b1a33289e20b6f59e83ac367e03513ffb3a2bb5a'):
+                with self.assertRaisesRegex(ValueError, 'Unreviewed serving audio adapter'):
+                    verify.verify_serving_guard(path)
+
     def test_members_reject_unknown_changed_and_missing_native_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
