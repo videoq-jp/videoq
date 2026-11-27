@@ -239,7 +239,16 @@ describe("LTI transport boundaries", () => {
     expect(response.headers.has("X-Frame-Options")).toBe(false);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.has("Set-Cookie")).toBe(false);
-    expect(await response.text()).toContain("sessionStorage.setItem");
+    const html = await response.text();
+    expect(html).toContain("sessionStorage.setItem");
+    const url = new URL(JSON.parse(html.match(/location\.replace\(("[^"]+")\)/)![1]));
+    expect(url.origin + url.pathname).toBe(registration.authorizationUrl);
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({ client_id: 'client', scope: 'openid',
+      response_type: 'id_token', response_mode: 'form_post', prompt: 'none', login_hint: 'learner',
+      redirect_uri: config.toolOrigin + '/api/lti/launch' });
+    const saved = records.get(url.searchParams.get('state')!)!;
+    expect(saved.kind).toBe('login');
+    expect(saved.payload.nonce).toBe(url.searchParams.get('nonce'));
   });
   it("rejects arbitrary target URLs", async () => {
     const response = await app.request("https://api.example/api/lti/login?" + new URLSearchParams({ iss: registration.issuer, login_hint: "learner", target_link_uri: "https://attacker.example" }).toString(), {}, env);

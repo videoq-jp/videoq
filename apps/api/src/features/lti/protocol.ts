@@ -1,5 +1,6 @@
 import { authorizeLtiLaunch } from "./launch-service";
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
+import { createRemoteJWKSet, type JWTVerifyGetKey } from "jose";
+import { verifyLearningIdToken } from '../../lib/learning-oidc';
 import { launchLocale } from "./locale";
 import { z } from "zod";
 import type { LtiRegistration } from "./config";
@@ -37,11 +38,9 @@ export async function verifyLaunch(
   token: string, reg: LtiRegistration, login: z.infer<typeof loginRecord>,
   keys: JWTVerifyGetKey = platformKeys(reg.jwksUrl),
 ) {
-  const { payload } = await jwtVerify(token, keys, {
-    issuer: reg.issuer, audience: reg.clientId, algorithms: ["RS256"],
-    requiredClaims: ["iss", "aud", "sub", "exp", "iat", "nonce"],
-    maxTokenAge: "5m", clockTolerance: 5,
-  });
+  const payload = await verifyLearningIdToken(token, {
+    jwks: keys, issuer: reg.issuer, audience: reg.clientId, algorithms: ["RS256"],
+  }, login.nonce, 300, 5);
   // Signature, issuer, audience and token age are verified before projection.
   const identity = z.string().min(1);
   const subject = identity.parse(payload.sub);

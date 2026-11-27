@@ -10,7 +10,7 @@ import { digest, randomSecret, putCredential, readCredential, consumeCredential 
 import { mountLearningRoutes } from '../lti/learning-routes';
 import { questionView, scriptJson } from '../lti/view';
 import { classroomConfig, launchSchema } from './config';
-import { callbackUri, exchangeCode, pkceChallenge, readAccount, saveAccount } from './oauth';
+import { classroomAuthorizationURL, exchangeCode, readAccount, saveAccount } from './oauth';
 import { configFingerprint } from './authorization';
 import { classroomWorkflow } from '../../integrations/classroom-workflow';
 import { authenticationScript, discoveryScript, page, playerScript, popupScript } from './view';
@@ -67,13 +67,8 @@ classroomRoutes.post('/oauth/start', async c => {
     loginHint: input.data.loginHint, configHash: await configFingerprint(c.env, config) }, 300);
   // Top-level popup only: Lax is sufficient for Google's callback; iframe cookies are unused.
   setCookie(c, '__Host-videoq-classroom-' + state, cookie, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: 300 });
-  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-  const params = { client_id: c.env.CLASSROOM_CLIENT_ID!, redirect_uri: callbackUri(config), response_type: 'code',
-    scope: `openid email profile https://www.googleapis.com/auth/classroom.addons.${input.data.teacher ? 'teacher' : 'student'}`,
-    state, nonce, code_challenge: await pkceChallenge(verifier), code_challenge_method: 'S256',
-    access_type: 'offline', include_granted_scopes: 'true', prompt: input.data.loginHint ? 'consent' : 'select_account consent',
-    ...(input.data.loginHint ? { login_hint: input.data.loginHint } : {}) };
-  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  const url = await classroomAuthorizationURL(c.env, config, { state, verifier, nonce,
+    teacher: input.data.teacher, loginHint: input.data.loginHint });
   return c.json({ url: url.href });
 });
 classroomRoutes.get('/oauth/callback', async c => {
