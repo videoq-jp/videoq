@@ -316,8 +316,8 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
             server: { url: `${origin}/api/mcp`, bearer: key, allowedTools: ['list_course_skills', 'get_course_skill', 'read_course_skill_resource'] },
             prompt: `これは合成教材の実アプリHTTP認証・取得確認です。get_course_skillで ${entry.uri} のmanifestを取得し、read_course_skill_resourceで同じURIの本文と ${reference} の参照資料を読んでください。取得した出典の動画IDと時刻を短く回答してください。コード変更・検索・外部Webは不要です。` });
           const calls = execution.events.flatMap(event => {
-            const item = (event as { item?: { type?: string; tool?: string; status?: string; error?: unknown; arguments?: { uri?: string }; result?: { isError?: boolean } } }).item;
-            return event.type === 'item.completed' && item?.type === 'mcp_tool_call' ? [{ name: item.tool, uri: item.arguments?.uri, success: item.status === 'completed' && !item.error && Boolean(item.result) && item.result?.isError !== true }] : [];
+            const item = (event as { item?: { type?: string; tool?: string; status?: string; error?: unknown; arguments?: { uri?: string }; result?: { isError?: boolean; is_error?: boolean } } }).item;
+            return event.type === 'item.completed' && item?.type === 'mcp_tool_call' ? [{ name: item.tool, uri: item.arguments?.uri, success: item.status === 'completed' && !item.error && Boolean(item.result) && item.result?.isError !== true && item.result?.is_error !== true }] : [];
           });
           const ready = execution.completed && calls.some(call => call.name === 'get_course_skill' && call.uri === entry.uri && call.success)
             && [entry.uri, reference].every(uri => calls.some(call => call.name === 'read_course_skill_resource' && call.uri === uri && call.success));

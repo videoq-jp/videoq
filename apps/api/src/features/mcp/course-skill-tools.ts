@@ -25,7 +25,7 @@ export function createCourseSkillTools(ctx: ToolActorContext, repository?: Cours
       schema: z.object({ cursor: z.string().max(1024).optional() }).strict(),
     }),
     defineTool(async ({ uri }) => available(async () => (await service()).get(uri)), { ...metadata,
-      name: 'get_course_skill', description: 'Get the current authorized manifest for a published skill URI from list_course_skills. Checks publication, distribution, course access and live source validity on every call.',
+      name: 'get_course_skill', description: 'Get the current authorized manifest for a published skill URI from list_course_skills. This returns metadata, not the Skill instructions. Before applying the Skill, call read_course_skill_resource for its SKILL.md URI, then read relevant cited references as needed. Checks publication, distribution, course access and live source validity on every call.',
       schema: z.object({ uri }).strict(),
     }),
     defineTool(async ({ uri }) => available(async () => (await service()).read(uri)), { ...metadata,
