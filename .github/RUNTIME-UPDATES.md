@@ -53,7 +53,7 @@ provenance manifests, and the NumPy prerequisite copied from `uv.lock` require
 coordinated changes and are not independent package-update sources.
 
 Standalone DB maintenance npm dependencies, on-prem signature verification,
-Ansible requirements, and the PHP acceptance image are now also watched by
+Ansible/AWS key-maintenance requirements, and the PHP acceptance image are now also watched by
 Dependabot. Deployment/infrastructure/tooling PRs retain their existing review
 requirements rather than extending the automatic merge or Claude repair scope.
 
