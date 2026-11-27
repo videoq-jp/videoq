@@ -45,7 +45,7 @@ function reaches(from: string, owner: string, seen = new Set<string>()): boolean
     return dependency ? reaches(dependency, owner, seen) : false;
   });
 }
-it('tracks every audited issue, the canonical rule declarations, consumers, and concrete contract tests', () => {
+it('tracks canonical declarations, import reachability and contract file existence (not runtime calls)', () => {
   expect(catalog.rules.map(x => x.issue)).toEqual(Array.from({ length: 27 }, (_, i) => 1703 + i));
   for (const entry of catalog.rules) {
     expect(entry.contracts.length, `#${entry.issue}`).toBeGreaterThan(0);

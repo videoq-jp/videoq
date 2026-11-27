@@ -99,3 +99,9 @@ LMSの提供機能と操作権限、教材の世代・所有者・接続の不�
 検索分割はdomainの同期generatorが必要なデータを要求し、applicationがembedding/境界の外部処理を実行して結果を返す。Otsuの数値計算もdomainにあり、バッチ取得とdurable checkpointの保存はapplicationが担当する。再索引のdomainはmessageを生成し、保存→配送はapplicationで行う。既存のメモリ上限・逐次加算順序・outbox・CASは維持する。
 
 Pythonの字幕選択・視覚分割・文字起こし状態の判断は `worker_python/domain` が所有する。ジョブclaimの状態表はTSとPythonが同じJSON fixtureを読み、DBの原子的claim/lease更新を保つ。
+
+## 追加契約の検証範囲とidentityの実行手順
+
+追加監査 #1732〜#1739 の判断・所有先・試験と移行条件は [post1730-followups.md](post1730-followups.md) に記録する。identityの照会・候補を順に試す手順は `application/identity`、同期の候補・同意・初期値の判断は `domain/identity` が所有する。domain内で注入I/Oをawaitする例外は残さない。
+
+所有先のimport到達検査は実行時の利用保証とは区別する。course serviceの代表的な誤配線は、実装と共有した挙動契約に対するnegative controlで検出する。任意の意味的重複や全consumerのmutation scoreを保証するものではない。
