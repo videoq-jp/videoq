@@ -1474,6 +1474,8 @@
     "next": "Next"
   },
   "courseSkills": {
+    "deliveryPreview": "Delivery files (saved version)",
+    "saveToUpdatePreview": "Save your edits to update this preview.",
     "exceptionCondition": "Exception condition",
     "exceptionBehavior": "Exception behavior",
     "exampleSituation": "Example situation",

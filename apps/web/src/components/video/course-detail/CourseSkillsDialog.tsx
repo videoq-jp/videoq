@@ -44,6 +44,14 @@ function SkillEditor({ detail, busy, editable, canPublish, onSave, onPublish, on
       {draft.examples.map((example, i) => <div key={i} className="space-y-2 rounded border border-solid-gray-200 p-3"><Label htmlFor={`${prefix}-situation-${i}`}>{t('courseSkills.exampleSituation')} {i + 1}</Label><Textarea id={`${prefix}-situation-${i}`} value={example.situation} onChange={e => setDraft({ ...draft, examples: draft.examples.map((value, n) => n === i ? { ...value, situation: e.currentTarget.value } : value) })} /><Label htmlFor={`${prefix}-application-${i}`}>{t('courseSkills.exampleApplication')} {i + 1}</Label><Textarea id={`${prefix}-application-${i}`} value={example.application} onChange={e => setDraft({ ...draft, examples: draft.examples.map((value, n) => n === i ? { ...value, application: e.currentTarget.value } : value) })} /><Button variant="text" size="sm" onClick={() => setDraft({ ...draft, examples: draft.examples.filter((_, n) => n !== i) })}>{t('courseSkills.removeExample')}</Button></div>)}
     </fieldset> : <p>{t('courseSkills.insufficient')}</p>}
     <details className="rounded border border-solid-gray-300 p-3" open><summary className="cursor-pointer font-bold">{t('courseSkills.sources')}</summary><ul className="mt-3 space-y-4">{detail.sources.map((source, i) => <li key={`${source.factId}-${i}`} className="border-l-2 border-solid-gray-300 pl-3"><p className="font-bold">{source.claim}</p><p>{t('courseSkills.video', { id: source.videoId })} · {timestamp(source.startMs)}–{timestamp(source.endMs)}{source.kind === 'image' ? ` · ${t('courseSkills.imageSource')}` : ''}</p><blockquote className="whitespace-pre-wrap text-solid-gray-700">{source.quote}</blockquote>{onPlay ? <Button variant="text" size="sm" onClick={() => onPlay(source.videoId, String(source.startMs / 1000))} disabled={busy}>{t('courseSkills.playSource')}</Button> : null}</li>)}</ul></details>
+    {detail.files.length ? <details className="rounded border border-solid-gray-300 p-3">
+      <summary className="cursor-pointer font-bold">{t('courseSkills.deliveryPreview')}</summary>
+      {edited ? <p className="mt-3 text-solid-gray-700">{t('courseSkills.saveToUpdatePreview')}</p> : null}
+      <div className="mt-3 space-y-4">{detail.files.map(file => <div key={file.path}>
+        <h4 className="mb-2 font-bold">{file.path}</h4>
+        <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded bg-solid-gray-50 p-3 text-sm">{file.content}</pre>
+      </div>)}</div>
+    </details> : null}
     <div className="flex flex-wrap gap-3">
       {draft && !published ? <Button variant="outline" disabled={busy || !edited || !editable} onClick={() => onSave(draft)}>{t('courseSkills.save')}</Button> : null}
       {!published ? <Button disabled={busy || edited || !canPublish || detail.issues.length > 0} onClick={onPublish}>{t('courseSkills.publish')}</Button> : null}

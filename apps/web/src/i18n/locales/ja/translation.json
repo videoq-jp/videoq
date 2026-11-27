@@ -1472,6 +1472,8 @@
     "next": "次へ"
   },
   "courseSkills": {
+    "deliveryPreview": "配信ファイル（保存済みの内容）",
+    "saveToUpdatePreview": "編集内容を保存すると、このプレビューが更新されます。",
     "exceptionCondition": "例外が当てはまる条件",
     "exceptionBehavior": "例外の場合の対応",
     "exampleSituation": "適用例の状況",

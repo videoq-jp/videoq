@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-27T16:04:30.979740+00:00",
+  "implementationBaseCommit": "3d4363b117d72f1782a5a94a78c7fe55ecc81aae",
+  "sourceHashes": [
+    {
+      "path": "apps/web/src/components/video/course-detail/CourseSkillsDialog.tsx",
+      "sha256": "2c8f36ca9507d6196c97d0fde4b869af561ee629182847ad6dad31d39fc04c42"
+    },
+    {
+      "path": "apps/web/src/components/video/course-detail/CourseSkillsDialog.stories.tsx",
+      "sha256": "1f621b3b525097f4d41023cb1060f09c33dde83f29e367d4978f679141dc2f97"
+    },
+    {
+      "path": "apps/web/src/components/video/course-detail/__tests__/CourseSkillsDialog.test.tsx",
+      "sha256": "4f2fa571c658388073717bf0fe3c4bb97ef766ce919101d5cf54a78a97356dd4"
+    },
+    {
+      "path": "apps/web/src/i18n/locales/ja/translation.json",
+      "sha256": "e4d7662005daecac5a195f20cb30bcd577780a5a966407245440577e5895aff3"
+    },
+    {
+      "path": "apps/web/src/i18n/locales/en/translation.json",
+      "sha256": "7b83614a8df801a8f5f254036bede1284fd3311bf0557ebc6f107ad026458e77"
+    }
+  ],
+  "scope": "Local Storybook with synthetic fixtures; no production traffic",
+  "desktop": {
+    "savedPreviewRetainedWhileEdited": true,
+    "publishDisabledWhileEdited": true,
+    "previewUpdatedAfterSave": true,
+    "publishEnabledAfterSave": true,
+    "files": 2
+  },
+  "responsiveViewport": {
+    "viewportWidth": 390,
+    "visualViewportWidth": 390,
+    "documentWidth": 390,
+    "dialogWidth": 390,
+    "files": [
+      {
+        "clientWidth": 287,
+        "scrollWidth": 287,
+        "clientHeight": 304,
+        "scrollHeight": 304
+      },
+      {
+        "clientWidth": 287,
+        "scrollWidth": 287,
+        "clientHeight": 224,
+        "scrollHeight": 224
+      }
+    ]
+  },
+  "discardedViewportAttempt": {
+    "requestedWidth": 390,
+    "observedWidth": 1841,
+    "reason": "Emulation did not persist across browser script rounds; reapplied and measured in the same round",
+    "countedAsMobileVerification": false
+  },
+  "screenshots": [
+    {
+      "sha256": "47d96374ce32f5b84a058370d0d12fefd4e9c500a3ae578196691b853b10dd88",
+      "width": 1841,
+      "height": 940,
+      "privateScreenshotRetained": true
+    },
+    {
+      "sha256": "1fba4bcf38824cd53db64f301c273e4adc18d4f04c50acf567dfb92b42445714",
+      "width": 390,
+      "height": 844,
+      "privateScreenshotRetained": true
+    }
+  ],
+  "tests": {
+    "component": {
+      "files": 1,
+      "passed": 15
+    },
+    "storybook": {
+      "files": 1,
+      "passed": 6
+    },
+    "translationKeys": {
+      "passed": 10
+    },
+    "webTypecheck": {
+      "passed": true,
+      "configurations": 4
+    },
+    "storybookTypecheckAfterStoryChange": {
+      "passed": true
+    },
+    "changedFileLint": {
+      "passed": true
+    }
+  },
+  "browserTaskSpaceClosed": true,
+  "ownedStorybookStopped": true,
+  "limitations": [
+    "Browser interactions used mocked RPC fixtures; this check does not replace the earlier real API and database integration tests",
+    "No production publication or deployment",
+    "Generated content quality remains incomplete"
+  ]
+}

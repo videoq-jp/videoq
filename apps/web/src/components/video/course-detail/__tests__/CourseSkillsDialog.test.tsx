@@ -24,6 +24,30 @@ beforeEach(() => {
 });
 
 describe('course skill owner review', () => {
+  it('shows the saved delivery files and updates the preview only after edits are saved', async () => {
+    const body = '# Review retries\n\nThese are illustrative applications, not exact course implementations.';
+    detail.files = [{ path: 'SKILL.md', content: body }, { path: 'references/sources.md', content: '# Sources\n\n> Use the same request ID' }];
+    handlers.update.mockImplementation(async input => {
+      detail.draft = input.draft;
+      detail.contentHash = 'b'.repeat(64);
+      detail.files[0].content = body.replace('Review retries', input.draft.title);
+      list.candidates[0].contentHash = detail.contentHash;
+      return { success: true };
+    });
+    render(<CourseSkillsDialog {...props()} />);
+    await review();
+    expect(screen.getByText('SKILL.md')).toBeInTheDocument();
+    expect(screen.getByText('references/sources.md')).toBeInTheDocument();
+    expect(screen.getByText(body, { collapseWhitespace: false })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('courseSkills.name'), { target: { value: 'Check retries before changes' } });
+    expect(screen.getByText(body, { collapseWhitespace: false })).toBeInTheDocument();
+    expect(screen.getByText('courseSkills.saveToUpdatePreview')).toBeInTheDocument();
+    expect(button('publish')).toBeDisabled();
+    fireEvent.click(button('save'));
+    await screen.findByText(body.replace('Review retries', 'Check retries before changes'), { collapseWhitespace: false });
+    expect(screen.queryByText('courseSkills.saveToUpdatePreview')).not.toBeInTheDocument();
+    expect(button('publish')).toBeEnabled();
+  });
   it('shows review evidence and disables publication when details fail current checks despite a stale list', async () => {
     detail.issues = ['SKILL_INVALID_VISUAL_EVIDENCE'];
     render(<CourseSkillsDialog {...props()} />);
