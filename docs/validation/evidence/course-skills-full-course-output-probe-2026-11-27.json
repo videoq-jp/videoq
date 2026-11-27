@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "scope": {
+    "courseId": 51,
+    "videos": 177,
+    "subtitleOnly": true,
+    "productionWrites": 0,
+    "r2Requests": 0
+  },
+  "inputAvailability": {
+    "youtubeVideos": 177,
+    "uploadedFiles": 0,
+    "existingVisualRuns": 0,
+    "admittedSubtitleChunks": 905
+  },
+  "failedBuildPreserved": true,
+  "constrainedOutputProbe": {
+    "id": "9b77420e-e5d5-4308-b411-d481c2b5965a",
+    "calls": 1,
+    "httpStatus": 200,
+    "schemaPassed": true,
+    "evidencePassed": true,
+    "before": {
+      "used_ai_answers": 9
+    },
+    "after": {
+      "used_ai_answers": 10
+    },
+    "guardChecks": 3,
+    "localRuntimeClosed": true,
+    "productionWrites": 0,
+    "cacheWrites": 0
+  },
+  "cacheCompatibility": {
+    "version": 2,
+    "providerOutputEnforcementChanged": true,
+    "liveProbeId": "9b77420e-e5d5-4308-b411-d481c2b5965a",
+    "baseManifestSha256": "bb9767a9ba1dcc592d7ad26e874682246f0bd18ad8e8e88a39d5d01965b67940",
+    "changes": [
+      {
+        "path": "src/integrations/course-skill-knowledge.ts",
+        "before": "7e20a4d2e8b5c330a57340f3fa26747241f7a7a22cf99bc6d84e462f845a4529",
+        "after": "ff6c478fb8e1fd8e2109dbb1d96e09c42d7c62a6b2a081027aa43a8a1e2fe338"
+      },
+      {
+        "path": "src/integrations/course-skill-model.ts",
+        "before": "f1c9bf08fb5babaf90ac7d4f1a504d99b56400efeaa5e2a42d476507c2c2bc03",
+        "after": "3cee9a4032ab59ad3ac46b4c21f8277b55702b7c885fce610798b90a2ffad287"
+      }
+    ],
+    "semanticPromptUnchanged": true,
+    "canonicalCueIdsAndQuotesUnchanged": true,
+    "cacheChunksRevalidated": 26,
+    "cacheFactsRevalidated": 98,
+    "cacheSourceVideos": 3,
+    "cacheBytesRewritten": false,
+    "jobAndQuotaUnchanged": true,
+    "quota": {
+      "used_ai_answers": 10,
+      "ai_answers_limit": 1000
+    },
+    "checkpointSha256": "bd59654748af0bb3e08832adf06b8b6eaa7e014c7d62e1a8ec38568ac5a6726d",
+    "reason": "Expose existing cue-membership validation and opt subtitle extraction into provider JSON Schema output. This changes provider output enforcement, not the saved logical fact contract. The earlier failed build and all metered calls remain recorded. No change to canonical source IDs, quotation attachment, fact classification, logical prompt, or cache contract. Existing validated facts remain valid; quota and failures are not reset."
+  },
+  "limitations": [
+    "One successful provider probe demonstrates format and source-ID validation on one previously failing chunk, not semantic correctness or full-course completion.",
+    "Visual extraction and draft/plan generation keep their existing provider output mode; their different schemas were not validated by this probe.",
+    "Previously validated v10 cache entries are reused without rewriting; provider-output enforcement changed, and provenance is recorded separately."
+  ]
+}

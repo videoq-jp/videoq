@@ -63,6 +63,18 @@ describe('metered course skill model boundary', () => {
     await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', options)).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
     expect(mocks.finish).toHaveBeenCalledWith(expect.anything(), expect.anything(), { status: 'failed', quotaConsumed: true });
   });
+  it.each([
+    '{"evidence":[{"cueId":"cue-2115900"}]}',
+    '{"evidence":[{"cueId":"cue-970","quote":"invented"}]}',
+  ])('keeps source validation and metering when constrained output violates its schema', async content => {
+    const schema = z.object({ evidence: z.array(z.object({ cueId: z.enum(['cue-970', 'cue-972']) }).strict()).min(1) }).strict();
+    mocks.invoke.mockResolvedValue(new AIMessage({ content, response_metadata: { finish_reason: 'stop' } }));
+    await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', { ...options, schema, structuredOutput: true })).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+    expect(mocks.invoke.mock.calls[0][1].response_format).toEqual({ type: 'json_schema', json_schema: { name: options.name, strict: true, schema: z.toJSONSchema(schema) } });
+    expect(mocks.finish).toHaveBeenCalledWith(expect.anything(), expect.anything(), { status: 'failed', quotaConsumed: true });
+    expect(mocks.release).not.toHaveBeenCalled();
+  });
   it.each([JSON.stringify(z.toJSONSchema(options.schema)), '{"supported":true,"$schema":"https://json-schema.org/draft/2020-12/schema"}'])('rejects schema metadata in returned data and accounts for the attempted call', async content => {
     mocks.invoke.mockResolvedValue(new AIMessage({ content, response_metadata: { finish_reason: 'stop' } }));
     await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', options)).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');

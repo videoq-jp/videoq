@@ -73,6 +73,24 @@ describe('source-derived subtitle quotations', () => {
     for (const call of generate.mock.calls) expect(call[2].input.cues.reduce((n: number, c: { text: string }) => n + c.text.length, 0)).toBeLessThanOrEqual(3000);
     expect(repository.save).toHaveBeenCalledTimes(2);
   });
+  it('advertises only the current window cue IDs, excluding timestamps and earlier windows', async () => {
+    prepare();
+    const text = `1\n00:35:15,900 --> 00:35:19,680\n${'A'.repeat(1800)}\n\n2\n00:35:21,839 --> 00:35:24,000\n${'B'.repeat(1800)}`;
+    repository.readPage.mockResolvedValue({ text, nextOffset: text.length, done: true });
+    const seen: string[] = [];
+    generate.mockImplementation(async (_env, _owner, options) => {
+      const id = options.input.cues[0].id;
+      expect(options.structuredOutput).toBe(true);
+      const response = (cueId: string) => ({ verificationFacts: [], facts: [{ ...fact, evidence: [{ cueId }] }] });
+      expect(options.schema.safeParse(response('cue-2115900')).success).toBe(false);
+      for (const previous of seen) expect(options.schema.safeParse(response(previous)).success).toBe(false);
+      seen.push(id);
+      return options.schema.parse(response(id));
+    });
+    await extractCourseSkillKnowledge(env, { ...input, maxModelCalls: 2 });
+    expect(seen).toEqual(['cue-0', 'cue-1']);
+    expect(repository.save.mock.calls.map(call => (call[2] as SkillKnowledgeChunk).facts[0].evidence[0].cueId)).toEqual(seen);
+  });
   it('rejects an oversized fact batch instead of accepting truncated output', async () => {
     prepare();
     generate.mockImplementation(async (_env, _owner, options) => options.schema.parse({ verificationFacts: [], facts: Array.from({ length: 5 }, () => fact) }));

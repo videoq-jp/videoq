@@ -10,6 +10,8 @@ import { AnswerCostLedger, startAnswerCostLedger, finishAnswerCostLedger } from 
 /** One bounded, metered provider call. Source text never appears in propagated errors. */
 export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bindings, ownerId: string, options: {
   name: string; system: string; input: unknown; schema: Schema; images?: { id: string; jpegBase64: string }[];
+  /** Opt in only for schemas verified against the Workers AI grammar compiler. */
+  structuredOutput?: boolean;
 }): Promise<z.output<Schema>> {
   const input = JSON.stringify(options.input);
   const schema = z.toJSONSchema(options.schema);
@@ -31,7 +33,7 @@ export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bin
     const model = createChatModel(env, { timeoutMs: llmTimeoutMs(env), maxTokens: 8000, purpose: 'skill_generation', costLedger: ledger });
     invoked = true;
     const message = await model.invoke([new SystemMessage(system), new HumanMessage(options.images?.length ? { content: [{ type: 'text', text: input }, ...options.images.flatMap(image => [{ type: 'text' as const, text: `frame_id=${image.id}` }, { type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${image.jpegBase64}`, detail: 'high' as const } }])] } : input)], {
-      response_format: workersAi ? { type: 'json_object' } : { type: 'json_schema', json_schema: { name: options.name, strict: true, schema } },
+      response_format: workersAi && !options.structuredOutput ? { type: 'json_object' } : { type: 'json_schema', json_schema: { name: options.name, strict: true, schema } },
     });
     assertCompletedAnswer(message);
     const value = options.schema.parse(JSON.parse(message.text));
