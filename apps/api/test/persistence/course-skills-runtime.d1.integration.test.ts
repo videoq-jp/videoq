@@ -8,9 +8,10 @@ import type { Bindings } from '../../src/types/bindings';
 import { createD1Fixture } from './d1-fixture';
 import { courseSkillManagement } from '../../src/integrations/course-skill-management';
 import { executeNextCourseSkillBuild } from '../../src/integrations/course-skill-execution';
-import { createCourseSkillPublicationRepository } from '../../src/integrations/course-skill-publications';
+import { createCourseSkillPublicationRepository, publishCourseSkillCandidate } from '../../src/integrations/course-skill-publications';
 import { createMcpSkillsService } from '../../src/features/mcp/skills-service';
 import { createCourseSkillInputs } from '../../src/integrations/course-skill-inputs';
+import type { CourseSkillCandidateContent } from '../../src/persistence/contracts/course-skill-candidate-repository';
 
 const { generate } = vi.hoisted(() => ({ generate: vi.fn() }));
 vi.mock('../../src/integrations/course-skill-model', () => ({ generateCourseSkillJson: generate }));
@@ -65,6 +66,27 @@ it('integrates runtime factories, metered ticks, owner review and live MCP revoc
     expect(generate).toHaveBeenCalledTimes(4);
     expect(initial.candidates[0].canPublish).toBe(true);
     const initialSkillId = initial.candidates[0].skillId;
+    // Simulate an older persisted candidate that predates temporal image validation.
+    // The public edit/save paths correctly refuse to create this state now.
+    const stored = await f.database.prepare('SELECT content,content_hash FROM course_skill_candidates WHERE id=?').bind(initial.candidates[0].id).first<{ content: string; content_hash: string }>();
+    expect(stored).not.toBeNull();
+    const legacy = JSON.parse(stored!.content) as CourseSkillCandidateContent;
+    legacy.facts[0].requiresVisualEvidence = true;
+    legacy.facts[0].frames = [{ id: 'legacy-frame', timestampMs: 60000 }];
+    legacy.facts[0].visualEvidence = [{ frameId: 'legacy-frame', observation: 'A fixture image outside the cited subtitle interval' }];
+    const legacyText = JSON.stringify(legacy);
+    const legacyHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(legacyText)))].map(n => n.toString(16).padStart(2, '0')).join('');
+    await sql('UPDATE course_skill_candidates SET content=?,content_hash=? WHERE id=?', [legacyText, legacyHash, initial.candidates[0].id]);
+    const legacyReview = await owner.get(1, initial.candidates[0].id);
+    expect(legacyReview).toMatchObject({ contentHash: legacyHash, issues: ['SKILL_INVALID_VISUAL_EVIDENCE'], files: [] });
+    expect(legacyReview.sources.some(source => source.kind === 'image')).toBe(true);
+    expect((await owner.list(1)).candidates[0].canPublish).toBe(false);
+    await expect(owner.publish(1, legacyReview.id, legacyHash)).rejects.toMatchObject({ kind: 'conflict' });
+    await expect(publishCourseSkillCandidate(env, { courseId: 1, candidateId: legacyReview.id, ownerId: 'owner', expectedHash: legacyHash })).rejects.toThrow('SKILL_INVALID_VISUAL_EVIDENCE');
+    expect(await (await createCourseSkillPublicationRepository(env)).managed(1, 'owner')).toEqual([]);
+    await expect(owner.reject(1, legacyReview.id, legacyHash)).resolves.toEqual({ success: true });
+    expect((await owner.get(1, legacyReview.id)).status).toBe('rejected');
+    await sql("UPDATE course_skill_candidates SET content=?,content_hash=?,status='review_required' WHERE id=?", [stored!.content, stored!.content_hash, legacyReview.id]);
     const unedited = await owner.get(1, initial.candidates[0].id);
     await owner.update(1, unedited.id, unedited.contentHash, { ...unedited.draft!, title: 'Owner-reviewed retry guide' });
     const originalReview = await owner.get(1, initial.candidates[0].id);
