@@ -54,7 +54,8 @@
     "worker:node": "node dist/background-worker.mjs",
     "dev:prototype": "tsx src/runtime/prototype.ts",
     "use-case:new": "node scripts/scaffold-use-case.mjs",
-    "use-case:run": "tsx scripts/run-use-case.mjs"
+    "use-case:run": "tsx scripts/run-use-case.mjs",
+    "test:ownership-controls": "node scripts/ownership/run-controls.mjs"
   },
   "dependencies": {
     "@better-auth/api-key": "^1.7.25",

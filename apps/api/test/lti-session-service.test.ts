@@ -37,3 +37,11 @@ it('rejects replay and immediately revoked resource generations', async () => {
   expect(deps.saveSession).not.toHaveBeenCalled();
   await expect(authorizeLtiSession(deps, [{ ...reg, resources: [{ ...reg.resources[0], generation: 4 }] }], 'token')).resolves.toEqual({ ok: false, failure: 'forbidden' });
 });
+it('returns the feature projection when a verified login issues a session', async () => {
+  const deps = fixture();
+  const result = await exchangeLtiLogin(deps, [reg], { state:'state', browserSecret:'browser', idToken:'jwt' });
+  expect(result).toMatchObject({ok:true,value:{token:'secret',expiresIn:3600,learningAvailable:true,
+    features:{transcripts:false,qa:false,conversations:false,management:false,tags:false,reports:false},
+    playback:{videoId:2,parentOrigins:['https://school.test']}}});
+  expect(deps.saveSession).toHaveBeenCalledExactlyOnceWith('hash:secret',expect.objectContaining({registrationId:'school'}),3600);
+});

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { learningConversationScope, learningConversationTurns, learningManagedMaterialScope, learningReportScope, learningTagScope, canUseLearningQa, type LearningOperationAccess } from '../src/features/lti/operation-policy';
+import { canUseLearningConversations, canUseLearningTags, canChangeLearningTags, canManageLearningMaterials, canReadLearningReports, learningConversationScope, learningConversationTurns, learningManagedMaterialScope, learningReportScope, learningTagScope, canUseLearningQa, type LearningOperationAccess } from '../src/features/lti/operation-policy';
 import { deniedCoursePermissions } from '../src/domain/lms/lms-authority';
 import { executeLearningMaterialOperation } from '../src/features/material-management/service';
 
@@ -56,4 +56,23 @@ it('keeps Q&A viewing, posting and moderation capabilities separate', () => {
   expect(canUseLearningQa(moderator, 'feature')).toBe(true);
   expect(canUseLearningQa(moderator, 'deleteQuestion')).toBe(true);
   expect(canUseLearningQa(moderator, 'ask')).toBe(false);
+});
+
+it('exposes current capability decisions through the operation adapter', () => {
+  const allowed = {...access,current:{...access.current,permissions:{...access.current.permissions,manageOwnHistory:true,viewReports:true}}};
+  expect(canUseLearningConversations(allowed)).toBe(true);
+  expect(canUseLearningTags(allowed)).toBe(true);
+  expect(canChangeLearningTags(allowed,'update')).toBe(true);
+  expect(canManageLearningMaterials(allowed)).toBe(true);
+  expect(canReadLearningReports(allowed)).toBe(true);
+  const revoked = {...access,current:{...access.current,permissions:deniedCoursePermissions}};
+  expect(canUseLearningConversations(revoked)).toBe(false);
+  expect(canChangeLearningTags(revoked,'update')).toBe(false);
+  expect(canChangeLearningTags(revoked,'list')).toBe(true);
+  expect(canManageLearningMaterials(revoked)).toBe(false);
+  expect(canReadLearningReports(revoked)).toBeFalsy();
+  const external = {...allowed,reg:{...allowed.reg,id:'static'}};
+  expect(canUseLearningTags(external)).toBe(false);
+  expect(canManageLearningMaterials(external)).toBe(false);
+  expect(canReadLearningReports(external)).toBe(false);
 });

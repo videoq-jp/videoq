@@ -45,7 +45,7 @@ PGのjsonbとDOの履歴は旧数値と新しい予約付きentryを読み取れ
 
 course serviceの「呼ばない」「返却値を使わない」「旧検証へ置換」はimportをそのまま残し、実ソースを一時的にメモリで変異させて検証する。通常のcourse名契約も同じ挙動assertionを使う。ディスク上の実装は変異させない。tRPC/MCPのschemaは共通fixtureで別途実行する。
 
-他のconsumerに新しい配線や意味の変更を加える際は、台帳で対応する契約を確認し、該当入口を実行するケースと代表的な誤配線のnegative controlを追加する。現在はcourse serviceの3変異を計測した範囲であり、全consumerで同じ検出力を証明したとはしない。
+他のconsumerに新しい配線や意味の変更を加える際は、台帳で対応する契約を確認し、該当入口を実行するケースと代表的な誤配線のnegative controlを追加する。再調査 #1750 では、以下のconsumer単位の変異検証を追加した。course serviceの具体的な3変異（旧検証コピーを含む）は引き続き別に保持する。
 
 最小upload fixtureの `title <> 'reject'` はrollbackを起こすための意図的な故障注入であり、productionの業務制約とは扱わない。production由来DDLのsuiteはこの追加制約を持たない。
 
@@ -62,14 +62,37 @@ usernameの事前存在照会は競合時の一意性を保証しない。DBのu
 
 ## 再調査 #1748: LMSの新規入力と既存データ
 
-LMS教材のdescription/transcript更新にも共通の`textValueFailure`を適用し、HTTP schemaと直接サービス呼出しの両方でNULを拒否する。LMS同期のtitle/courseTitle/contextId/resourceLinkId/filenameとexternalIdも、保存・hash・quota予約の前に拒否する。opaqueな識別子をtrimしたり、自由文の改行・空白・Unicodeを置換したりしない。既存の正常なサイズ・SRT・権限・revisionの契約は維持する。
+LMS教材のdescription/transcript更新にも共通の`textValueFailure`を適用し、HTTP schemaと直接サービス呼出しの両方でNULを拒否する。LMS同期のtitle/courseTitle/contextId/resourceLinkId/filename/contentType/contentHash/youtubeVideoIdとexternalIdも、保存・hash・quota予約の前に拒否する。opaqueな識別子をtrimしたり、自由文の改行・空白・Unicodeを置換したりしない。既存の正常なサイズ・SRT・権限・revisionの契約は維持する。
 
 これは新しく指定された値の検証であり、既存D1データを読み出す際の拒否や一括書換えではない。未指定の既存フィールドは維持する。全機能のテキスト入力を網羅したという保証ではない。
 
-`persistence/contracts/material-management.contract`はdescriptionと有効SRT本文中のNULをschema/直接サービスで拒否し、教材・監査・予約・receipt・outboxが不変であることを実PG/D1で検証する。`lms-resource-sync.contract`は上記6フィールドを拒否し、リソース・動画・quota・outboxが変わらないことを同じ2方式で検証する。`lms-material-text`は認可成功後の実HTTPルートが400を返すことを確認する。
+`persistence/contracts/material-management.contract`はdescriptionと有効SRT本文中のNULをschema/直接サービスで拒否し、教材・監査・予約・receipt・outboxが不変であることを実PG/D1で検証する。`lms-resource-sync.contract`は8フィールド（title/courseTitle/contextId/resourceLinkId/filename/contentType/contentHash/externalId）を拒否し、リソース・動画・quota・outboxが変わらないことを同じ2方式で検証する。`lms-material-text`は認可成功後の実HTTPルートが400を返すことを確認する。
 
 ## 再調査 #1749: 重み付き消費の再試行時間
 
 Memory・PG・DOは共通の`consumptionRetryAfter`を使う。新しい順に保持した履歴から、要求costを収めるために失効が必要な最後の単位（index=`limit-cost`）の時刻を選ぶ。競合消費がなければ、その時刻以降に同じcostが収まる。単位costの旧挙動は維持する。costがlimitを超える要求は待っても収まらず、従来どおりwindow秒の有限な拒否ヒントを返す。
 
 共通契約は最古1単位の失効では不足するケース、返却後の再計算、複数時刻、境界時刻、単位cost、収まらないcostをMemory・実PG・実workerd DOで実行する。
+
+## 再調査 #1750: consumerごとの振る舞い検証
+
+`ownership-behavioral-controls.json`は、所有先台帳のTypeScript 50組（47ファイル）とPython 6組について、実際の利用先・対象symbol・実行する入口/ユースケース/実DB契約試験を対応させる。通常のmanifest試験は台帳との差分と試験ファイルの存在を検査するだけであり、検出能力は以下のrunnerによる実行結果で別に確認する。
+
+各組で無変更のbaselineを成功させた後、正本を呼ぶ利用先の式だけに「呼出しを省いてundefined/Noneを返す」「呼出しはするが返却値を捨てる」の2変異を加え、対応する挙動試験の失敗を要求する。再exportだけのアダプターではexport自体を削除せず、呼出し可能なラッパーで同じ変異を与える。オーナーとディスク上のproductionソースは変更しない。TSはViteのメモリ上の変換、Pythonは子pytestプロセスのimport loaderで変換する。TSの永続モジュールキャッシュは無効化し、変異ごとの変換receiptと試験結果を記録する。
+
+検出と認めるには、対象の変換箇所が実在し、対応試験が実行されて失敗する必要がある。import/collectionの失敗、対象未読込、実行環境の不備、skipだけの試験を検出成功として扱わない。baselineや変異が未確認ならrunnerは非zeroで終了する。CIのHonoジョブでも両言語のrunnerを実行し、組ごとの結果・試験名・source/test SHA256・変換receipt・ログをartifactに保存する。
+
+検証中に見つかったLTIログイン成功時のfeatures投影と、operation adapterの機能権限の未検証箇所には挙動assertionを追加した。PG索引実行入口は、未処理動画の拒否・完了済み動画の再処理抑止・空字幕の拒否をproviderを呼ばずに確認する入口試験を追加した。
+
+これは各組で指定したsymbol群の代表的な誤配線を検出する保証であり、全symbol・全callsiteを個別に変異させた結果ではない。副作用もある呼出しを保持したignore-resultと、呼出し自体を省くbypassを分けて記録する。任意の戻り値や名前変更を伴う意味的コピーの完全検出、全CIの一般的なmutation score、過去の実装を持たない組の「旧ロジックへの置換」の自動生成は主張しない。その非適用範囲は各組のlegacyCopy欄に記録する。具体的な旧ロジックコピーはcourse serviceの既存negative controlで検証する。
+
+実行例（リポジトリroot、使い捨てPostgreSQL 17 / pgvectorに接続）:
+
+```sh
+PERSISTENCE_TEST_DATABASE_URL="$TEST_DATABASE_URL" QUOTA_TEST_DATABASE_URL="$TEST_DATABASE_URL" LMS_TEST_DATABASE_URL="$TEST_DATABASE_URL" EMBEDDING_TEST_DATABASE_URL="$TEST_DATABASE_URL" npm run test:ownership-controls --workspace @videoq/api
+DATABASE_URL="$TEST_DATABASE_URL" uv run --project apps/worker --frozen --extra dev python apps/worker/scripts/ownership_controls.py
+```
+
+`OWNERSHIP_REPORT_DIR`で結果の保存先を指定できる。TSは末尾に`-- ts-13 ts-14`のように組IDを渡して再検証できる。部分実行を全組の検証結果として扱わない。
+
+2026-11-27の実行結果は`ownership-behavioral-evidence.json`に記録した。56組のbaselineが成功（skip 0）、112変異を対応する挙動試験が検出した。部分再実行を統合する際は、全組が揃い、現在のconsumer/owner/入口試験のSHA256と一致することを確認している。CIではそのコミットから改めて全組を実行する。
