@@ -1,4 +1,6 @@
 import type { GenerationResult } from '../../domain/conversation/answer-generation';
+import { textValueFailure } from '@videoq/domain/text-value';
+import { validationFailure } from '../../application/errors';
 import type { ConversationScope, OpenConversation, PersistConversationLog } from '../../persistence/contracts/conversation';
 
 export type ConversationRequest = { id?: string; resume?: boolean; question?: string; scope: ConversationScope; persistLog?: PersistConversationLog };
@@ -17,6 +19,8 @@ async function close<Memory, Event>(conversation: OpenConversation<Memory>, deps
   try { await conversation.close(); } catch { deps.closeFailed(); }
 }
 export async function runConversation<Memory, Event>(request: ConversationRequest, deps: ConversationExecutionDependencies<Memory, Event>) {
+  const error = request.question === undefined ? null : textValueFailure(request.question);
+  if (error) throw validationFailure(error);
   if (!request.id) return deps.run();
   const conversation = await deps.open(request.scope, request.id, request.resume);
   try {
@@ -27,6 +31,8 @@ export async function runConversation<Memory, Event>(request: ConversationReques
   } finally { await close(conversation, deps); }
 }
 export async function* streamConversation<Memory, Event>(request: ConversationRequest, deps: ConversationExecutionDependencies<Memory, Event>): AsyncGenerator<ConversationExecutionChunk<Event>> {
+  const error = request.question === undefined ? null : textValueFailure(request.question);
+  if (error) throw validationFailure(error);
   if (!request.id) { yield* deps.stream(); return; }
   const conversation = await deps.open(request.scope, request.id, request.resume);
   try {

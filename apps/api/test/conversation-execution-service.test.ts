@@ -12,6 +12,13 @@ function fixture() {
   } satisfies ConversationExecutionDependencies<null, { text: string }>;
   return { conversation, deps };
 }
+it.each([undefined, 'conversation'])('rejects invalid explicit questions without opening or generating (%s)', async id => {
+  const { conversation, deps } = fixture();
+  const invalid = { ...request, id, question: 'question' + String.fromCharCode(0) };
+  await expect(runConversation(invalid, deps)).rejects.toMatchObject({ kind: 'validation', code: 'VALIDATION_ERROR' });
+  await expect(streamConversation(invalid, deps).next()).rejects.toMatchObject({ kind: 'validation', code: 'VALIDATION_ERROR' });
+  for (const call of [deps.open, deps.run, deps.stream, conversation.commit, conversation.close]) expect(call).not.toHaveBeenCalled();
+});
 it('commits the original display question and closes even when persistence fails', async () => {
   const { conversation, deps } = fixture();
   const failure = new Error('private storage failure');

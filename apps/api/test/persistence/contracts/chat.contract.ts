@@ -1,11 +1,35 @@
 import {afterEach,beforeEach,describe,expect,it} from "vitest";
 import type {ChatRepository,CreateChatLogInput} from "../../../src/persistence/contracts/chat-repository";
+import { createChatGenerationService } from '../../../src/features/chat/generation-service';
 export interface ChatFixture {repository:ChatRepository;execute(sql:string,args?:unknown[]):Promise<void>;count(table:string):Promise<number>;subject():Promise<{subjectKey:string;resourceVideoIds:number[];registrationId:string|null;contextId:string|null}|null>;failAttribution():Promise<void>;failHistoryDelete():Promise<void>;dispose():Promise<void>}
 const answer={segments:[{text:'回答',sourceIds:[]}],sources:[]};
 const input=(shared=false):CreateChatLogInput=>({userId:shared?'owner':'learner',courseId:1,question:'質問',answer,isShared:shared,retrievedContexts:['context']});
 export function chatContract(name:string,create:()=>Promise<ChatFixture>) {
   describe(`${name}: chat persistence`,()=>{
     let f:ChatFixture;beforeEach(async()=>{f=await create();});afterEach(async()=>{await f?.dispose();});
+    it('rejects invalid questions before generation or saved state changes', async () => {
+      await f.repository.create(input());
+      await f.execute('INSERT INTO chat_conversations(thread_id,conversation_id,owner_user_id,course_id,expires_at) VALUES (?,?,?,?,?)', ['existing', 'existing', 'owner', 1, '2099-01-01T00:00:00.000Z']);
+      const before = await f.repository.history(1, 'owner', 10, 0);
+      const unexpected = async (): Promise<never> => { throw new Error('Invalid input must not consume quota or call models'); };
+      const service = createChatGenerationService({
+        context: params => f.repository.context(params), checkedLtiSubject: subject => subject,
+        reserve: unexpected, release: unexpected, startCost: unexpected, finishCost: unexpected,
+        createLog: value => f.repository.create(value), run: unexpected,
+        stream: () => ({ [Symbol.asyncIterator]: () => ({ next: unexpected }) }),
+        isCommittedFailure: () => false, classifyFailure: () => { throw new Error('Unexpected provider failure'); }, feedbackToken: unexpected,
+      });
+      for (const conversationId of [undefined, crypto.randomUUID()]) {
+        const options = { userId: 'owner', shareSlug: null, locale: 'ja', request: { courseId: 1, conversationId, messages: [{ role: 'user', content: 'question' + String.fromCharCode(0) }] } };
+        expect(await service.send(options)).toMatchObject({ ok: false, failure: { kind: 'invalid' } });
+        const events: unknown[] = [];
+        await (await service.stream(options)).write(async event => { events.push(event); });
+        expect(events).toMatchObject([{ type: 'error', failure: { kind: 'invalid' } }]);
+      }
+      expect(await f.count('chat_logs')).toBe(1);
+      expect(await f.count('chat_conversations')).toBe(1);
+      expect(await f.repository.history(1, 'owner', 10, 0)).toEqual(before);
+    });
     it('resolves owner, member, share and scoped LTI contexts',async()=>{
       expect(await f.repository.context({courseId:1,userId:'owner'})).toEqual({id:1,userId:'owner',memberVideoIds:[2,1]});
       expect(await f.repository.context({courseId:1,userId:'learner'})).toHaveProperty('id',1);

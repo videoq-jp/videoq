@@ -2,6 +2,7 @@ import {afterEach,beforeEach,describe,expect,it} from 'vitest';
 import {plainChatAnswer} from '@videoq/trpc/chat';
 import {conversationThreadId} from '../../../src/shared/conversation-scope';
 import type {ConversationRepository,ConversationScope} from '../../../src/persistence/contracts/conversation';
+import { runConversation, streamConversation } from '../../../src/features/chat/execution-service';
 type Fixture={repository:ConversationRepository;execute:(sql:string,args?:unknown[])=>Promise<void>;dispose:()=>Promise<void>};
 export function conversationContract(name:string,setup:()=>Promise<Fixture>){
   describe(`${name} conversation contract`,()=>{
@@ -17,6 +18,19 @@ export function conversationContract(name:string,setup:()=>Promise<Fixture>){
       return {id,thread};
     };
     beforeEach(async()=>{f=await setup();});afterEach(async()=>{await f?.dispose();});
+    it('rejects invalid explicit questions without acquiring leases or altering existing turns', async () => {
+      const { id } = await seed(scope, '日本語😀e\u0301');
+      const before = await f.repository.detail(scope, { conversationId: id, limit: 10 });
+      const unexpected = async (): Promise<never> => { throw new Error('Invalid question must not open or generate'); };
+      const dependencies = { open: unexpected, run: unexpected, stream: () => ({ [Symbol.asyncIterator]: () => ({ next: unexpected }) }), beforeCommit() {}, closeFailed() {} };
+      const request = { id, scope, question: 'question' + String.fromCharCode(0) };
+      await expect(runConversation(request, dependencies)).rejects.toMatchObject({ kind: 'validation' });
+      await expect(streamConversation(request, dependencies).next()).rejects.toMatchObject({ kind: 'validation' });
+      expect(await f.repository.detail(scope, { conversationId: id, limit: 10 })).toEqual(before);
+      expect(before.isGenerating).toBe(false);
+      await f.repository.delete(scope, id);
+      await expect(f.repository.detail(scope, { conversationId: id, limit: 10 })).rejects.toMatchObject({ status: 404 });
+    });
     it('lists committed conversations with pagination and normalizes detail types',async()=>{
       const first=await seed();await seed(scope,'second');
       const list=await f.repository.list(scope,{limit:1,offset:0});expect(list.items).toHaveLength(1);expect(list.hasMore).toBe(true);
