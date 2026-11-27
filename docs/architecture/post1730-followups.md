@@ -67,3 +67,9 @@ LMS教材のdescription/transcript更新にも共通の`textValueFailure`を適�
 これは新しく指定された値の検証であり、既存D1データを読み出す際の拒否や一括書換えではない。未指定の既存フィールドは維持する。全機能のテキスト入力を網羅したという保証ではない。
 
 `persistence/contracts/material-management.contract`はdescriptionと有効SRT本文中のNULをschema/直接サービスで拒否し、教材・監査・予約・receipt・outboxが不変であることを実PG/D1で検証する。`lms-resource-sync.contract`は上記6フィールドを拒否し、リソース・動画・quota・outboxが変わらないことを同じ2方式で検証する。`lms-material-text`は認可成功後の実HTTPルートが400を返すことを確認する。
+
+## 再調査 #1749: 重み付き消費の再試行時間
+
+Memory・PG・DOは共通の`consumptionRetryAfter`を使う。新しい順に保持した履歴から、要求costを収めるために失効が必要な最後の単位（index=`limit-cost`）の時刻を選ぶ。競合消費がなければ、その時刻以降に同じcostが収まる。単位costの旧挙動は維持する。costがlimitを超える要求は待っても収まらず、従来どおりwindow秒の有限な拒否ヒントを返す。
+
+共通契約は最古1単位の失効では不足するケース、返却後の再計算、複数時刻、境界時刻、単位cost、収まらないcostをMemory・実PG・実workerd DOで実行する。

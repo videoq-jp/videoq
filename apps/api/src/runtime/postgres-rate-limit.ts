@@ -1,4 +1,4 @@
-import { consumptionTime, consumptionEntries, refundReservation, validateRateLimit, type RateLimitEntry } from '../lib/rate-limit-history';
+import { consumptionRetryAfter, consumptionTime, consumptionEntries, refundReservation, validateRateLimit, type RateLimitEntry } from '../lib/rate-limit-history';
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { runtimeRateLimits as limits } from "../db/schema";
@@ -67,17 +67,7 @@ export function postgresRateLimitBackend(pool: pg.Pool): RateLimitBackend {
       validateRateLimit(limit, windowSec, cost);
       return locked<ConsumeResult>(key, windowSec, (history, now) => {
         if (history.length + cost > limit) {
-          const oldest = history.at(-1);
-          return {
-            history,
-            result: {
-              allowed: false,
-              retryAfterSec:
-                oldest === undefined
-                  ? windowSec
-                  : Math.max(1, Math.ceil(windowSec - (now - consumptionTime(oldest)))),
-            },
-          };
+          return { history, result: { allowed: false, retryAfterSec: consumptionRetryAfter(history, now, windowSec, limit, cost) } };
         }
         return {
           history: [...consumptionEntries(now, cost, reservationId), ...history],

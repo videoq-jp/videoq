@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { consumptionTime, consumptionEntries, refundReservation, validateRateLimit, pruneExpiredHistory, type RateLimitEntry } from "../lib/rate-limit-history";
+import { consumptionRetryAfter, consumptionTime, consumptionEntries, refundReservation, validateRateLimit, pruneExpiredHistory, type RateLimitEntry } from "../lib/rate-limit-history";
 
 /**
  * 固定キー単位のスライディング・ウィンドウ・レート制限。
@@ -25,13 +25,7 @@ export class RateLimiter extends DurableObject {
     );
 
     if (history.length + cost > limit) {
-      const oldest = history[history.length - 1];
-      // 窓が空でも 1 回で使い切れない要求は、待っても通らないので即座に拒否する。
-      const retryAfterSec =
-        oldest === undefined
-          ? windowSec
-          : Math.max(1, Math.ceil(windowSec - (now - consumptionTime(oldest))));
-      return { allowed: false, retryAfterSec };
+      return { allowed: false, retryAfterSec: consumptionRetryAfter(history, now, windowSec, limit, cost) };
     }
 
     history.unshift(...consumptionEntries(now, cost, reservationId));
