@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-27T15:54:25.279658+00:00",
+  "testedImplementationCommit": "936e93375314ea0339fd922690a05e773b4026ea",
+  "scope": {
+    "sourceVideoId": 120,
+    "localSyntheticCourseId": 120,
+    "productionWrites": 0,
+    "mediaReanalysis": 0,
+    "published": false,
+    "distributionEnabled": false
+  },
+  "provenance": {
+    "baseManifestSha256": "f325ab278a4bb73ebf17449312ca8bf73197cdfced11e92032fcd75152a7a7cb",
+    "visualManifestSha256": "0a68dabedc7e34b934177bb7e2aec8d21f43d0925aa22e1e2b28da6e1c5de8e2",
+    "runIdentityCompatibilitySha256": "e3fc5d60139e20f2c027e1e4be60c71d0e5b2550ca4d95b4dda8d70a21eaf207",
+    "candidateManifestSha256": "ff98bc230ae4396058db0f2fdbdde1e83b1ab41b6c1fdbd1576882417b444d19",
+    "localDispositionSha256": "29f871dd50f18b4be21f9e905d046524e1549941eaf4b4e1742358b4f8674feb"
+  },
+  "pipeline": {
+    "status": "completed",
+    "taskProposals": 4,
+    "drafts": 2,
+    "incompleteTasksHeld": 2,
+    "additionalProviderCalls": 5,
+    "newKnowledgeChunks": 0,
+    "additionalR2Reads": 0,
+    "quotaBefore": 14,
+    "quotaAfter": 19,
+    "quotaLimit": 30,
+    "generationModel": "@cf/google/gemma-4-26b-a4b-it",
+    "selfAudits": [
+      {
+        "supported": true,
+        "issueCount": 0,
+        "responseSha256": "0b2785ff582f01443c531a25cf9e9253f3b28990e3e010c954e106d5d5069864"
+      },
+      {
+        "supported": true,
+        "issueCount": 0,
+        "responseSha256": "96e8904df41cd2e097d5066023824cdf0a360c1ef6d1ee7457f9c61ab12b3cec"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 30067,
+      "completion_tokens": 2038,
+      "total_tokens": 32105,
+      "neurons": 328.91817474365234
+    },
+    "invocations": [
+      {
+        "invocationSha256": "8d7b390b2f498a1760ebb64d2e367c1aba406e604fb7738033408b83b0a9479a",
+        "runnerSha256": "0c15e8368c167c5454f8fb42bee513469d8de9ec59f26ccc149fd4e886186665",
+        "upgradeProofSha256": "e3fc5d60139e20f2c027e1e4be60c71d0e5b2550ca4d95b4dda8d70a21eaf207",
+        "calls": 4,
+        "r2Reads": 0,
+        "guardChecks": 10,
+        "stopReason": "budget",
+        "localRuntimeClosed": true
+      },
+      {
+        "invocationSha256": "119e2bd4d7f831d23f38d36701ddc226b5c4f3b9323955953ae4561f3d257e48",
+        "runnerSha256": "0c15e8368c167c5454f8fb42bee513469d8de9ec59f26ccc149fd4e886186665",
+        "upgradeProofSha256": "e3fc5d60139e20f2c027e1e4be60c71d0e5b2550ca4d95b4dda8d70a21eaf207",
+        "calls": 1,
+        "r2Reads": 0,
+        "guardChecks": 4,
+        "stopReason": "completed",
+        "localRuntimeClosed": true
+      }
+    ]
+  },
+  "independentAiEvaluation": {
+    "protocol": "One fresh Sol process per candidate; fixed criteria before first grading; original source cues and exact cited images; prior grading labels and generator self-audits withheld",
+    "humanReview": false,
+    "results": [
+      {
+        "candidateIndex": 0,
+        "contentSha256": "6bcbd1ee4480c375ed9387ea7f6243b47ddcbc89d4f73f492c8c4eb2c6cdaac0",
+        "packetSha256": "ad3baafe1c7a66e8daa5345686b892574e7a2fe4a8b65b2d693ce163317d68dd",
+        "protocolSha256": "652f5a196704058d0aa3c684b5b3c81e9f24e3f3b928777bd3d09574817edc3f",
+        "answerSha256": "b7895b3269838334eaed8075aa41f991bf20d313da7e0db3358a1fe0573a6451",
+        "eventsSha256": "156ff3f980d638386da3edb61fbc96d5e3a68c85d7bd2cb206883b433d0ec9fe",
+        "model": "gpt-6.1-sol",
+        "clientVersion": "codex-cli 0.167.1",
+        "nativeSkillsEnabled": 0,
+        "toolCalls": 0,
+        "elapsedMs": 27192,
+        "usage": [
+          {
+            "input_tokens": 15804,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1114,
+            "reasoning_output_tokens": 71
+          }
+        ],
+        "candidateSupport": "unsupported",
+        "recommendation": "revise",
+        "applicabilityPreserved": false,
+        "verificationGrounded": false,
+        "issueCount": 4,
+        "facts": [
+          {
+            "index": 0,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": true
+          },
+          {
+            "index": 1,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 2,
+            "grounding": "supported",
+            "visualObservation": "supported",
+            "requestedLanguageMet": true
+          }
+        ],
+        "imageHashes": [
+          "2de1d2e16be8fcf3c20181bc1b499b29482064cfb3e877172494310cd1ec1984"
+        ],
+        "citedImageTimestampsMs": [
+          1150000
+        ]
+      },
+      {
+        "candidateIndex": 1,
+        "contentSha256": "9c1a3b0e00c8dd7fb882893be1f31400ad5d8e3b2ab1c2787d2f0802c1d61a4b",
+        "packetSha256": "f76869c6e3429e43059904fd8ff47442d8a8e8a0125171ac696f0df537b23b37",
+        "protocolSha256": "1b7fc12c0f9df702dbb49c16109e03e51a6dde34f91e9ca39a6def8fb0494b98",
+        "answerSha256": "5f37a13ff77fd12bc2b31cc63210f3d73d8cae1506f8c2f4ff20c9535c6efffc",
+        "eventsSha256": "c0199bc06888e676e9d74612dae9b09e5ac40eca7f2968f5103e29d70b4a2d77",
+        "model": "gpt-6.1-sol",
+        "clientVersion": "codex-cli 0.167.1",
+        "nativeSkillsEnabled": 0,
+        "toolCalls": 0,
+        "elapsedMs": 33860,
+        "usage": [
+          {
+            "input_tokens": 19908,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1469,
+            "reasoning_output_tokens": 318
+          }
+        ],
+        "candidateSupport": "supported",
+        "recommendation": "revise",
+        "applicabilityPreserved": true,
+        "verificationGrounded": false,
+        "issueCount": 3,
+        "facts": [
+          {
+            "index": 0,
+            "grounding": "unsupported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 1,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 2,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 3,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 4,
+            "grounding": "supported",
+            "visualObservation": "supported",
+            "requestedLanguageMet": true
+          },
+          {
+            "index": 5,
+            "grounding": "supported",
+            "visualObservation": "supported",
+            "requestedLanguageMet": true
+          },
+          {
+            "index": 6,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": true
+          }
+        ],
+        "imageHashes": [
+          "f6feecbacb4fcdee50c1cb0dbf258e90aaa5b4b9889ff7e576936c83d9aa656f",
+          "2de1d2e16be8fcf3c20181bc1b499b29482064cfb3e877172494310cd1ec1984"
+        ],
+        "citedImageTimestampsMs": [
+          634000,
+          1150000
+        ]
+      }
+    ],
+    "readyForOwnerReview": 0,
+    "revise": 2,
+    "factAppearanceCount": 10,
+    "factAppearancesMayOverlapAcrossCandidates": true,
+    "doesNotResolveKnown966000msCitationMismatch": true,
+    "comparisonWithEarlierFactOnlyScores": "Different scope and evidence selection; not an improvement estimate",
+    "monetaryCost": "unknown"
+  },
+  "disposition": {
+    "draftsRejectedInLocalValidation": 2,
+    "incompleteTasksHeld": 2,
+    "publications": 0,
+    "candidateContentHashesUnchanged": true,
+    "aiReviewGateIntegratedInProduction": false
+  },
+  "limitations": [
+    "Two drafts from one uploaded video are not a representative accuracy estimate",
+    "Generator self-audits accepted both drafts while independent AI evaluation requested revision",
+    "Known prior image-citation mismatch remains unresolved; its frame is absent from these packets",
+    "Original course51 comparison and prior video120 grading are unchanged",
+    "Full177 generation and GitHub CI remain incomplete"
+  ]
+}
