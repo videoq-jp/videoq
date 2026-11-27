@@ -54,7 +54,7 @@ class RuntimeTests(unittest.TestCase):
         for value in ["26", "26.12.1;echo bad", "26.12.1-rc.1", "$(touch file)"]:
             with self.assertRaises(ValueError):
                 runtime.version(value)
-    def test_tool_major_updates_cannot_block_current_line_security_fixes(self):
+    def test_tool_release_channels_separate_major_lines_and_exclude_prereleases(self):
         versions = ["12.2.1", "13.0.0", "14.0.0-rc.1"]
         self.assertEqual(runtime.managers.newer("12.2.0", "npm", False, versions), "12.2.1")
         self.assertEqual(runtime.managers.newer("12.2.0", "npm", True, versions), "13.0.0")
@@ -121,3 +121,104 @@ class RuntimeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DependabotToolTests(unittest.TestCase):
+    def setUp(self):
+        self.data = json.loads((runtime.ROOT / runtime.MANIFEST).read_text())
+
+    def test_declared_tools_require_unique_exact_pins(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / '.github/runtime-tools'
+            folder.mkdir(parents=True)
+            (folder / 'package.json').write_text(json.dumps({'dependencies': {'npm': '12.2.3'}}))
+            requirements = folder / 'requirements.txt'
+            requirements.write_text('pip==26.2.2\nuv==0.13.9\n')
+            self.assertEqual(runtime.declared_tools(root), {'npm': '12.2.3', 'pip': '26.2.2', 'uv': '0.13.9'})
+            for text in ['pip>=26\nuv==0.13.9\n', 'pip==26.2.2\npip==26.2.3\nuv==0.13.9\n', 'pip==26.2.2\n']:
+                requirements.write_text(text)
+                with self.assertRaises(ValueError):
+                    runtime.declared_tools(root)
+
+    def test_tools_use_only_the_dependabot_pin_and_preserve_channels(self):
+        for name, previous, current, future in [('npm', '12.2.0', '12.2.1', '13.0.0'),
+                                                ('pip', '26.2.0', '26.2.1', '27.0.0'),
+                                                ('uv', '0.13.1', '0.13.2', '0.14.0')]:
+            data = copy.deepcopy(self.data)
+            original = data[name]
+            data[name] = previous
+            data['tool_downloads'][name] = json.loads(json.dumps(data['tool_downloads'][name]).replace(original, previous))
+            tools = {name: current}
+            def resolved(result, runtime_name, candidate, request):
+                self.assertEqual(runtime_name, name)
+                self.assertEqual(candidate, current)
+                result['tool_downloads'][name] = json.loads(json.dumps(result['tool_downloads'][name]).replace(previous, candidate))
+                result[name] = candidate
+                return result
+            with patch.object(runtime, 'declared_tools', return_value=tools), \
+                    patch.object(runtime.managers, 'resolve', side_effect=resolved) as resolve, \
+                    patch.object(runtime, 'request') as request:
+                self.assertEqual(runtime.discover(runtime.ROOT, data, name, False)[name], current)
+                resolve.assert_called_once()
+                request.assert_not_called()
+            for requested, upgrade in [(future, False), (current, True), (previous, False), ('0.0.1', False)]:
+                with patch.object(runtime, 'declared_tools', return_value={name: requested}), \
+                        patch.object(runtime.managers, 'resolve') as resolve:
+                    self.assertEqual(runtime.discover(runtime.ROOT, data, name, upgrade), data)
+                    resolve.assert_not_called()
+
+    def test_exact_npm_metadata_is_bound_to_requested_release(self):
+        data = copy.deepcopy(self.data)
+        target = data['npm']
+        metadata = {'version': target, 'dist': {'tarball': data['tool_downloads']['npm']['url'],
+                                              'integrity': data['tool_downloads']['npm']['integrity']}}
+        request = unittest.mock.Mock(return_value=metadata)
+        self.assertEqual(runtime.managers.resolve(data, 'npm', target, request), self.data)
+        request.assert_called_once_with(f'https://registry.npmjs.org/npm/{target}')
+        metadata['version'] = '0.0.1'
+        with self.assertRaisesRegex(ValueError, 'Mismatched'):
+            runtime.managers.resolve(data, 'npm', target, request)
+
+    def test_wrong_or_unstable_pip_and_uv_releases_are_rejected(self):
+        for name, metadata in [('pip', {'info': {'version': '0.0.1'}}),
+                               ('uv', {'tag_name': self.data['uv'], 'prerelease': True}),
+                               ('uv', {'tag_name': '0.0.1'})]:
+            with self.assertRaisesRegex(ValueError, 'Mismatched'):
+                runtime.managers.resolve(copy.deepcopy(self.data), name, self.data[name], lambda _: metadata)
+
+    def test_exact_pip_wheel_and_all_uv_archives_are_resolved_without_release_search(self):
+        for name in ['pip', 'uv']:
+            data = copy.deepcopy(self.data)
+            target = data[name]
+            if name == 'pip':
+                pin = data['tool_downloads']['pip']
+                metadata = {'info': {'version': target}, 'urls': [{
+                    'filename': f'pip-{target}-py3-none-any.whl', 'url': pin['url'],
+                    'digests': {'sha256': pin['sha256']}, 'yanked': False}]}
+                url = f'https://pypi.org/pypi/pip/{target}/json'
+            else:
+                metadata = {'tag_name': target, 'draft': False, 'prerelease': False,
+                            'assets': [{'name': f'uv-{triple}.tar.gz',
+                                        'browser_download_url': data['tool_downloads']['uv'][platform]['url'],
+                                        'digest': 'sha256:' + data['tool_downloads']['uv'][platform]['sha256']}
+                                       for platform, triple in runtime.managers.TARGETS.items()]}
+                url = f'https://api.github.com/repos/astral-sh/uv/releases/tags/{target}'
+            request = unittest.mock.Mock(return_value=metadata)
+            self.assertEqual(runtime.managers.resolve(data, name, target, request), self.data)
+            request.assert_called_once_with(url)
+
+    def test_pip_two_component_releases_keep_the_official_version_spelling(self):
+        self.assertTrue(runtime.managers.stable('26.3', 'pip'))
+        self.assertFalse(runtime.managers.stable('26.3', 'npm'))
+        self.assertFalse(runtime.managers.stable('0.13', 'uv'))
+        self.assertEqual(runtime.managers.newer('26.2.2', 'pip', False, ['26.3']), '26.3')
+        self.assertEqual(runtime.managers.newer('26.3', 'pip', False, ['26.3.0']), '26.3')
+        self.assertEqual(runtime.managers.newer('26.3', 'pip', True, ['27.0']), '27.0')
+        metadata = {'info': {'version': '26.3'}, 'urls': [{
+            'filename': 'pip-26.3-py3-none-any.whl',
+            'url': 'https://files.pythonhosted.org/packages/test/pip-26.3-py3-none-any.whl',
+            'digests': {'sha256': 'a' * 64}}]}
+        data = runtime.managers.resolve(copy.deepcopy(self.data), 'pip', '26.3', lambda _: metadata)
+        self.assertEqual(data['pip'], '26.3')
+        runtime.validate(data)

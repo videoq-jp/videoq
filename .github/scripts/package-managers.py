@@ -29,13 +29,14 @@ TARGETS = {
 }
 
 
-def stable(value):
-    return bool(isinstance(value, str) and re.fullmatch(r"\d+\.\d+\.\d+", value))
+def stable(value, name=None):
+    pattern = r"\d+\.\d+(?:\.\d+)?" if name == "pip" else r"\d+\.\d+\.\d+"
+    return bool(isinstance(value, str) and re.fullmatch(pattern, value))
 
 
 def validate(data):
     for name in ("npm", "pip", "uv"):
-        if not stable(data[name]):
+        if not stable(data[name], name):
             raise ValueError(f"An exact stable {name} version is required")
     downloads = data["tool_downloads"]
     npm = downloads["npm"]
@@ -53,40 +54,42 @@ def validate(data):
 
 
 def newer(current, name, upgrade, candidates):
-    parse = lambda v: tuple(map(int, v.split(".")))
+    parse = lambda v: tuple((list(map(int, v.split("."))) + [0])[:3])
     current_parts = parse(current)
     # uv is pre-1.0: a new minor is a new release line.
     width = 2 if name == "uv" and current_parts[0] == 0 else 1
     selected = []
     for candidate in candidates:
-        if not stable(candidate):
+        if not stable(candidate, name):
             continue
         parts = parse(candidate)
         if parts <= current_parts:
             continue
         if (parts[:width] > current_parts[:width]) if upgrade else (parts[:width] == current_parts[:width]):
-            selected.append(parts)
-    return ".".join(map(str, max(selected))) if selected else current
+            selected.append(candidate)
+    return max(selected, key=parse) if selected else current
 
 
-def discover(data, name, upgrade, request):
+def resolve(data, name, candidate, request):
+    """Resolve only a Dependabot-selected release; never enumerate versions."""
+    if not stable(candidate, name):
+        raise ValueError("An exact stable tool version is required")
     if name == "npm":
-        releases = request("https://registry.npmjs.org/npm", {"Accept": "application/vnd.npm.install-v1+json"})["versions"]
-        candidate = newer(data[name], name, upgrade, releases)
-        metadata = releases[candidate]["dist"]
+        release = request(f"https://registry.npmjs.org/npm/{candidate}")
+        if release.get("version") != candidate:
+            raise ValueError("Mismatched npm release metadata")
+        metadata = release["dist"]
         download = {"url": metadata["tarball"], "integrity": metadata["integrity"]}
     elif name == "pip":
-        releases = request("https://pypi.org/pypi/pip/json")["releases"]
-        candidates = [v for v, files in releases.items() if files and not all(f.get("yanked") for f in files)]
-        candidate = newer(data[name], name, upgrade, candidates)
         metadata = request(f"https://pypi.org/pypi/pip/{candidate}/json")
+        if metadata.get("info", {}).get("version") != candidate:
+            raise ValueError("Mismatched pip release metadata")
         wheel = next(f for f in metadata["urls"] if f["filename"] == f"pip-{candidate}-py3-none-any.whl" and not f.get("yanked"))
         download = {"url": wheel["url"], "sha256": wheel["digests"]["sha256"]}
-    else:
-        releases = request("https://api.github.com/repos/astral-sh/uv/releases?per_page=100")
-        candidates = [r["tag_name"] for r in releases if not r["draft"] and not r["prerelease"]]
-        candidate = newer(data[name], name, upgrade, candidates)
+    elif name == "uv":
         metadata = request(f"https://api.github.com/repos/astral-sh/uv/releases/tags/{candidate}")
+        if metadata.get("tag_name") != candidate or metadata.get("draft") or metadata.get("prerelease"):
+            raise ValueError("Mismatched or unstable uv release metadata")
         download = {}
         for target, triple in TARGETS.items():
             asset = next(a for a in metadata["assets"] if a["name"] == f"uv-{triple}.tar.gz")
@@ -94,9 +97,10 @@ def discover(data, name, upgrade, request):
             if not re.fullmatch(r"sha256:[a-f0-9]{64}", digest):
                 raise ValueError("Missing uv release archive digest")
             download[target] = {"url": asset["browser_download_url"], "sha256": digest[7:]}
-    if not upgrade or candidate != data[name]:
-        data[name] = candidate
-        data["tool_downloads"][name] = download
+    else:
+        raise ValueError("Unsupported bootstrap tool")
+    data[name] = candidate
+    data["tool_downloads"][name] = download
     validate(data)
     return data
 

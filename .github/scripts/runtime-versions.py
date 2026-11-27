@@ -114,11 +114,34 @@ def rendered(root, data):
     return files
 
 
+def declared_tools(root):
+    folder = root / ".github/runtime-tools"
+    package = json.loads((folder / "package.json").read_text())
+    tools = {"npm": package["dependencies"]["npm"]}
+    for line in (folder / "requirements.txt").read_text().splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        match = re.fullmatch(r"(pip|uv)==(\d+\.\d+(?:\.\d+)?)", line)
+        if not match or match[1] in tools:
+            raise ValueError("Expected unique exact pip and uv bootstrap pins")
+        tools[match[1]] = match[2]
+    if set(tools) != {"npm", "pip", "uv"}:
+        raise ValueError("Missing bootstrap tool pin")
+    for name, value in tools.items():
+        if not managers.stable(value, name):
+            raise ValueError("An exact stable bootstrap tool version is required")
+    return tools
+
+
 def discover(root, data, runtime, upgrade):
     data = copy.deepcopy(data)
     previous = data[runtime]
     if runtime in {"npm", "pip", "uv"}:
-        data = managers.discover(data, runtime, upgrade, request)
+        candidate = declared_tools(root)[runtime]
+        selected = managers.newer(previous, runtime, upgrade, [candidate])
+        if selected == previous:
+            return data
+        data = managers.resolve(data, runtime, selected, request)
     else:
         data[runtime] = latest(previous, runtime, upgrade, request(NODE_INDEX if runtime == "node" else PYTHON_INDEX))
     if upgrade and data[runtime] == previous:
@@ -149,6 +172,7 @@ def main():
     files[MANIFEST] = json.dumps(data, indent=2) + "\n"
     changed = {path: text for path, text in files.items() if not (ROOT / path).exists() or (ROOT / path).read_text() != text}
     if args.command == "check":
+        declared_tools(ROOT)
         if changed:
             raise ValueError("Runtime pins differ from the manifest: " + ", ".join(changed) + "; run python3 .github/scripts/runtime-versions.py sync")
         for path in (ROOT / ".github/workflows").glob("*.yml"):
