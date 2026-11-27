@@ -1,0 +1,41 @@
+{
+  "authenticatedApplicationRoute": true,
+  "manifestAndSkillAndReferenceVerified": true,
+  "effectTrial": false,
+  "syntheticCourse": true,
+  "calls": [
+    {
+      "name": "get_course_skill",
+      "success": true
+    },
+    {
+      "name": "read_course_skill_resource",
+      "success": true
+    },
+    {
+      "name": "read_course_skill_resource",
+      "success": true
+    }
+  ],
+  "elapsedMs": 18311,
+  "enabledNativeSkills": 0,
+  "productionWrites": 0,
+  "applicationCommit": "e0a91f6f31467daa5637206e0cbe87c19d38933b",
+  "clientVersion": "codex-cli 0.160.0",
+  "clientModel": "gpt-6.1-terra",
+  "fixtureImage": "pgvector/pgvector:pg17",
+  "nodeVersion": "v26.13.1",
+  "httpIntegrationTestsPassed": 8,
+  "providerCalls": 5,
+  "providerResponses": "fixed local HTTP responses; no live generation-quality evidence",
+  "scheduler": "manually advanced local fixture ticks",
+  "credentialModes": [
+    "X-API-Key for SDK and Skills extension",
+    "Bearer API key for real Codex"
+  ],
+  "testSourceSha256": "6104ed8ef2989e7f8d3f28668376dc7f04ba3b4adf57d8e6eb398c2d464d6739",
+  "privateClientEvidenceSha256": "328ef23cbd8b7a0238dc72df3d942498c9b6667eaaf85a3e3e4f3526312ccdeb",
+  "privateTestLogSha256": "13dc3d89ad7e3dfccc054121a2d4fd40e3234f0bdb82fc09c5a21aacc5e98488",
+  "ownedDatabaseContainerRemoved": true,
+  "webUiBrowserFlowTested": false
+}
