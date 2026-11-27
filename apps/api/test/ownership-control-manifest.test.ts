@@ -8,6 +8,7 @@ const catalog = JSON.parse(readFileSync(resolve(root,'docs/architecture/domain-r
 const manifest = JSON.parse(readFileSync(resolve(root,'docs/architecture/ownership-behavioral-controls.json'),'utf8'));
 const controls = manifest.controls as Array<{
   id:string; owner:string; consumer:string; symbols:string[]; tests:string[]; modes:string[]; legacyCopy:string;
+  failureWitnesses: Record<string, { testFile?: string; test: string; error: string }>;
 }>;
 it('maps every registered TypeScript consumer/owner pair to executable behavioral contracts', () => {
   const pairs = [...catalog.rules,...catalog.followUps].flatMap(group => group.rules.flatMap(rule =>
@@ -27,6 +28,14 @@ it('maps every registered TypeScript consumer/owner pair to executable behaviora
       expect(existsSync(resolve(root,'apps/api',test)),`${row.id}: ${test}`).toBe(true);
     }
     expect(row.legacyCopy.length,row.id).toBeGreaterThan(0);
+    expect(Object.keys(row.failureWitnesses).sort(), row.id).toEqual([...row.modes].sort());
+    for (const witness of Object.values(row.failureWitnesses)) {
+      expect(row.tests, row.id).toContain(witness.testFile);
+      expect(witness.test.length, row.id).toBeGreaterThan(0);
+      expect(witness.error.length, row.id).toBeGreaterThan(0);
+      expect(witness.error, row.id).not.toMatch(/[\n\r]/);
+      expect(witness.error.includes(String.fromCharCode(27)), row.id).toBe(false);
+    }
   }
 });
 
@@ -39,5 +48,14 @@ it('also inventories every registered Python consumer/owner pair', () => {
     expect(row.modes).toEqual(['bypass','ignore-result']);
     expect(row.tests.length).toBeGreaterThan(0);
     for (const test of row.tests) expect(existsSync(resolve(root,'apps/worker',test))).toBe(true);
+    expect(Object.keys(row.failureWitnesses).sort(), row.id).toEqual([...row.modes].sort());
+    for (const witness of Object.values(row.failureWitnesses)) {
+      expect(witness.test, row.id).toContain('::');
+      const testFile = witness.test.split('::')[0].replaceAll('.', '/') + '.py';
+      expect(row.tests, row.id).toContain(testFile);
+      expect(witness.error.length, row.id).toBeGreaterThan(0);
+      expect(witness.error, row.id).not.toMatch(/[\n\r]/);
+      expect(witness.error.includes(String.fromCharCode(27)), row.id).toBe(false);
+    }
   }
 });

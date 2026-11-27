@@ -21,8 +21,10 @@ it('releases serialized execution after a provider failure so the next inspectio
   execution.inspect.mockRejectedValueOnce(new Error('provider failure'));
   const first = execute.inspectClip(input, execution);
   const second = execute.focus(input, execution);
-  await expect(first).rejects.toThrow('provider failure');
-  await expect(second).resolves.toMatchObject({ status: 'no_observations' });
+  await Promise.all([
+    expect(first).rejects.toThrow('provider failure'),
+    expect(second).resolves.toMatchObject({ status: 'no_observations' }),
+  ]);
   expect(execution.inspect).toHaveBeenCalledTimes(2);
 });
 it('shares call reservations across tool types and serializes in-flight model payloads', async () => {
@@ -35,11 +37,18 @@ it('shares call reservations across tool types and serializes in-flight model pa
     execute.inspectClip(input, execution),
     execute.skim({ ...input, include_visuals: true }, execution),
   ];
-  await vi.waitFor(() => expect(execution.inspect).toHaveBeenCalledTimes(1));
-  const fifth = await execute.focus({ ...input, query: 'another' }, execution);
-  expect(fifth).toMatchObject({ status: 'unavailable', budget: { remaining_visual_calls: 0 } });
-  release(result);
-  await Promise.all(requests);
+  // Observe every request before an assertion can fail, including in mutants.
+  // Always release/drain the model gate so failures do not leak rejections.
+  const settled = Promise.allSettled(requests);
+  try {
+    await vi.waitFor(() => expect(execution.inspect).toHaveBeenCalledTimes(1));
+    const fifth = await execute.focus({ ...input, query: 'another' }, execution);
+    expect(fifth).toMatchObject({ status: 'unavailable', budget: { remaining_visual_calls: 0 } });
+  } finally {
+    release?.(result);
+    await settled;
+  }
+  for (const outcome of await settled) expect(outcome.status).toBe('fulfilled');
   expect(execution.inspect).toHaveBeenCalledTimes(4);
   expect(execution.inspect.mock.calls.map(call => call[4].maxFrames)).toEqual([16, 16, 8, 8]);
 });

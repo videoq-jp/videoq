@@ -61,7 +61,7 @@ it('applies weighted throttling before reserving an account unit or opening a pr
   expect(deps.reserve).not.toHaveBeenCalled(); expect(deps.open).not.toHaveBeenCalled();
 });
 
-it.each([{ overQuota: true as const }, { exceeded: true as const, limit: 0 }])('rejects exhausted account quota before opening a session', async quota => {
+it.each([{ overQuota: true as const }, { exceeded: true as const, limit: 0 }])('rejects exhausted account quota before opening a session (case %#)', async quota => {
   const { deps } = fixture(); deps.reserve.mockResolvedValue(quota);
   expect(await executeExternalEvidence(deps, input)).toMatchObject({ status: 'quota_exceeded' });
   expect(deps.reserve).toHaveBeenCalledExactlyOnceWith('owner'); expect(deps.open).not.toHaveBeenCalled();

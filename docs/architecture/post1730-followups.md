@@ -80,7 +80,7 @@ Memory・PG・DOは共通の`consumptionRetryAfter`を使う。新しい順に�
 
 各組で無変更のbaselineを成功させた後、正本を呼ぶ利用先の式だけに「呼出しを省いてundefined/Noneを返す」「呼出しはするが返却値を捨てる」の2変異を加え、対応する挙動試験の失敗を要求する。再exportだけのアダプターではexport自体を削除せず、呼出し可能なラッパーで同じ変異を与える。オーナーとディスク上のproductionソースは変更しない。TSはViteのメモリ上の変換、Pythonは子pytestプロセスのimport loaderで変換する。TSの永続モジュールキャッシュは無効化し、変異ごとの変換receiptと試験結果を記録する。
 
-検出と認めるには、対象の変換箇所が実在し、対応試験が実行されて失敗する必要がある。import/collectionの失敗、対象未読込、実行環境の不備、skipだけの試験を検出成功として扱わない。baselineや変異が未確認ならrunnerは非zeroで終了する。CIのHonoジョブでも両言語のrunnerを実行し、組ごとの結果・試験名・source/test SHA256・変換receipt・ログをartifactに保存する。
+検出と認めるには、対象の変換箇所が実在し、無変更baselineで成功した同一テスト群のうち、台帳の`failureWitnesses`に明示したテストが、レビュー済みのエラー先頭行と一致して失敗する必要がある。単なる赤いテストを成功と数えない。テスト集合の欠落・重複・skip、import/collectionの失敗、対象未読込、異常終了、未処理エラー、既知のタイムアウトや接続障害を拒否する。全変異の後にも無変更baseline（`recovery`）を再実行し、同一テスト集合の成功を要求する。いずれかが未確認ならrunnerは非zeroで終了する。CIのHonoジョブでも両言語のrunnerを実行し、組ごとの結果・試験名・source/test SHA256・変換receipt・ログをartifactに保存する。
 
 検証中に見つかったLTIログイン成功時のfeatures投影と、operation adapterの機能権限の未検証箇所には挙動assertionを追加した。PG索引実行入口は、未処理動画の拒否・完了済み動画の再処理抑止・空字幕の拒否をproviderを呼ばずに確認する入口試験を追加した。
 
@@ -95,4 +95,15 @@ DATABASE_URL="$TEST_DATABASE_URL" uv run --project apps/worker --frozen --extra 
 
 `OWNERSHIP_REPORT_DIR`で結果の保存先を指定できる。TSは末尾に`-- ts-13 ts-14`のように組IDを渡して再検証できる。部分実行を全組の検証結果として扱わない。
 
-2026-11-27の実行結果は`ownership-behavioral-evidence.json`に記録した。56組のbaselineが成功（skip 0）、112変異を対応する挙動試験が検出した。部分再実行を統合する際は、全組が揃い、現在のconsumer/owner/入口試験のSHA256と一致することを確認している。CIではそのコミットから改めて全組を実行する。
+2026-11-27の実行結果は`ownership-behavioral-evidence.json`に記録した。56組のbaselineとrecoveryが成功（skip 0）、112変異をレビュー済み失敗witnessと一致する挙動試験が検出した。部分再実行を統合する際は、全組が揃い、現在のconsumer/owner/入口試験のSHA256と一致することを確認している。CIではそのコミットから改めて全組を実行する。
+
+
+## 再監査 #1756: 失敗理由の帰属
+
+従来のrunnerはJUnit/JSONの失敗だけで変異検出を認めたため、タイムアウトや接続拒否も検出成功と数え得た。既存mainの112変異のログでは既知の環境エラーは見つからなかったが、将来の実行を守るため判定を強化した。
+
+`failureWitnesses`は各変異に対するテストファイル・テスト名・失敗理由の先頭行を固定する。初期値はmain `6ea74c9b41b7e7322ea942f81a790626c501bd40` のCI run45961409197、artifact15182687155の実行証拠から、assertionを優先して選び、型エラーやSQL生成失敗も変異の具体的な帰結として確認した。新しい結果を自動で期待値として採用せず、テスト変更や表示形式変更で一致しなくなった場合は、元の契約と変異の関係をレビューして明示的に更新する。パラメータ化テストの同名ケースはケース番号で区別する。並列動画検査の契約試験は、変異で早期に失敗した場合も全Promiseを監視し、モデル待機を必ず解放・完了待ちする。
+
+TypeScriptでは独立したVitest completion reporterで未処理エラーと中断状態を取得し、終了コード0/1とJSON結果の整合を照合する。Pythonではpytestのcollection・未処理thread/unraisable例外と終了状態を別receiptへ記録する。両者ともbaseline→2変異→recoveryの4回を記録し、前後のbaseline成功と失敗witness一致を全て要求する。実Vitest・pytest子プロセスによるassertion・タイムアウト・実接続拒否・未処理例外の試験も維持する。
+
+これは指定した失敗理由と前後の正常実行を確認する仕組みであり、任意の一時的な外部障害が同じ公開エラーに包まれる可能性まで数学的に排除するものではない。汎用の意味的重複検出や、未登録callsiteの保証に拡大しない。
