@@ -14,6 +14,16 @@ function adapter(value: typeof proposal, count = 1) {
 it('plans a new task with null when there is no existing inventory', async () => {
   expect((await adapter(proposal).plan(facts, [])).proposals[0]).toMatchObject({ existingSkillId: null, factIds: ['fact-0', 'fact-1', 'fact-2'] });
 });
+it('requests schema-constrained planning without changing fact and task identity validation', async () => {
+  const generate: typeof generateCourseSkillJson = async (_env, _owner, options) => {
+    expect(options.structuredOutput).toBe(true);
+    expect(options.name).toBe('skill_task_plan');
+    expect(options.schema.safeParse({ proposals: [{ ...proposal, existingSkillId: 'invented' }], issues: [] }).success).toBe(false);
+    expect(options.schema.safeParse({ proposals: [proposal], issues: 'invalid' }).success).toBe(false);
+    return options.schema.parse({ proposals: [proposal], issues: [] });
+  };
+  expect((await courseSkillDraftDependencies({} as Bindings, 'owner', 'ja', generate).plan(facts, [])).proposals[0].factIds).toEqual(['fact-0', 'fact-1', 'fact-2']);
+});
 it.each(['', 'invented-skill'])('rejects an existing ID %j when no existing task was supplied', async existingSkillId => {
   await expect(adapter({ ...proposal, existingSkillId }).plan(facts, [])).rejects.toThrow();
 });

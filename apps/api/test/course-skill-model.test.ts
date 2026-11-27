@@ -63,6 +63,20 @@ describe('metered course skill model boundary', () => {
     await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', options)).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
     expect(mocks.finish).toHaveBeenCalledWith(expect.anything(), expect.anything(), { status: 'failed', quotaConsumed: true });
   });
+  it.each(['toolong', 'BAD'])('lowers incompatible grammar lengths but retains full server validation for %s', async slug => {
+    const schema = z.object({ proposals: z.array(z.object({ slug: z.string().regex(/^[a-z]+$/).min(1).max(4) }).strict()), issues: z.array(z.string().max(20)) }).strict();
+    const original = z.toJSONSchema(schema);
+    mocks.invoke.mockResolvedValue(new AIMessage({ content: JSON.stringify({ proposals: [{ slug }], issues: [] }), response_metadata: { finish_reason: 'stop' } }));
+    await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', { ...options, schema, structuredOutput: true })).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
+    const wire = mocks.invoke.mock.calls[0][1].response_format;
+    expect(wire.type).toBe('json_schema');
+    expect(wire.json_schema.schema.properties.proposals.items.properties.slug).toEqual({ type: 'string', pattern: '^[a-z]+$' });
+    expect(wire.json_schema.schema.properties.issues.items.maxLength).toBe(20);
+    expect(z.toJSONSchema(schema)).toEqual(original);
+    expect(mocks.invoke.mock.calls[0][0][0].content).toContain('"maxLength":4');
+    expect(mocks.finish).toHaveBeenCalledWith(expect.anything(), expect.anything(), { status: 'failed', quotaConsumed: true });
+    expect(mocks.release).not.toHaveBeenCalled();
+  });
   it.each([
     '{"evidence":[{"cueId":"cue-2115900"}]}',
     '{"evidence":[{"cueId":"cue-970","quote":"invented"}]}',

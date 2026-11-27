@@ -7,6 +7,21 @@ import { llmTimeoutMs } from '../lib/llm';
 import { reserveAiAnswerUsage, releaseAiAnswerReservation } from '../repositories/quota-repository';
 import { AnswerCostLedger, startAnswerCostLedger, finishAnswerCostLedger } from '../lib/answer-cost-ledger';
 
+function workersAiGrammarSchema<T>(schema: T): T {
+  const grammar = structuredClone(schema);
+  const visit = (node: unknown) => {
+    if (typeof node !== 'object' || node === null) return;
+    const value = node as Record<string, unknown>;
+    // XGrammar rejects pattern combined with string-length constraints. Keep
+    // the pattern on the wire; the original schema still validates both below
+    // and supplies all constraints in the model's system prompt.
+    if (typeof value.pattern === 'string') { delete value.minLength; delete value.maxLength; }
+    for (const child of Object.values(value)) visit(child);
+  };
+  visit(grammar);
+  return grammar;
+}
+
 /** One bounded, metered provider call. Source text never appears in propagated errors. */
 export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bindings, ownerId: string, options: {
   name: string; system: string; input: unknown; schema: Schema; images?: { id: string; jpegBase64: string }[];
@@ -33,7 +48,7 @@ export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bin
     const model = createChatModel(env, { timeoutMs: llmTimeoutMs(env), maxTokens: 8000, purpose: 'skill_generation', costLedger: ledger });
     invoked = true;
     const message = await model.invoke([new SystemMessage(system), new HumanMessage(options.images?.length ? { content: [{ type: 'text', text: input }, ...options.images.flatMap(image => [{ type: 'text' as const, text: `frame_id=${image.id}` }, { type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${image.jpegBase64}`, detail: 'high' as const } }])] } : input)], {
-      response_format: workersAi && !options.structuredOutput ? { type: 'json_object' } : { type: 'json_schema', json_schema: { name: options.name, strict: true, schema } },
+      response_format: workersAi && !options.structuredOutput ? { type: 'json_object' } : { type: 'json_schema', json_schema: { name: options.name, strict: true, schema: workersAi ? workersAiGrammarSchema(schema) : schema } },
     });
     assertCompletedAnswer(message);
     const value = options.schema.parse(JSON.parse(message.text));
