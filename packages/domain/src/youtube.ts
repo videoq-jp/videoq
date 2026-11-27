@@ -9,6 +9,13 @@ const VALID_HOSTS = new Set([
 
 export const INVALID_YOUTUBE_URL_MESSAGE = "Invalid YouTube URL.";
 
+/** Read only the two needed segments; avoid trailing-slash regex backtracking. */
+function youtubePathSegments(path: string): string[] {
+  let start = 0;
+  while (path[start] === '/') start++;
+  return path.slice(start).split('/', 2);
+}
+
 export type YoutubeUrlParts = { protocol: string; host: string; pathname: string; videoQuery: string | null };
 export function youtubeVideoIdFromParts(parsed: YoutubeUrlParts): string | null {
   const scheme = parsed.protocol.replace(/:$/, "");
@@ -20,11 +27,11 @@ export function youtubeVideoIdFromParts(parsed: YoutubeUrlParts): string | null 
   const path = parsed.pathname;
   let candidate = "";
   if (host.endsWith("youtu.be")) {
-    candidate = path.replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
+    candidate = youtubePathSegments(path)[0] ?? "";
   } else if (path === "/watch") {
     candidate = parsed.videoQuery ?? "";
   } else if (path.startsWith("/embed/") || path.startsWith("/shorts/")) {
-    candidate = path.replace(/^\/+|\/+$/g, "").split("/")[1] ?? "";
+    candidate = youtubePathSegments(path)[1] ?? "";
   }
 
   const stripped = candidate.replace(/[-_]/g, "");
