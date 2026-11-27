@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-28",
+  "scope": "Initial Skill synthesis and bounded revision use constrained output; no semantic-quality claim",
+  "failedBuild": {
+    "state": "failed",
+    "attempts": 5,
+    "savedPlanningSteps": 89,
+    "sourceChunks": 905,
+    "publishedCandidates": 0,
+    "privateDiagnosticSha256": "c24209cfb2d8593dad18d6ed9cb0f7622f865c039ffc47ecd35545394a60f724"
+  },
+  "cause": {
+    "responses": 3,
+    "rejectedField": "useWhen",
+    "maximumItems": 12,
+    "finishReason": "stop",
+    "privateShapeDiagnosticSha256": "aaac64cb2bfd96dc00ec1d52a3a1635340e54437dc5a6590857269b5a267a089"
+  },
+  "change": {
+    "synthesisStructuredOutput": true,
+    "revisionStructuredOutput": true,
+    "serverValidationUnchanged": true,
+    "promptsAndSourceFactsUnchanged": true,
+    "automaticFallback": false
+  },
+  "syntheticProbe": {
+    "requests": 1,
+    "facts": 21,
+    "accepted": true,
+    "useWhenItems": 1,
+    "originalSchemaSha256": "5b3470da6f89bf7b5e51a1a6efbc02d53effed214e9f107126fdbb8760a997dc",
+    "wireSchemaSha256": "b072ac3847d98f227f9ac0761f8f6627752ab2a6e5e1bb4ed38752588e91ccda",
+    "privateResultSha256": "f75b520f65f79698e62fb033bd8d291c1c13b54449eee02dbb930fe34a5e51a7",
+    "quotaBefore": 986,
+    "quotaAfter": 987,
+    "quotaLimit": 1000,
+    "jobAndCacheUnchanged": true
+  },
+  "verification": {
+    "initialRed": {
+      "failed": 1,
+      "passed": 13
+    },
+    "focusedRegression": {
+      "passed": 72,
+      "files": 8
+    },
+    "apiTypecheckConfigurations": 3,
+    "changedFilesLint": "passed",
+    "remoteCiForThisChange": "not yet run"
+  },
+  "capacityEstimate": {
+    "method": "Unchanged generator and89 saved classification steps with explicitly synthetic unsaved placeholders; not real Skills or semantic assessments",
+    "tasks": 222,
+    "mechanicallyEligibleTasks": 30,
+    "heldTasks": 192,
+    "minimumNewBuildCalls": 149,
+    "maximumPlannedCalls": 269,
+    "proposedOwnerLimit": 1300,
+    "perBuildLimitRemains": 1000,
+    "additionalPermissionNotYetGranted": true,
+    "privateReportSha256": "24471fc8296cb94766354d32c76000ef39e0c79c7e7c7426a5a5cc13c102c6b3"
+  },
+  "sourceHashes": [
+    {
+      "path": "apps/api/src/integrations/course-skill-drafts.ts",
+      "sha256": "11846303e72d7c70dfef893148743a2ce5f14127664e8f15bfd4ee1caa55cfa8"
+    },
+    {
+      "path": "apps/api/test/course-skill-plan-adapter.test.ts",
+      "sha256": "50f0c8d55dbafbfa3bfa83004a4169929c70876f76f1164a03b1f9e6bc1ca384"
+    }
+  ],
+  "productionWrites": 0,
+  "published": false
+}

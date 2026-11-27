@@ -48,6 +48,20 @@ it('bounds overlong proposed names without merging distinct task names', async (
 });
 
 const wireDraft = { slug: 'review-retry', title: 'Review retries', description: 'Inspect retry guarantees.', useWhen: ['Changing retries'], doNotUseWhen: [], criteria: [{ decision: 'Establish identity', factIds: ['f0'] }], steps: [{ action: 'Inspect the request', expectedResult: 'Known identity', factIds: ['f1'] }], exceptions: [{ condition: 'External effect', behavior: 'Check external guarantees', factIds: ['f0'] }], checks: [{ check: 'Repeat concurrently', factIds: ['f2'] }], examples: [{ situation: 'Repeat request', application: 'Keep identity', factIds: ['f1'] }] };
+it('constrains synthesis and revision without accepting over-limit applicability lists', async () => {
+  const names: string[] = [];
+  const generate: typeof generateCourseSkillJson = async (_env, _owner, options) => {
+    names.push(options.name);
+    expect(options.structuredOutput).toBe(true);
+    expect(options.schema.safeParse({ ...wireDraft, useWhen: Array.from({ length: 13 }, () => 'Condition') }).success).toBe(false);
+    return options.schema.parse(wireDraft);
+  };
+  const deps = courseSkillDraftDependencies({} as Bindings, 'owner', 'ja', generate);
+  const task = { skillId: 'task', slug: 'review-retry', objective: 'Review retries', factIds: facts.map(f => f.id) };
+  const draft = await deps.synthesize(task, facts);
+  expect((await deps.revise!(task, facts, draft, ['Preserve applicability'], 1)).steps[0].factIds).toEqual(['fact-1']);
+  expect(names).toEqual(['skill_draft', 'skill_draft_revision']);
+});
 it('round-trips compact model references while preserving stored source IDs', async () => {
   const generate: typeof generateCourseSkillJson = async (_env, _owner, options) => {
     const input = options.input as { facts: { id: string }[]; task?: { factIds: string[] }; draft?: typeof wireDraft };
