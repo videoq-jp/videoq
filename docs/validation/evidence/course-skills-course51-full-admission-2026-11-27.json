@@ -1,0 +1,17 @@
+{
+  "courseId": 51,
+  "videos": 177,
+  "readyVideos": 177,
+  "unreadyVideos": [],
+  "rawCharacters": 5794028,
+  "spokenCharacters": 2424399,
+  "chunks": 905,
+  "cues": 93797,
+  "maxChunksPerVideo": 20,
+  "minimumUncachedTextExtractionCalls": 905,
+  "buildCallLimit": 1000,
+  "modelCalls": 0,
+  "productionWrites": 0,
+  "scope": "Admission and splitting only; no generation or semantic quality claim",
+  "snapshotSha256": "2b80df87b31beef9a4a4c145b91f38576c5944fa40c1209add2f0d479f57bf0e"
+}
