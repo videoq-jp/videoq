@@ -1628,6 +1628,110 @@
           "purl": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
         }
       }
+    },
+    {
+      "type": "ubuntu",
+      "origin": "kernel-headers-exact-files",
+      "status": "not_affected",
+      "impactStatement": "These 34 exact primary CVE records affect kernel implementation files absent from the verified user-space linux-libc-dev header/document inventory; the package contains no running kernel binary or modules. Exact package/version/PURL/locations and all 990 file hashes/modes are required. The host kernel remains operator-managed and unassessed; no patch or host safety claim.",
+      "references": [
+        "apps/inference/vllm/security/kernel-20261127-additional-review.json"
+      ],
+      "vulnerabilities": [
+        "CVE-2026-99676",
+        "CVE-2026-99678",
+        "CVE-2026-99758",
+        "CVE-2026-99679",
+        "CVE-2026-99754",
+        "CVE-2026-99792",
+        "CVE-2026-99744",
+        "CVE-2026-99760",
+        "CVE-2026-99794",
+        "CVE-2026-99804",
+        "CVE-2026-99677",
+        "CVE-2026-99661",
+        "CVE-2026-99710",
+        "CVE-2026-99675",
+        "CVE-2026-99784",
+        "CVE-2026-99753",
+        "CVE-2026-99722",
+        "CVE-2026-99709",
+        "CVE-2026-99690",
+        "CVE-2026-99657",
+        "CVE-2026-99672",
+        "CVE-2026-99688",
+        "CVE-2026-99697",
+        "CVE-2026-99706",
+        "CVE-2026-99762",
+        "CVE-2026-99755",
+        "CVE-2026-99775",
+        "CVE-2026-99730",
+        "CVE-2026-99735",
+        "CVE-2026-99707",
+        "CVE-2026-99761",
+        "CVE-2026-99659",
+        "CVE-2026-99725",
+        "CVE-2026-99773"
+      ],
+      "packages": {
+        "linux-libc-dev": {
+          "version": "6.8.0-147.147",
+          "purl": "pkg:deb/ubuntu/linux-libc-dev@6.8.0-147.147?arch=amd64&distro=ubuntu-24.04"
+        }
+      }
+    },
+    {
+      "type": "binary",
+      "origin": "masked-native",
+      "status": "not_affected",
+      "vulnerabilities": [
+        "CVE-2026-135706",
+        "CVE-2026-135709"
+      ],
+      "packages": {
+        "ffmpeg": {
+          "version": "8.1.1",
+          "purl": "pkg:generic/ffmpeg@8.1.1",
+          "locations": [
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62.28.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62.3.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11.14.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62.12.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60.26.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6.3.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavcodec-c4204469.so.62.28.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavformat-4762a711.so.62.12.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavutil-befbbc48.so.60.26.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libswresample-2dfded3b.so.6.3.101"
+          ]
+        }
+      },
+      "impactStatement": "Only these 2 exact FFmpeg 8.1.1 CVEs at 26 reviewed masked paths are excluded from this serving namespace. Actual-image denial of absolute native loads, complete current runtime proof and separate locked FFmpeg 9.1 audio scan remain mandatory. No patch, unreviewed library path or future CVE is accepted.",
+      "references": [
+        "apps/inference/vllm/security/masked-ffmpeg-20261127-additional-review.json",
+        "https://raw.githubusercontent.com/CVEProject/cvelistV5/b0cd7b5412b9aa02e40e3ab97d536b87dc57f8bc/cves/2026/135xxx/CVE-2026-135706.json",
+        "https://raw.githubusercontent.com/CVEProject/cvelistV5/b0cd7b5412b9aa02e40e3ab97d536b87dc57f8bc/cves/2026/135xxx/CVE-2026-135709.json"
+      ],
+      "exactFindingReview": [
+        "CVE-2026-135706",
+        "CVE-2026-135709"
+      ]
     }
   ],
   "runtimeEnv": {
@@ -2337,5 +2441,15 @@
     "file": "masked-ffmpeg-20261126-review.json",
     "sha256": "175f5b824a64068339903557c77cc871ef8bbc1b265b86050aa138b1e985f23a",
     "count": 11
+  },
+  "additionalKernelAffectedFileReview": {
+    "file": "kernel-20261127-additional-review.json",
+    "sha256": "d6bf6f0b3d46b90e1ab11c8e12efae1b705b194f35ea8252533128d7702953d7",
+    "count": 34
+  },
+  "additionalMaskedFfmpegReview": {
+    "file": "masked-ffmpeg-20261127-additional-review.json",
+    "sha256": "f8e8699cf9651cb208a859a247a814df9a3566e853ad5590652e21f942897753",
+    "count": 2
   }
 }

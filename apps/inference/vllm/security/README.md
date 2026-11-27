@@ -186,3 +186,39 @@ exclusion, not complete native filter tracing or an upstream patch claim.
 The proof covers CPU imports/preprocessing, not GPU/full-model execution or the
 host kernel. JSON equality is not artifact authentication: the caller must use
 the protected trusted native workflow and verify its source/run provenance.
+
+## 2026-11-27 additional findings and release recovery
+
+Issue #1754 tracks the separate release failure at main `6ea74c9b`, run
+`45966108942`, job `140395168535`, attempt 1. The unsuppressed scan added 34
+`linux-libc-dev 6.8.0-147.147` CVEs and two FFmpeg 8.1.1 CVEs
+(`CVE-2026-135706`, `CVE-2026-135709`). The actual audio overlay scan had zero
+matches and zero ignored matches. The inventory and complete native runtime
+checks passed; the job failed only at the unassessed-finding gate.
+
+The two additional review files preserve the original 75 kernel and 11 masked
+FFmpeg reviews unchanged. They retain all 36 new primary CVE JSON records and
+hashes from CVEProject commit `b0cd7b5412b9aa02e40e3ab97d536b87dc57f8bc`.
+The 34 kernel implementation/internal-header paths are absent from the exact
+990-file user-space header inventory, including `io_uring/io-wq.c` and internal
+`include/asm-generic/tlb.h`. Host-kernel applicability remains outside this
+package-content review. The two FFmpeg findings have exactly the same 26 masked
+locations; they require the complete current denial/mapping proof and never
+approve findings in the separately scanned loaded FFmpeg 9.1 audio overlay.
+
+Artifact `15183042431` has GitHub digest
+`sha256:23d2e89ed0c1e3067562b17ee49b98560a14aaea391175ce50f6c29ea272e112`.
+The downloaded ZIP matches that digest and all 19 downloaded files. Its actual
+native inventory and runtime check set exactly match the existing current
+proof. Replaying the retained raw scan with all ten actual Helm renders accepts
+1,015 priority findings for this exact workload, with zero unassessed image or
+audio findings. All 7,597 raw image matches are retained without suppression.
+This replay is recorded under `additionalFindingReview20261127` in the
+verification record; it is not a successful new signed release.
+
+Changed CVEs, aliases, versions, PURLs, scanner locations, native files, mounts,
+commands or proof fail closed. The additional reviews retain the existing
+expiry of `2026-12-10T21:05:42.246607+00:00`; extending the global policy alone
+cannot renew them. Fresh normal On-prem Release, signature/publication, staging
+and CPU acceptance are tracked in #1754. Customer production promotion and
+upgrades still require their operator's action.
