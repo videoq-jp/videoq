@@ -57,6 +57,8 @@ describe('source-derived subtitle quotations', () => {
       ...(options.name === 'course_visual_knowledge' ? { visualEvidence: [{ frameId: options.input.frames[0].id, observation: 'A clock dependency is visible.' }] } : {}),
     }] }));
     await extractCourseSkillKnowledge(env, { ...input, maxModelCalls: 2 });
+    expect(generate.mock.calls.find(call => call[2].name === 'course_visual_knowledge')![2].system).toContain('in Japanese');
+    expect(generate.mock.calls.find(call => call[2].name === 'course_visual_knowledge')![2]).toMatchObject({ structuredOutput: true, input: { frames: [{ cueIds: ['cue-0', 'cue-1'] }] } });
     const saved = repository.save.mock.calls.at(-1)![2] as SkillKnowledgeChunk;
     expect(saved.facts[0].status).toBe('supported');
     expect(saved.facts[0].evidence[1]).toEqual({ cueId: 'cue-1', quote: '依存する時刻を固定する' });

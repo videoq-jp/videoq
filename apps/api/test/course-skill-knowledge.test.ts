@@ -27,6 +27,15 @@ describe('subtitle-backed knowledge', () => {
     await expect(consume('invalid subtitle')).rejects.toThrow('SKILL_INVALID_SUBTITLES');
     await expect(consume('1\n00:00:01,000 --> 00:00:02,000\n' + 'x'.repeat(500))).rejects.toThrow('SKILL_SUBTITLE_CUE_TOO_LARGE');
   });
+  it('rejects known frames outside the cited cue windows, including gaps between citations', () => {
+    const cues = [{ id: 'cue-0', startMs: 913000, endMs: 949000, text: '再試行には冪等性が必要 😀' }, { id: 'cue-1', startMs: 1097000, endMs: 1175000, text: '後の説明' }];
+    const frames = [774000, 910999, 911000, 951000, 951001, 1010000, 1095000].map(timestampMs => ({ id: String(timestampMs), timestampMs }));
+    const reviewed = (timestamp: number, both = false) => ({ ...fact(), evidence: both ? [...fact().evidence, { cueId: 'cue-1', quote: '後の説明' }] : fact().evidence, requiresVisualEvidence: true, visualEvidence: [{ frameId: String(timestamp), observation: 'Visible source detail' }] });
+    for (const timestamp of [774000, 910999, 951001, 1010000]) expect(() => verifySkillKnowledge([reviewed(timestamp)], cues, frames)).toThrow('SKILL_INVALID_VISUAL_EVIDENCE');
+    for (const timestamp of [911000, 951000]) expect(() => verifySkillKnowledge([reviewed(timestamp)], cues, frames)).not.toThrow();
+    expect(() => verifySkillKnowledge([reviewed(1010000, true)], cues, frames)).toThrow('SKILL_INVALID_VISUAL_EVIDENCE');
+    expect(() => verifySkillKnowledge([reviewed(1095000, true)], cues, frames)).not.toThrow();
+  });
   it('reuses extracted chunks after interruption and holds visual-dependent claims', async () => {
     const cache = new Map<string, SkillKnowledgeChunk>();
     let calls = 0;
@@ -68,11 +77,16 @@ describe('subtitle-backed knowledge', () => {
       extractVisual: async () => { visualCalls++; return [{ ...fact(), requiresVisualEvidence: true, visualEvidence: [{ frameId: 'frame-1', observation: 'An idempotency key is shown.' }] }]; },
     };
     expect((await extractSkillKnowledge(deps, input)).status).toBe('budget_exhausted');
+    const baseKey = [...cache.keys()][0], baseChunk = cache.get(baseKey)!;
+    const legacyVisualKey = JSON.stringify({ key: baseKey, visualRevision: input.source.visualRevision, frames: frames.map(({ id, timestampMs }) => ({ id, timestampMs })) });
+    cache.set(legacyVisualKey, { ...baseChunk, frames: [{ id: 'frame-1', timestampMs: 2000 }], facts: [{ ...baseChunk.facts[0], claim: 'Old interpretation without temporal validation' }] });
     const result = await extractSkillKnowledge(deps, input);
     expect(result.status).toBe('completed');
     expect(subtitleCalls).toBe(1); expect(visualCalls).toBe(1);
     const chunk = cache.get(result.keys[0])!;
     expect(chunk.facts[0].status).toBe('supported');
+    expect(result.keys[0]).not.toBe(legacyVisualKey);
+    expect(cache.has(legacyVisualKey)).toBe(true);
     expect(chunk.frames).toEqual([{ id: 'frame-1', timestampMs: 2000 }]);
     expect(JSON.stringify([...cache.values()])).not.toContain('PRIVATE_IMAGE_BYTES');
     await extractSkillKnowledge(deps, input);

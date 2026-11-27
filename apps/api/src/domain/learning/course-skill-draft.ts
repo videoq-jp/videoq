@@ -1,5 +1,5 @@
 import type { SkillDraft } from '@videoq/domain/agent-skills';
-import type { SkillKnowledgeChunk } from './skill-knowledge';
+import { verifySkillKnowledge, type SkillKnowledgeChunk } from './skill-knowledge';
 
 export type SupportedSkillFact = SkillKnowledgeChunk['facts'][number] & { videoId: number; analysisRevision: string; cues: SkillKnowledgeChunk['cues']; frames?: SkillKnowledgeChunk['frames'] };
 export type SkillTask = { skillId: string; slug: string; objective: string; factIds: string[] };
@@ -13,6 +13,9 @@ export function supportedSkillFacts(chunks: readonly SkillKnowledgeChunk[]): Sup
   return [...byId.values()];
 }
 export function validateSkillDraft(draft: SkillDraft, facts: readonly SupportedSkillFact[]): void {
+  // Also fence saved candidates produced before the current visual policy.
+  // Rendering runs again before approval/publication, even for an old draft.
+  for (const fact of facts) if (fact.visualEvidence?.length) verifySkillKnowledge([fact], fact.cues, fact.frames ?? []);
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug) || draft.slug.length > 40) throw new Error('INVALID_SKILL_SLUG');
   if (!draft.title.trim() || !draft.description.trim() || !draft.useWhen.length || !draft.criteria.length || !draft.steps.length || !draft.checks.length) throw new Error('SKILL_INCOMPLETE_TASK');
   if (draft.description.length > 1024) throw new Error('SKILL_DESCRIPTION_TOO_LARGE');

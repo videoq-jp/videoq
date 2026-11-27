@@ -15,18 +15,28 @@ export type SkillKnowledgeChunk = {
   model: string; promptVersion: string;
   frames?: { id: string; timestampMs: number }[];
 };
+/** Invalidates visual interpretations made before per-claim time checks. */
+export const SKILL_VISUAL_EVIDENCE_POLICY_VERSION = 'cue-window-v1';
 
 /** Accept only claims with exact evidence in the server-selected subtitle window. */
 export function verifySkillKnowledge(facts: SkillKnowledge[], cues: readonly SkillCue[], frames: readonly { id: string; timestampMs: number }[] = []): void {
   const byId = new Map(cues.map(c => [c.id, c]));
   if (facts.length > 40) throw new Error('SKILL_TOO_MANY_FACTS');
-  const frameIds = new Set(frames.map(f => f.id));
+  const byFrameId = new Map(frames.map(f => [f.id, f]));
   for (const fact of facts) {
-    if (fact.visualEvidence?.some(e => !frameIds.has(e.frameId) || !e.observation.trim())) throw new Error('SKILL_INVALID_VISUAL_EVIDENCE');
     if (!fact.claim.trim() || fact.evidence.length === 0) throw new Error('SKILL_UNSUPPORTED_FACT');
     for (const evidence of fact.evidence) {
       const cue = byId.get(evidence.cueId);
       if (!cue || !evidence.quote.trim() || !cue.text.includes(evidence.quote)) throw new Error('SKILL_INVALID_EVIDENCE');
+    }
+    for (const evidence of fact.visualEvidence ?? []) {
+      const frame = byFrameId.get(evidence.frameId);
+      // Match the reader's two-second margin, but apply it to this fact's
+      // cited cues rather than the entire chunk or gaps between those cues.
+      if (!frame || !evidence.observation.trim() || !fact.evidence.some(e => {
+        const cue = byId.get(e.cueId)!;
+        return frame.timestampMs >= cue.startMs - 2000 && frame.timestampMs <= cue.endMs + 2000;
+      })) throw new Error('SKILL_INVALID_VISUAL_EVIDENCE');
     }
   }
 }

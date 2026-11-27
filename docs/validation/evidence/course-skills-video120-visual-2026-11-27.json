@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "scope": {
+    "videoId": 120,
+    "uploaded": true,
+    "existingCacheReused": true,
+    "availableOverviewFrames": 236,
+    "sampledFrames": 8,
+    "sourceExtractionRepeated": false,
+    "productionWrites": 0,
+    "published": false
+  },
+  "initialGeneration": {
+    "provider": "Workers AI",
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "calls": 4,
+    "subtitleChunks": 3,
+    "visualChunks": 1,
+    "visualFactsWithReferences": 4
+  },
+  "initialAiReview": {
+    "decision": "ai-reviewed",
+    "humanAssessmentRecorded": false,
+    "model": "gpt-6.1-sol",
+    "clientVersion": "codex-cli 0.167.1",
+    "freshProcesses": 1,
+    "toolCalls": 0,
+    "elapsedMs": 27783,
+    "usage": [
+      {
+        "input_tokens": 23629,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1148,
+        "reasoning_output_tokens": 105
+      }
+    ],
+    "claimsSupported": 6,
+    "claimsTotal": 6,
+    "visualObservationsSupported": 2,
+    "visualObservationsUnverifiable": 2,
+    "visualObservationsApplicable": 4,
+    "requestedLanguageMet": 0,
+    "packetSha256": "51b0814ecbe611675128bc90b2982cabff00197b680786643b2d148daed7021d",
+    "protocolSha256": "4e124dbd52a290c8c38a93ce9508c077f679fdefcf2e31c927a7d4853a3aff5f",
+    "resultSha256": "2795828b83afdebf1771dee086ec6ee223b5f7cbbde6b7796552533a4e14f625",
+    "eventsSha256": "f5e5b2153479a59fbb2815a1af74b465357a38f6ef250ab7c0dd56b95b304afa"
+  },
+  "correction": {
+    "visualPolicyVersion": "cue-window-v1",
+    "perFactCueMarginMs": 2000,
+    "oldCacheReused": false,
+    "oldCacheDeleted": false,
+    "rejectedOldVisualReferences": 2,
+    "subtitleChunksRevalidated": 3,
+    "quotaBeforeNextProductionPathCheck": 6,
+    "schemaProbe": {
+      "id": "7d918d43-eaaa-4893-aca7-3c08cd8a12d4",
+      "calls": 1,
+      "schemaPassed": true,
+      "timePassed": true,
+      "before": {
+        "used_ai_answers": 5
+      },
+      "after": {
+        "used_ai_answers": 6
+      },
+      "guardChecks": 3,
+      "productionWrites": 0,
+      "cacheWrites": 0,
+      "localRuntimeClosed": true
+    }
+  },
+  "limitations": [
+    "AI review is not human review or proof of general visual grounding accuracy.",
+    "Temporal matching rejects unrelated times but cannot prove an observation is visually true.",
+    "The first sample and judgments are preserved; fixes and subsequent generation are a separate post-hoc validation, not replacements for the original result.",
+    "Private local validation used bounded reads of exact versioned R2 packs through a read-only local bucket adapter; the Cloudflare object REST endpoint ignored Range. This is not a production R2-binding transport test.",
+    "Whole-video and whole-course generation quality remain incomplete."
+  ],
+  "correctedProductionPathSample": {
+    "generationInvocationId": "787452aa-9cbb-467c-9463-0c8cdf40d752",
+    "meteredCumulativeCalls": 7,
+    "newPolicyVisualChunks": 1,
+    "legacyVisualChunksRetained": 1,
+    "sourceAndTemporalValidationPassed": true,
+    "imageBytesPersistedInKnowledge": false
+  },
+  "correctedAiReview": {
+    "decision": "ai-reviewed",
+    "humanAssessmentRecorded": false,
+    "model": "gpt-6.1-sol",
+    "clientVersion": "codex-cli 0.167.1",
+    "freshProcesses": 1,
+    "toolCalls": 0,
+    "elapsedMs": 24726,
+    "usage": [
+      {
+        "input_tokens": 23909,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 983,
+        "reasoning_output_tokens": 111
+      }
+    ],
+    "claimsSupported": 5,
+    "claimsUnverifiable": 1,
+    "claimsTotal": 6,
+    "visualObservationsSupported": 3,
+    "visualObservationsUnsupported": 1,
+    "visualObservationsApplicable": 4,
+    "requestedLanguageMet": 6,
+    "packetSha256": "f20f432d406dd5f36c8c8cf9823e06ee8840a3c7323851011bf893750db09256",
+    "protocolSha256": "f44691fb5246fd8655cf129cea909ff5da0768fdb199f3e45b1488ddfc931bdd",
+    "resultSha256": "eb3fa6b995c14fec497591ee0d892039cea98bf3e092ab3e6d87b6933cf89a88",
+    "eventsSha256": "9dad5cef4c51ab6cee469bb6bb7edd6a03867134e5e046cdab11c95abdc43dad",
+    "method": "Same rubric, a new generation and fresh grading process after correction. Initial results retained; not a causal or population-level improvement estimate."
+  },
+  "remainingQualityIssues": [
+    "A concrete example was generalized beyond what its cited subtitle establishes.",
+    "One temporally valid frame shows a different slide and does not support its generated visual observation.",
+    "Bounded uniform sampling can miss an important demonstration despite a prepared cache."
+  ],
+  "videoExtractionProgress": {
+    "videosProcessed": 1,
+    "videosTotal": 1,
+    "phase": "planning",
+    "meteredCumulativeCalls": 9,
+    "storedSubtitleChunks": 3,
+    "storedVisualChunksUnderNewPolicy": 2,
+    "legacyVisualChunksRetained": 1,
+    "published": false
+  }
+}

@@ -1,4 +1,4 @@
-import { skillTranscriptChunks, verifySkillKnowledge, type SkillKnowledge, type SkillKnowledgeChunk } from '../../domain/learning/skill-knowledge';
+import { skillTranscriptChunks, verifySkillKnowledge, SKILL_VISUAL_EVIDENCE_POLICY_VERSION, type SkillKnowledge, type SkillKnowledgeChunk } from '../../domain/learning/skill-knowledge';
 import type { CourseSkillKnowledgeRepository, SkillBuildLease } from '../../persistence/contracts/course-skill-knowledge-repository';
 import type { CourseSkillSource } from '../../persistence/contracts/course-skill-input-repository';
 
@@ -48,7 +48,7 @@ export async function extractSkillKnowledge(
     if (cached.facts.some(f => f.requiresVisualEvidence) && deps.visuals && deps.extractVisual) {
       const frames = await deps.visuals(chunk.cues, cached.facts);
       if (frames.length) {
-        const visualKey = await deps.hash(JSON.stringify({ key, visualRevision: input.source.visualRevision, frames: frames.map(({ id, timestampMs }) => ({ id, timestampMs })) }));
+        const visualKey = await deps.hash(JSON.stringify({ key, visualRevision: input.source.visualRevision, visualPolicyVersion: SKILL_VISUAL_EVIDENCE_POLICY_VERSION, frames: frames.map(({ id, timestampMs }) => ({ id, timestampMs })) }));
         if (!await deps.repository.cached(input.lease, visualKey, deps.now())) {
           if (calls >= input.maxModelCalls) return { status: 'budget_exhausted' as const, keys, modelCalls: calls };
           await deps.beforeModel(); calls++;

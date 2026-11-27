@@ -13,6 +13,13 @@ const draft: SkillDraft = { slug: 'review-retry', title: '再試行をレビュ�
 const deps: SkillDraftDependencies = { id: () => 'server-id', plan: () => Promise.resolve({ proposals: [{ existingSkillId: null, slug: draft.slug, objective: '再試行をレビューする', factIds: chunk.facts.map(f => f.id) }], issues: [] }), synthesize: () => Promise.resolve(draft), audit: () => Promise.resolve({ supported: true, issues: [] }) };
 
 describe('task-based course skills', () => {
+  it('refuses to render a saved candidate with a known frame outside its cited cue', () => {
+    const facts = supportedSkillFacts([chunk]);
+    facts[0] = { ...facts[0], requiresVisualEvidence: true, frames: [{ id: 'known-frame', timestampMs: 60000 }], visualEvidence: [{ frameId: 'known-frame', observation: 'Visible detail' }] };
+    expect(() => renderCourseSkill(7, draft, facts)).toThrow('SKILL_INVALID_VISUAL_EVIDENCE');
+    facts[0].frames = [{ id: 'known-frame', timestampMs: 1500 }];
+    expect(() => renderCourseSkill(7, draft, facts)).not.toThrow();
+  });
   it('generates an actionable draft with deterministic source files', async () => {
     const result = await generateCourseSkillDrafts(deps, [chunk]);
     expect(result.candidates).toHaveLength(1);
