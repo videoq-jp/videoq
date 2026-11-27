@@ -237,5 +237,31 @@
       "eventsSha256": "f7a591fc6a2bb3c547b192e02e50ca6a76f3719b8fcb0605046e06629b5f78b5"
     },
     "interpretation": "The previously missed quantization demonstration is now covered. The overall sample score is unchanged; another claim cites the wrong supplied frame. This is a post-hoc functional/quality sample, not an efficacy estimate. No original trial or judgment was overwritten."
+  },
+  "sameModelAuditDiagnostic": {
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "sameAsGenerator": true,
+    "independentAssessment": false,
+    "calls": 1,
+    "schemaPassed": true,
+    "sourceGuardChecks": 3,
+    "before": {
+      "used_ai_answers": 10
+    },
+    "after": {
+      "used_ai_answers": 11
+    },
+    "knownBadFactIndex": 4,
+    "claimAccepted": true,
+    "visualObservationAccepted": true,
+    "knownFailureDetected": false,
+    "integratedIntoGeneration": false,
+    "cacheWrites": 0,
+    "productionWrites": 0,
+    "localRuntimeClosed": true,
+    "packetSha256": "15e56587e58be05fc45aa594a1dfdaa54c81da5a3116dcdd6c7ec80bbbd512a5",
+    "diagnosticRunnerSha256": "0be5ead0d5eb9425df52d94a8f4315d4fba8d88a91dbeee6b3773a007c7efe74",
+    "verdictSha256": "4129c8558122f13fd33879677be5142448750da289243eea6de52b85f650f1d7",
+    "method": "One targeted post-hoc diagnostic on the preserved grouped sample; no prompt retry. Excluded from the independent Sol evaluation and original comparison."
   }
 }
