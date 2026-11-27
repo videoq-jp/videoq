@@ -28,7 +28,7 @@ it.each([
   { actorUserId: null, courseId: 0, shareSlug: null },
   { actorUserId: null, courseId: 1.5, shareSlug: null },
   { actorUserId: null, courseId: 1, shareSlug: 'shared' },
-])('rejects mixed or invalid LTI identity scopes', patch => {
+])('rejects mixed or invalid LTI identity scopes (case %#)', patch => {
   expect(() => conversationThreadInput({ ...base, ...patch, visitorSessionId: 'visitor',
     ltiSubject: { subjectKey: 'a'.repeat(64), resourceVideoIds: [1] } }, 'conversation'))
     .toThrow('Invalid LTI conversation scope');

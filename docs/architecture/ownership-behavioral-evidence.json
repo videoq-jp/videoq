@@ -1,12 +1,22 @@
 {
-  "checkedAt": "2026-11-27T05:57:25.242581+00:00",
-  "trackingIssue": 1750,
-  "scope": "Registered consumer/owner pairs only; two representative mutations per pair, not every symbol/callsite or arbitrary semantic copies.",
+  "checkedAt": "2026-11-27T09:02:47.938635+00:00",
+  "trackingIssue": 1756,
+  "originalTrackingIssue": 1750,
+  "scope": "Registered pairs only; reviewed failure witnesses and clean recovery. Not all symbols/callsites or arbitrary semantic copies. Current classifier reapplied to all raw child-process reports after targeted reruns and source/test hash verification. CI reruns every pair from its checked-out commit.",
+  "verifierSha256": {
+    "apps/api/scripts/ownership/result.mjs": "244f6bc8cb21c0911e49ebaed485da089df293367f5a1cb500ab68295a8c6119",
+    "apps/api/scripts/ownership/mutation-plugin.mjs": "9f82b3b76a94307925f07fb4d56231c5f6e9c38686e524761cf44a87fe8190a4",
+    "apps/api/scripts/ownership/completion-reporter.mjs": "5453d45ff1a8776a554e2559fd52b2be0f63b70e708534ee87350cafc1fef926",
+    "apps/worker/scripts/ownership_result.py": "0ed3a7100fffb775b3ca0bc2501da16e621da5c6c468a690b514c5cb1fb81ecd",
+    "apps/worker/scripts/ownership_controls.py": "1c7b4a0e80225a328183cad580d3dd0d27911bfd5c31d4663bd9efe56102fb4d"
+  },
+  "manifestSha256": "d7d001a9b7249561f7b0a6d3e6f2e8e3a58f10f25f3b623305e4192c84f59691",
   "summary": {
     "typescriptPairs": 50,
     "pythonPairs": 6,
     "baselinePassed": 56,
     "mutationsDetected": 112,
+    "recoveryPassed": 56,
     "baselineSkipped": 0
   },
   "results": [
@@ -30,6 +40,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 9,
           "failed": 0,
           "skipped": 0,
@@ -43,6 +54,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 9,
           "skipped": 0,
@@ -55,11 +67,17 @@
             "rejects invalid course names consistently: \"\"",
             "rejects invalid course names consistently: \"   \"",
             "rejects invalid course names consistently: \"Course\\u0000suffix\""
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/course-name-contract.test.ts",
+            "test": "rejects invalid course names consistently: \"\"",
+            "error": "Error: expected TypeError: Cannot use 'in' operator to se… to match object { kind: 'validation' }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 9,
           "skipped": 0,
@@ -72,7 +90,26 @@
             "rejects invalid course names consistently: \"\"",
             "rejects invalid course names consistently: \"   \"",
             "rejects invalid course names consistently: \"Course\\u0000suffix\""
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/course-name-contract.test.ts",
+            "test": "rejects invalid course names consistently: \"\"",
+            "error": "Error: expected TypeError: Cannot use 'in' operator to se… to match object { kind: 'validation' }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/courses/service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -96,6 +133,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 9,
           "failed": 0,
           "skipped": 0,
@@ -109,6 +147,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 8,
           "skipped": 0,
@@ -121,11 +160,17 @@
             "rejects invalid course names consistently: \"\"",
             "rejects invalid course names consistently: \"   \"",
             "rejects invalid course names consistently: \"Course\\u0000suffix\""
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/course-name-contract.test.ts",
+            "test": "rejects invalid course names consistently: \"\"",
+            "error": "TypeError: Cannot use 'in' operator to search for 'error' in undefined"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 8,
           "skipped": 0,
@@ -138,7 +183,26 @@
             "rejects invalid course names consistently: \"\"",
             "rejects invalid course names consistently: \"   \"",
             "rejects invalid course names consistently: \"Course\\u0000suffix\""
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/course-name-contract.test.ts",
+            "test": "rejects invalid course names consistently: \"\"",
+            "error": "TypeError: Cannot use 'in' operator to search for 'error' in undefined"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "packages/trpc/src/course-name.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -168,6 +232,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 26,
           "failed": 0,
           "skipped": 0,
@@ -181,6 +246,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 22,
           "failed": 4,
           "skipped": 0,
@@ -193,11 +259,17 @@
             "upload lifecycle without a runtime environment rejects invalid input and quota failures before issuing storage access",
             "direct upload application failures validates plain file metadata before reserving storage",
             "rejects NUL upload title before reservation or storage"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/video-upload-service.test.ts",
+            "test": "upload lifecycle without a runtime environment rejects invalid input and quota failures before issuing storage access",
+            "error": "AssertionError: expected { video: { id: 7, …(13) }, …(3) } to have property \"fieldError\""
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 22,
           "failed": 4,
           "skipped": 0,
@@ -210,7 +282,26 @@
             "upload lifecycle without a runtime environment rejects invalid input and quota failures before issuing storage access",
             "direct upload application failures validates plain file metadata before reserving storage",
             "rejects NUL upload title before reservation or storage"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/video-upload-service.test.ts",
+            "test": "upload lifecycle without a runtime environment rejects invalid input and quota failures before issuing storage access",
+            "error": "AssertionError: expected { video: { id: 7, …(13) }, …(3) } to have property \"fieldError\""
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/videos/upload-service.ts",
+            "mode": "baseline",
+            "sites": 10
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -240,6 +331,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 26,
           "failed": 0,
           "skipped": 0,
@@ -253,6 +345,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 25,
           "failed": 1,
           "skipped": 0,
@@ -263,11 +356,17 @@
           },
           "failedTestExamples": [
             "normalizes metadata identically and preserves the explicit single PUT boundary"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/video-metadata-contract.test.ts",
+            "test": "normalizes metadata identically and preserves the explicit single PUT boundary",
+            "error": "AssertionError: expected { success: false, …(1) } to match object { success: true, data: { …(4) } }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 25,
           "failed": 1,
           "skipped": 0,
@@ -278,7 +377,26 @@
           },
           "failedTestExamples": [
             "normalizes metadata identically and preserves the explicit single PUT boundary"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/video-metadata-contract.test.ts",
+            "test": "normalizes metadata identically and preserves the explicit single PUT boundary",
+            "error": "AssertionError: expected { success: false, …(1) } to match object { success: true, data: { …(4) } }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "packages/trpc/src/video-upload.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -302,6 +420,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 16,
           "failed": 0,
           "skipped": 0,
@@ -315,6 +434,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 8,
           "failed": 8,
           "skipped": 0,
@@ -327,11 +447,17 @@
             "answer application lifecycle without runtime adapters authorizes the course before reserving quota and supplies an atomic conversation log callback",
             "answer application lifecycle without runtime adapters refunds a failed nonstream answer only before the commit boundary: consumed=false",
             "answer application lifecycle without runtime adapters refunds a failed nonstream answer only before the commit boundary: consumed=true"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/chat-generation-service.test.ts",
+            "test": "answer application lifecycle without runtime adapters authorizes the course before reserving quota and supplies an atomic conversation log callback",
+            "error": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'ledger', 'completed', true ]"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 8,
           "failed": 8,
           "skipped": 0,
@@ -344,7 +470,26 @@
             "answer application lifecycle without runtime adapters authorizes the course before reserving quota and supplies an atomic conversation log callback",
             "answer application lifecycle without runtime adapters refunds a failed nonstream answer only before the commit boundary: consumed=false",
             "answer application lifecycle without runtime adapters refunds a failed nonstream answer only before the commit boundary: consumed=true"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/chat-generation-service.test.ts",
+            "test": "answer application lifecycle without runtime adapters authorizes the course before reserving quota and supplies an atomic conversation log callback",
+            "error": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'ledger', 'completed', true ]"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/chat/generation-service.ts",
+            "mode": "baseline",
+            "sites": 6
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -362,12 +507,13 @@
       "sourceSha256": "e12f219e8c4b15f163b2f1c72b61c350d120e9ca886a2fa9bfe8ffaba9a7bf87",
       "ownerSha256": "12666c4e1ae085740998ddad5ca4685bb36af342bc94d625f3f6b6d42866ce1d",
       "testsSha256": {
-        "test/external-evidence-service.test.ts": "b85f99c420af078cf4e7054d0e869cee6f1fa0fefe230fa2d364fc5742264d05"
+        "test/external-evidence-service.test.ts": "cd06286260d3acbdda91374ba57f9ac4f00d381c55a0349cd3f192393b84e312"
       },
       "runs": [
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 25,
           "failed": 0,
           "skipped": 0,
@@ -381,6 +527,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 17,
           "failed": 8,
           "skipped": 0,
@@ -393,11 +540,17 @@
             "reserves the authorized owner before execution, closes before refund and records non-consuming completion",
             "retains the account unit once any provider work completed, even when the tool subsequently fails",
             "cleanup cancellation does not turn an execution failure into interruption"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/external-evidence-service.test.ts",
+            "test": "reserves the authorized owner before execution, closes before refund and records non-consuming completion",
+            "error": "AssertionError: expected \"vi.fn()\" to be called once with arguments: [ { status: 'completed', …(1) } ]"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 17,
           "failed": 8,
           "skipped": 0,
@@ -410,7 +563,26 @@
             "reserves the authorized owner before execution, closes before refund and records non-consuming completion",
             "retains the account unit once any provider work completed, even when the tool subsequently fails",
             "cleanup cancellation does not turn an execution failure into interruption"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/external-evidence-service.test.ts",
+            "test": "reserves the authorized owner before execution, closes before refund and records non-consuming completion",
+            "error": "AssertionError: expected \"vi.fn()\" to be called once with arguments: [ { status: 'completed', …(1) } ]"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/external-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -439,6 +611,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 44,
           "failed": 0,
           "skipped": 0,
@@ -452,6 +625,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 17,
           "failed": 27,
           "skipped": 0,
@@ -464,11 +638,17 @@
             "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for jpy",
             "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for usd",
             "billing webhook on PostgreSQL retries the same event after a Stripe lookup failure without keeping a receipt"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/billing-webhook.integration.test.ts",
+            "test": "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for jpy",
+            "error": "AssertionError: expected 500 to be 200 // Object.is equality"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 17,
           "failed": 27,
           "skipped": 0,
@@ -481,7 +661,26 @@
             "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for jpy",
             "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for usd",
             "billing webhook on PostgreSQL retries the same event after a Stripe lookup failure without keeping a receipt"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/billing-webhook.integration.test.ts",
+            "test": "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for jpy",
+            "error": "AssertionError: expected 500 to be 200 // Object.is equality"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 44,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/billing/service.ts",
+            "mode": "baseline",
+            "sites": 4
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -505,6 +704,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 16,
           "failed": 0,
           "skipped": 0,
@@ -518,6 +718,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 9,
           "failed": 7,
           "skipped": 0,
@@ -530,11 +731,17 @@
             "D1 cloud account deletion deletes media pointers with durable storage/vector cleanup before removing the user, preserving other owners",
             "D1 cloud account deletion purges NO ACTION business ownership and cascades native auth and conversation memory",
             "D1 cloud account deletion rolls back final business cleanup if deleting the user root fails"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/worker-account-deletion.d1.integration.test.ts",
+            "test": "D1 cloud account deletion deletes media pointers with durable storage/vector cleanup before removing the user, preserving other owners",
+            "error": "AssertionError: expected { status: 'denied' } to deeply equal { status: 'progress' }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 9,
           "failed": 7,
           "skipped": 0,
@@ -547,7 +754,26 @@
             "D1 cloud account deletion deletes media pointers with durable storage/vector cleanup before removing the user, preserving other owners",
             "D1 cloud account deletion purges NO ACTION business ownership and cascades native auth and conversation memory",
             "D1 cloud account deletion rolls back final business cleanup if deleting the user root fails"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/worker-account-deletion.d1.integration.test.ts",
+            "test": "D1 cloud account deletion deletes media pointers with durable storage/vector cleanup before removing the user, preserving other owners",
+            "error": "AssertionError: expected { status: 'denied' } to deeply equal { status: 'progress' }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/worker-account-deletion.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -571,6 +797,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 8,
           "failed": 0,
           "skipped": 0,
@@ -584,6 +811,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 5,
           "failed": 3,
           "skipped": 0,
@@ -596,11 +824,17 @@
             "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET banned=false WHERE id='owner'",
             "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'",
             "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET ban_expires=now()+interval '1 day' WHERE id='owner'"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/worker-account-deletion.postgres.integration.test.ts",
+            "test": "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET banned=false WHERE id='owner'",
+            "error": "AssertionError: expected { status: 'completed' } to deeply equal { status: 'denied' }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 5,
           "failed": 3,
           "skipped": 0,
@@ -613,7 +847,26 @@
             "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET banned=false WHERE id='owner'",
             "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'",
             "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET ban_expires=now()+interval '1 day' WHERE id='owner'"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/worker-account-deletion.postgres.integration.test.ts",
+            "test": "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET banned=false WHERE id='owner'",
+            "error": "AssertionError: expected { status: 'completed' } to deeply equal { status: 'denied' }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -637,6 +890,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 5,
           "failed": 0,
           "skipped": 0,
@@ -650,6 +904,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 4,
           "skipped": 0,
@@ -662,11 +917,17 @@
             "preserves exact role and plan projection: user,admin/pro/admin",
             "preserves exact role and plan projection: administrator/basic/plan",
             "preserves exact role and plan projection: user, admin/PRO/onprem"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/account-summary-policy.test.ts",
+            "test": "preserves exact role and plan projection: user,admin/pro/admin",
+            "error": "AssertionError: expected { is_admin: undefined, …(6) } to match object { is_admin: true, …(5) }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 4,
           "skipped": 0,
@@ -679,7 +940,26 @@
             "preserves exact role and plan projection: user,admin/pro/admin",
             "preserves exact role and plan projection: administrator/basic/plan",
             "preserves exact role and plan projection: user, admin/PRO/onprem"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/account-summary-policy.test.ts",
+            "test": "preserves exact role and plan projection: user,admin/pro/admin",
+            "error": "AssertionError: expected { is_admin: undefined, …(6) } to match object { is_admin: true, …(5) }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/account-summary.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -703,6 +983,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 77,
           "failed": 0,
           "skipped": 0,
@@ -716,6 +997,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 68,
           "failed": 9,
           "skipped": 0,
@@ -728,11 +1010,17 @@
             "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=10000000-0000-4000-8000-000000000001",
             "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=[ …(1) ]",
             "account suspension across Better Auth endpoints prevents self-demotion through /admin/update-user with userId=10000000-0000-4000-8000-000000000001"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/auth-security.test.ts",
+            "test": "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=10000000-0000-4000-8000-000000000001",
+            "error": "AssertionError: expected 200 to be 400 // Object.is equality"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 68,
           "failed": 9,
           "skipped": 0,
@@ -745,7 +1033,26 @@
             "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=10000000-0000-4000-8000-000000000001",
             "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=[ …(1) ]",
             "account suspension across Better Auth endpoints prevents self-demotion through /admin/update-user with userId=10000000-0000-4000-8000-000000000001"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/auth-security.test.ts",
+            "test": "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=10000000-0000-4000-8000-000000000001",
+            "error": "AssertionError: expected 200 to be 400 // Object.is equality"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 77,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/lib/auth-security.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -769,6 +1076,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 8,
           "failed": 0,
           "skipped": 0,
@@ -782,6 +1090,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 7,
           "failed": 1,
           "skipped": 0,
@@ -792,11 +1101,17 @@
           },
           "failedTestExamples": [
             "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/worker-account-deletion.postgres.integration.test.ts",
+            "test": "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'",
+            "error": "AssertionError: expected { status: 'completed' } to deeply equal { status: 'denied' }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 7,
           "failed": 1,
           "skipped": 0,
@@ -807,7 +1122,26 @@
           },
           "failedTestExamples": [
             "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/worker-account-deletion.postgres.integration.test.ts",
+            "test": "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'",
+            "error": "AssertionError: expected { status: 'completed' } to deeply equal { status: 'denied' }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -833,6 +1167,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 4,
           "failed": 0,
           "skipped": 0,
@@ -846,6 +1181,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 1,
           "skipped": 0,
@@ -856,11 +1192,17 @@
           },
           "failedTestExamples": [
             "returns the feature projection when a verified login issues a session"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lti-session-service.test.ts",
+            "test": "returns the feature projection when a verified login issues a session",
+            "error": "AssertionError: expected { ok: true, value: { …(5) } } to match object { ok: true, value: { …(5) } }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 1,
           "skipped": 0,
@@ -871,7 +1213,26 @@
           },
           "failedTestExamples": [
             "returns the feature projection when a verified login issues a session"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lti-session-service.test.ts",
+            "test": "returns the feature projection when a verified login issues a session",
+            "error": "AssertionError: expected { ok: true, value: { …(5) } } to match object { ok: true, value: { …(5) } }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/session-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -899,6 +1260,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 5,
           "failed": 0,
           "skipped": 0,
@@ -912,6 +1274,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 4,
           "failed": 1,
           "skipped": 0,
@@ -922,11 +1285,17 @@
           },
           "failedTestExamples": [
             "exposes current capability decisions through the operation adapter"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/learning-operation-policy.test.ts",
+            "test": "exposes current capability decisions through the operation adapter",
+            "error": "AssertionError: expected undefined to be true // Object.is equality"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 4,
           "failed": 1,
           "skipped": 0,
@@ -937,7 +1306,26 @@
           },
           "failedTestExamples": [
             "exposes current capability decisions through the operation adapter"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/learning-operation-policy.test.ts",
+            "test": "exposes current capability decisions through the operation adapter",
+            "error": "AssertionError: expected undefined to be true // Object.is equality"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/operation-policy.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -963,6 +1351,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 4,
           "failed": 0,
           "skipped": 0,
@@ -976,6 +1365,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 1,
           "skipped": 0,
@@ -986,11 +1376,17 @@
           },
           "failedTestExamples": [
             "distinguishes a co-teacher moderation grant from the owner history grant"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/classroom-authorization-service.test.ts",
+            "test": "distinguishes a co-teacher moderation grant from the owner history grant",
+            "error": "AssertionError: expected { ownerHistory: undefined, …(2) } to match object { ownerHistory: false, …(1) }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 1,
           "skipped": 0,
@@ -1001,7 +1397,26 @@
           },
           "failedTestExamples": [
             "distinguishes a co-teacher moderation grant from the owner history grant"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/classroom-authorization-service.test.ts",
+            "test": "distinguishes a co-teacher moderation grant from the owner history grant",
+            "error": "AssertionError: expected { ownerHistory: undefined, …(2) } to match object { ownerHistory: false, …(1) }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/classroom/authorization-service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1025,6 +1440,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 59,
           "failed": 0,
           "skipped": 0,
@@ -1038,6 +1454,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 46,
           "failed": 13,
           "skipped": 0,
@@ -1050,11 +1467,17 @@
             "Moodle synchronization using existing VideoQ accounts needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance",
             "Moodle synchronization using existing VideoQ accounts disconnects only a teacher's course while retaining the school installation and all learning data",
             "Moodle synchronization using existing VideoQ accounts uses the native deployment policy and removes YouTube grants when that feature is unavailable"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lms-sync.integration.test.ts",
+            "test": "Moodle synchronization using existing VideoQ accounts needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance",
+            "error": "TypeError: Cannot read properties of undefined (reading 'some')"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 46,
           "failed": 13,
           "skipped": 0,
@@ -1067,7 +1490,26 @@
             "Moodle synchronization using existing VideoQ accounts needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance",
             "Moodle synchronization using existing VideoQ accounts disconnects only a teacher's course while retaining the school installation and all learning data",
             "Moodle synchronization using existing VideoQ accounts uses the native deployment policy and removes YouTube grants when that feature is unavailable"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lms-sync.integration.test.ts",
+            "test": "Moodle synchronization using existing VideoQ accounts needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance",
+            "error": "TypeError: Cannot read properties of undefined (reading 'some')"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 59,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/integrations/lti-registrations.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1092,6 +1534,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 3,
           "failed": 0,
           "skipped": 0,
@@ -1105,6 +1548,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 3,
           "skipped": 0,
@@ -1117,11 +1561,17 @@
             "requires a fresh course entry even when visible videos are returned",
             "intersects current authority generations with local bindings and keeps management separate",
             "uses the linked teacher-owned course and removes remote management/report privileges"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lti-course-access-service.test.ts",
+            "test": "requires a fresh course entry even when visible videos are returned",
+            "error": "Error: promise resolved \"undefined\" instead of rejecting"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 2,
           "skipped": 0,
@@ -1133,7 +1583,26 @@
           "failedTestExamples": [
             "intersects current authority generations with local bindings and keeps management separate",
             "uses the linked teacher-owned course and removes remote management/report privileges"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lti-course-access-service.test.ts",
+            "test": "intersects current authority generations with local bindings and keeps management separate",
+            "error": "AssertionError: expected undefined to match object { videos: [], …(2) }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/course-access-service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1158,6 +1627,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 5,
           "failed": 0,
           "skipped": 0,
@@ -1171,6 +1641,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 4,
           "failed": 1,
           "skipped": 0,
@@ -1181,11 +1652,17 @@
           },
           "failedTestExamples": [
             "keeps Q&A viewing, posting and moderation capabilities separate"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/learning-operation-policy.test.ts",
+            "test": "keeps Q&A viewing, posting and moderation capabilities separate",
+            "error": "AssertionError: expected undefined to be true // Object.is equality"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 4,
           "failed": 1,
           "skipped": 0,
@@ -1196,7 +1673,26 @@
           },
           "failedTestExamples": [
             "keeps Q&A viewing, posting and moderation capabilities separate"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/learning-operation-policy.test.ts",
+            "test": "keeps Q&A viewing, posting and moderation capabilities separate",
+            "error": "AssertionError: expected undefined to be true // Object.is equality"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/operation-policy.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1221,6 +1717,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 58,
           "failed": 0,
           "skipped": 0,
@@ -1234,6 +1731,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 28,
           "failed": 30,
           "skipped": 0,
@@ -1246,11 +1744,17 @@
             "d1 Q&A persistence contract keeps Moodle authority across disconnects and blocks native invitations and public shares",
             "d1 Q&A persistence contract uses separate course pseudonyms without creating users or impersonating the owner",
             "d1 Q&A persistence contract keeps native and Moodle identities separate even when their identifier strings coincide"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/qa.integration.test.ts",
+            "test": "d1 Q&A persistence contract uses a real cookie session through tRPC for posting and public reads",
+            "error": "AssertionError: expected 500 to be 200 // Object.is equality"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 28,
           "failed": 30,
           "skipped": 0,
@@ -1263,7 +1767,26 @@
             "d1 Q&A persistence contract keeps Moodle authority across disconnects and blocks native invitations and public shares",
             "d1 Q&A persistence contract uses separate course pseudonyms without creating users or impersonating the owner",
             "d1 Q&A persistence contract keeps native and Moodle identities separate even when their identifier strings coincide"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/qa.integration.test.ts",
+            "test": "d1 Q&A persistence contract uses a real cookie session through tRPC for posting and public reads",
+            "error": "AssertionError: expected 500 to be 200 // Object.is equality"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 58,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/qa-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1288,6 +1811,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 58,
           "failed": 0,
           "skipped": 0,
@@ -1301,6 +1825,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 32,
           "failed": 26,
           "skipped": 0,
@@ -1313,11 +1838,17 @@
             "postgres Q&A persistence contract keeps Moodle authority across disconnects and blocks native invitations and public shares",
             "postgres Q&A persistence contract uses separate course pseudonyms without creating users or impersonating the owner",
             "postgres Q&A persistence contract keeps native and Moodle identities separate even when their identifier strings coincide"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/qa.integration.test.ts",
+            "test": "postgres Q&A persistence contract uses a real cookie session through tRPC for posting and public reads",
+            "error": "AssertionError: expected 403 to be 200 // Object.is equality"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 32,
           "failed": 26,
           "skipped": 0,
@@ -1330,7 +1861,26 @@
             "postgres Q&A persistence contract keeps Moodle authority across disconnects and blocks native invitations and public shares",
             "postgres Q&A persistence contract uses separate course pseudonyms without creating users or impersonating the owner",
             "postgres Q&A persistence contract keeps native and Moodle identities separate even when their identifier strings coincide"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/qa.integration.test.ts",
+            "test": "postgres Q&A persistence contract uses a real cookie session through tRPC for posting and public reads",
+            "error": "AssertionError: expected 403 to be 200 // Object.is equality"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 58,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/qa-repository.ts",
+            "mode": "baseline",
+            "sites": 8
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1356,6 +1906,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 22,
           "failed": 0,
           "skipped": 0,
@@ -1369,6 +1920,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 12,
           "failed": 10,
           "skipped": 0,
@@ -1381,11 +1933,17 @@
             "returns a typed pending state before any provider work",
             "returns a typed stale state before any provider work",
             "returns a completed count only after publication and readiness"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/scene-index-execution.test.ts",
+            "test": "returns a typed pending state before any provider work",
+            "error": "AssertionError: expected \"vi.fn()\" to not be called at all, but actually been called 1 times"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 13,
           "failed": 9,
           "skipped": 0,
@@ -1398,7 +1956,26 @@
             "returns a typed pending state before any provider work",
             "returns a typed stale state before any provider work",
             "returns a completed count only after publication and readiness"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/scene-index-execution.test.ts",
+            "test": "returns a typed pending state before any provider work",
+            "error": "AssertionError: expected \"vi.fn()\" to not be called at all, but actually been called 1 times"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/scene-index-execution.ts",
+            "mode": "baseline",
+            "sites": 5
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1424,6 +2001,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 4,
           "failed": 0,
           "skipped": 0,
@@ -1437,6 +2015,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 4,
           "skipped": 0,
@@ -1449,11 +2028,17 @@
             "refuses pending media before splitting or embedding",
             "refuses transcribing media before splitting or embedding",
             "refuses error media before splitting or embedding"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/index-transcript-admission.test.ts",
+            "test": "refuses pending media before splitting or embedding",
+            "error": "Error: expected SafeJobError_INVALID_TRANSCRIPT: Video 1 … { …(2) } to match object { code: 'INDEX_NOT_READY' }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 4,
           "skipped": 0,
@@ -1466,7 +2051,26 @@
             "refuses pending media before splitting or embedding",
             "refuses transcribing media before splitting or embedding",
             "refuses error media before splitting or embedding"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/index-transcript-admission.test.ts",
+            "test": "refuses pending media before splitting or embedding",
+            "error": "Error: expected SafeJobError_INVALID_TRANSCRIPT: Video 1 … { …(2) } to match object { code: 'INDEX_NOT_READY' }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/integrations/search-index/index-transcript.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1492,6 +2096,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 16,
           "failed": 0,
           "skipped": 0,
@@ -1505,6 +2110,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 14,
           "failed": 2,
           "skipped": 0,
@@ -1516,11 +2122,17 @@
           "failedTestExamples": [
             "resumable search workflow with actual D1 persistence hands propagation to durable tasks and completes the video from their acknowledgement without embedding again",
             "resumable search workflow with actual D1 persistence completes and cleans artifacts when the video is deleted before the finish step"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/search-workflow.d1.integration.test.ts",
+            "test": "resumable search workflow with actual D1 persistence hands propagation to durable tasks and completes the video from their acknowledgement without embedding again",
+            "error": "SafeJobError_INDEX_SOURCE_CHANGED: Scene source changed before indexing completion"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 14,
           "failed": 2,
           "skipped": 0,
@@ -1532,7 +2144,26 @@
           "failedTestExamples": [
             "resumable search workflow with actual D1 persistence hands propagation to durable tasks and completes the video from their acknowledgement without embedding again",
             "resumable search workflow with actual D1 persistence completes and cleans artifacts when the video is deleted before the finish step"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/search-workflow.d1.integration.test.ts",
+            "test": "resumable search workflow with actual D1 persistence hands propagation to durable tasks and completes the video from their acknowledgement without embedding again",
+            "error": "SafeJobError_INDEX_SOURCE_CHANGED: Scene source changed before indexing completion"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/workflows/search-index.ts",
+            "mode": "baseline",
+            "sites": 5
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1558,6 +2189,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 22,
           "failed": 0,
           "skipped": 0,
@@ -1571,6 +2203,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 18,
           "failed": 4,
           "skipped": 0,
@@ -1583,11 +2216,17 @@
             "LMS upload snapshot policy projects the current generation into the upload capability",
             "LMS upload generation before transport validation preserves content generation checks before metadata/header validation",
             "LMS upload generation before transport validation preserves confirm generation checks before metadata/header validation"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lms-upload-service.test.ts",
+            "test": "LMS upload generation before transport validation preserves content generation checks before metadata/header validation",
+            "error": "AssertionError: expected [Function] to not throw an error but 'ApplicationError: STALE_GENERATION' was thrown"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 18,
           "failed": 4,
           "skipped": 0,
@@ -1600,7 +2239,26 @@
             "LMS upload snapshot policy projects the current generation into the upload capability",
             "LMS upload generation before transport validation preserves content generation checks before metadata/header validation",
             "LMS upload generation before transport validation preserves confirm generation checks before metadata/header validation"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lms-upload-service.test.ts",
+            "test": "LMS upload generation before transport validation preserves content generation checks before metadata/header validation",
+            "error": "AssertionError: expected [Function] to not throw an error but 'ApplicationError: STALE_GENERATION' was thrown"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lms/upload-service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1626,6 +2284,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 19,
           "failed": 0,
           "skipped": 0,
@@ -1639,6 +2298,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 18,
           "failed": 1,
           "skipped": 0,
@@ -1649,11 +2309,17 @@
           },
           "failedTestExamples": [
             "selects upload eligibility for video enabled=true status=uploading"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lms-resource-service.test.ts",
+            "test": "selects upload eligibility for video enabled=true status=uploading",
+            "error": "AssertionError: expected null to deeply equal { fileKey: 'immutable-key', …(2) }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 18,
           "failed": 1,
           "skipped": 0,
@@ -1664,7 +2330,26 @@
           },
           "failedTestExamples": [
             "selects upload eligibility for video enabled=true status=uploading"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/lms-resource-service.test.ts",
+            "test": "selects upload eligibility for video enabled=true status=uploading",
+            "error": "AssertionError: expected null to deeply equal { fileKey: 'immutable-key', …(2) }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/domain/lms/resource-state.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1689,6 +2374,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 16,
           "failed": 0,
           "skipped": 0,
@@ -1702,6 +2388,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 15,
           "skipped": 0,
@@ -1714,11 +2401,17 @@
             "D1 workerd course history contract atomically appends concurrent completed turns and retains attribution",
             "D1 workerd course history contract isolates learners, schools, courses, owners and the whole saved scope",
             "D1 workerd course history contract hydrates only valid owned answers whose entire source set remains readable"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/course-history.d1.integration.test.ts",
+            "test": "D1 workerd course history contract atomically appends concurrent completed turns and retains attribution",
+            "error": "Error: Failed query: insert into \"lti_credentials\" (\"id\", \"kind\", \"payload\", \"expires_at\") select ? as \"id\", 'lti-history' as \"kind\", json_set(json(),'$.scopeVideoIds',json(?),'$.turns',json_array(json(?))) as \"payload\", ? as \"expiresAt\" from (VALUES(1)) input where 1 on conflict (\"lti_credentials\".\"id\") do update set \"payload\" = json_set(excluded.payload,'$.turns',json(((select json_group_array(CASE WHEN \"entry_type\" IN('array','object') THEN json(\"entry_value\") WHEN \"entry_type\"='true' THEN json('true') WHEN \"entry_type\"='false' THEN json('false') ELSE \"entry_value\" END) from (select \"entry_value\" as \"entry_value\", \"entry_type\" as \"entry_type\" from (select key as \"entry_key\", value as \"entry_value\", type as \"entry_type\" from json_each(json_insert(,'$[#]',json(excluded.payload -> '$.turns[0]'))) order by CAST(key AS INTEGER) desc limit ?) \"latest\" order by CAST(\"entry_key\" AS INTEGER) asc) \"chronological\")))), \"expires_at\" = ? where \"lti_credentials\".\"kind\" = ? returning \"id\""
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 15,
           "skipped": 0,
@@ -1731,7 +2424,26 @@
             "D1 workerd course history contract atomically appends concurrent completed turns and retains attribution",
             "D1 workerd course history contract isolates learners, schools, courses, owners and the whole saved scope",
             "D1 workerd course history contract hydrates only valid owned answers whose entire source set remains readable"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/course-history.d1.integration.test.ts",
+            "test": "D1 workerd course history contract atomically appends concurrent completed turns and retains attribution",
+            "error": "Error: Failed query: insert into \"lti_credentials\" (\"id\", \"kind\", \"payload\", \"expires_at\") select ? as \"id\", 'lti-history' as \"kind\", json_set(json(),'$.scopeVideoIds',json(?),'$.turns',json_array(json(?))) as \"payload\", ? as \"expiresAt\" from (VALUES(1)) input where 1 on conflict (\"lti_credentials\".\"id\") do update set \"payload\" = json_set(excluded.payload,'$.turns',json(((select json_group_array(CASE WHEN \"entry_type\" IN('array','object') THEN json(\"entry_value\") WHEN \"entry_type\"='true' THEN json('true') WHEN \"entry_type\"='false' THEN json('false') ELSE \"entry_value\" END) from (select \"entry_value\" as \"entry_value\", \"entry_type\" as \"entry_type\" from (select key as \"entry_key\", value as \"entry_value\", type as \"entry_type\" from json_each(json_insert(,'$[#]',json(excluded.payload -> '$.turns[0]'))) order by CAST(key AS INTEGER) desc limit ?) \"latest\" order by CAST(\"entry_key\" AS INTEGER) asc) \"chronological\")))), \"expires_at\" = ? where \"lti_credentials\".\"kind\" = ? returning \"id\""
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/course-history-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1756,6 +2468,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 16,
           "failed": 0,
           "skipped": 0,
@@ -1769,6 +2482,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 15,
           "skipped": 0,
@@ -1781,11 +2495,17 @@
             "PostgreSQL learning history PostgreSQL course history contract atomically appends concurrent completed turns and retains attribution",
             "PostgreSQL learning history PostgreSQL course history contract isolates learners, schools, courses, owners and the whole saved scope",
             "PostgreSQL learning history PostgreSQL course history contract hydrates only valid owned answers whose entire source set remains readable"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/course-history.postgres.integration.test.ts",
+            "test": "PostgreSQL learning history PostgreSQL course history contract atomically appends concurrent completed turns and retains attribution",
+            "error": "Error: Failed query: insert into \"lti_credentials\" (\"id\", \"kind\", \"payload\", \"expires_at\") values ($1, $2, $3, $4) on conflict (\"id\") do update set \"payload\" = ::jsonb || jsonb_build_object('scopeVideoIds', $5::jsonb, 'turns',"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 15,
           "skipped": 0,
@@ -1798,7 +2518,26 @@
             "PostgreSQL learning history PostgreSQL course history contract atomically appends concurrent completed turns and retains attribution",
             "PostgreSQL learning history PostgreSQL course history contract isolates learners, schools, courses, owners and the whole saved scope",
             "PostgreSQL learning history PostgreSQL course history contract hydrates only valid owned answers whose entire source set remains readable"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/course-history.postgres.integration.test.ts",
+            "test": "PostgreSQL learning history PostgreSQL course history contract atomically appends concurrent completed turns and retains attribution",
+            "error": "Error: Failed query: insert into \"lti_credentials\" (\"id\", \"kind\", \"payload\", \"expires_at\") values ($1, $2, $3, $4) on conflict (\"id\") do update set \"payload\" = ::jsonb || jsonb_build_object('scopeVideoIds', $5::jsonb, 'turns',"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/course-history-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1823,6 +2562,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 13,
           "failed": 0,
           "skipped": 0,
@@ -1836,6 +2576,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 10,
           "skipped": 0,
@@ -1848,11 +2589,17 @@
             "D1 workerd teaching contract connects an existing owned course without creating or taking installer courses",
             "D1 workerd teaching contract refuses missing, foreign or externally restricted selected course undefined without consuming the ticket",
             "D1 workerd teaching contract refuses missing, foreign or externally restricted selected course 2 without consuming the ticket"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/teaching.d1.integration.test.ts",
+            "test": "D1 workerd teaching contract consumes a ticket at most once under concurrent requests",
+            "error": "AssertionError: expected [] to have a length of 1 but got +0"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 10,
           "skipped": 0,
@@ -1865,7 +2612,26 @@
             "D1 workerd teaching contract connects an existing owned course without creating or taking installer courses",
             "D1 workerd teaching contract refuses missing, foreign or externally restricted selected course undefined without consuming the ticket",
             "D1 workerd teaching contract refuses missing, foreign or externally restricted selected course 2 without consuming the ticket"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/teaching.d1.integration.test.ts",
+            "test": "D1 workerd teaching contract consumes a ticket at most once under concurrent requests",
+            "error": "AssertionError: expected [] to have a length of 1 but got +0"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/teaching-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1890,6 +2656,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 13,
           "failed": 0,
           "skipped": 0,
@@ -1903,6 +2670,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 7,
           "failed": 6,
           "skipped": 0,
@@ -1915,11 +2683,17 @@
             "PostgreSQL teaching PostgreSQL teaching contract connects an existing owned course without creating or taking installer courses",
             "PostgreSQL teaching PostgreSQL teaching contract consumes a ticket at most once under concurrent requests",
             "PostgreSQL teaching PostgreSQL teaching contract allows one teacher to reserve a context and preserves the losing ticket"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/teaching.postgres.integration.test.ts",
+            "test": "PostgreSQL teaching PostgreSQL teaching contract consumes a ticket at most once under concurrent requests",
+            "error": "AssertionError: expected [] to have a length of 1 but got +0"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 7,
           "failed": 6,
           "skipped": 0,
@@ -1932,7 +2706,26 @@
             "PostgreSQL teaching PostgreSQL teaching contract connects an existing owned course without creating or taking installer courses",
             "PostgreSQL teaching PostgreSQL teaching contract consumes a ticket at most once under concurrent requests",
             "PostgreSQL teaching PostgreSQL teaching contract allows one teacher to reserve a context and preserves the losing ticket"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/teaching.postgres.integration.test.ts",
+            "test": "PostgreSQL teaching PostgreSQL teaching contract consumes a ticket at most once under concurrent requests",
+            "error": "AssertionError: expected [] to have a length of 1 but got +0"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/teaching-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -1958,6 +2751,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 15,
           "failed": 0,
           "skipped": 0,
@@ -1971,6 +2765,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 5,
           "failed": 10,
           "skipped": 0,
@@ -1983,11 +2778,17 @@
             "D1 + LangChain Vectorize scene search revalidates owner, selection, revision, existence and visibility against D1",
             "D1 + LangChain Vectorize scene search splits large selections within filter limits and merges cosine scores",
             "D1 + LangChain Vectorize scene search searches all 100 selected videos within the provider's list limit"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/scene-search.d1.integration.test.ts",
+            "test": "D1 + LangChain Vectorize scene search revalidates owner, selection, revision, existence and visibility against D1",
+            "error": "AssertionError: expected [] to deeply equal [ { …(6) } ]"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 5,
           "failed": 10,
           "skipped": 0,
@@ -2000,7 +2801,26 @@
             "D1 + LangChain Vectorize scene search revalidates owner, selection, revision, existence and visibility against D1",
             "D1 + LangChain Vectorize scene search splits large selections within filter limits and merges cosine scores",
             "D1 + LangChain Vectorize scene search searches all 100 selected videos within the provider's list limit"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/scene-search.d1.integration.test.ts",
+            "test": "D1 + LangChain Vectorize scene search revalidates owner, selection, revision, existence and visibility against D1",
+            "error": "AssertionError: expected [] to deeply equal [ { …(6) } ]"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/scene-search.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2026,6 +2846,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 2,
           "failed": 0,
           "skipped": 0,
@@ -2039,6 +2860,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 2,
           "skipped": 0,
@@ -2050,11 +2872,17 @@
           "failedTestExamples": [
             "openai shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index",
             "embeddinggemma2 shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/embedding-store.integration.test.ts",
+            "test": "openai shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index",
+            "error": "TypeError: Cannot read properties of undefined (reading 'length')"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 2,
           "skipped": 0,
@@ -2066,7 +2894,26 @@
           "failedTestExamples": [
             "openai shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index",
             "embeddinggemma2 shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/embedding-store.integration.test.ts",
+            "test": "openai shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index",
+            "error": "TypeError: Cannot read properties of undefined (reading 'length')"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/scene-search.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2085,13 +2932,14 @@
       "sourceSha256": "29255e53af40a52053fd6bfac9610a1bf7f54acbf661a5f03be060446989e1c2",
       "ownerSha256": "96df4513c314bbfefcd2d069b9c2205299a45d54ee0a56aae64d14f33e3564dc",
       "testsSha256": {
-        "test/conversation-scope-policy.test.ts": "3ea7d4026c33c7fa8273797ad897924a92b2de5f395e70148d425d73a081980d",
+        "test/conversation-scope-policy.test.ts": "c68fa2238d22b1e918baa7ed761ee1dc30e08a5e741c775d117fe88a24a6230d",
         "test/privacy-recovery-policy.test.ts": "33b4e740f512253af3b640116be0fdb34395f75253aebc3ac59671c876eef945"
       },
       "runs": [
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 15,
           "failed": 0,
           "skipped": 0,
@@ -2105,6 +2953,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 6,
           "failed": 9,
           "skipped": 0,
@@ -2117,11 +2966,17 @@
             "preserves the persisted conversation namespace: 6982549d152f1d4146c6a380e4e09b5322b39a2…",
             "preserves the persisted conversation namespace: efc8974cd65d430cc556ffa1131750f5553c28f…",
             "preserves the persisted conversation namespace: 94fe38fbe5a7af20945da8e245e2fba0f83abc2…"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/conversation-scope-policy.test.ts",
+            "test": "requires a visitor identity for shared conversations",
+            "error": "AssertionError: expected [Function] to throw an error"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 11,
           "failed": 4,
           "skipped": 0,
@@ -2134,7 +2989,26 @@
             "preserves the persisted conversation namespace: 6982549d152f1d4146c6a380e4e09b5322b39a2…",
             "preserves the persisted conversation namespace: efc8974cd65d430cc556ffa1131750f5553c28f…",
             "preserves the persisted conversation namespace: 94fe38fbe5a7af20945da8e245e2fba0f83abc2…"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/conversation-scope-policy.test.ts",
+            "test": "preserves the persisted conversation namespace: 6982549d152f1d4146c6a380e4e09b5322b39a2…",
+            "error": "Error: expected 'e3b0c44298fc1c149afbf4c8996fb92427ae4…' to be '6982549d152f1d4146c6a380e4e09b5322b39…' // Object.is equality"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/conversation-scope.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2155,13 +3029,14 @@
       "sourceSha256": "11f006f81c0b7d7c770bd63a5366c506eac1f22f739486bc377cd8e853134009",
       "ownerSha256": "c0ef7475aca398625d8d081b8aec845b11f04197a5981cd6a65c3a1357c0072b",
       "testsSha256": {
-        "test/conversation-scope-policy.test.ts": "3ea7d4026c33c7fa8273797ad897924a92b2de5f395e70148d425d73a081980d",
+        "test/conversation-scope-policy.test.ts": "c68fa2238d22b1e918baa7ed761ee1dc30e08a5e741c775d117fe88a24a6230d",
         "test/privacy-recovery-policy.test.ts": "33b4e740f512253af3b640116be0fdb34395f75253aebc3ac59671c876eef945"
       },
       "runs": [
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 15,
           "failed": 0,
           "skipped": 0,
@@ -2175,6 +3050,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 9,
           "failed": 6,
           "skipped": 0,
@@ -2185,13 +3061,19 @@
           },
           "failedTestExamples": [
             "preserves the persisted conversation namespace: 0c842b736eaae53c783f73ccce7fe7084a096bb…",
-            "rejects mixed or invalid LTI identity scopes",
-            "rejects mixed or invalid LTI identity scopes"
-          ]
+            "rejects mixed or invalid LTI identity scopes (case 0)",
+            "rejects mixed or invalid LTI identity scopes (case 1)"
+          ],
+          "matchedWitness": {
+            "testFile": "test/conversation-scope-policy.test.ts",
+            "test": "preserves the persisted conversation namespace: 0c842b736eaae53c783f73ccce7fe7084a096bb…",
+            "error": "Error: promise rejected \"Error: Invalid LTI subject scope\" instead of resolving"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 9,
           "failed": 6,
           "skipped": 0,
@@ -2202,9 +3084,28 @@
           },
           "failedTestExamples": [
             "preserves the persisted conversation namespace: 0c842b736eaae53c783f73ccce7fe7084a096bb…",
-            "rejects mixed or invalid LTI identity scopes",
-            "rejects mixed or invalid LTI identity scopes"
-          ]
+            "rejects mixed or invalid LTI identity scopes (case 0)",
+            "rejects mixed or invalid LTI identity scopes (case 1)"
+          ],
+          "matchedWitness": {
+            "testFile": "test/conversation-scope-policy.test.ts",
+            "test": "preserves the persisted conversation namespace: 0c842b736eaae53c783f73ccce7fe7084a096bb…",
+            "error": "Error: promise rejected \"Error: Invalid LTI subject scope\" instead of resolving"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/subject-identity.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2223,12 +3124,13 @@
       "sourceSha256": "f3a750a19df5d8e31f9bdc1178f98a5510acdd190f40e58ee71a5258c6b2ad5f",
       "ownerSha256": "cb864e16483331b98076a5eb8e8c2073ea3665b59d78a3dc1bc7457077ddef63",
       "testsSha256": {
-        "test/video-evidence-service.test.ts": "56dfc60b571f404c17882ca9cc69eef2d2186b459095d07cb05bd81f9e00c3d9"
+        "test/video-evidence-service.test.ts": "a32dff239bc5d2e119e84614f7b4bc4e3a9994d1e609594ddea9a3d88407b06c"
       },
       "runs": [
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 4,
           "failed": 0,
           "skipped": 0,
@@ -2242,6 +3144,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 2,
           "skipped": 0,
@@ -2253,11 +3156,17 @@
           "failedTestExamples": [
             "releases serialized execution after a provider failure so the next inspection can run",
             "shares call reservations across tool types and serializes in-flight model payloads"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/video-evidence-service.test.ts",
+            "test": "shares call reservations across tool types and serializes in-flight model payloads",
+            "error": "AssertionError: expected \"vi.fn()\" to be called 1 times, but got 0 times"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 2,
           "skipped": 0,
@@ -2269,7 +3178,26 @@
           "failedTestExamples": [
             "releases serialized execution after a provider failure so the next inspection can run",
             "shares call reservations across tool types and serializes in-flight model payloads"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/video-evidence-service.test.ts",
+            "test": "shares call reservations across tool types and serializes in-flight model payloads",
+            "error": "AssertionError: expected \"vi.fn()\" to be called 1 times, but got 0 times"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/video-evidence-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2294,6 +3222,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 3,
           "failed": 0,
           "skipped": 0,
@@ -2307,6 +3236,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 2,
           "skipped": 0,
@@ -2318,11 +3248,17 @@
           "failedTestExamples": [
             "reserves concurrent search calls before awaiting providers and ignores invalid scope selections",
             "checks cancellation after the provider returns before publishing completed-search progress"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/evidence-text-service.test.ts",
+            "test": "reserves concurrent search calls before awaiting providers and ignores invalid scope selections",
+            "error": "TypeError: Cannot read properties of undefined (reading 'hasCapacity')"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 2,
           "skipped": 0,
@@ -2334,7 +3270,26 @@
           "failedTestExamples": [
             "reserves concurrent search calls before awaiting providers and ignores invalid scope selections",
             "checks cancellation after the provider returns before publishing completed-search progress"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/evidence-text-service.test.ts",
+            "test": "reserves concurrent search calls before awaiting providers and ignores invalid scope selections",
+            "error": "TypeError: Cannot read properties of undefined (reading 'hasCapacity')"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/scene-search-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2359,6 +3314,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 3,
           "failed": 0,
           "skipped": 0,
@@ -2372,6 +3328,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 1,
           "skipped": 0,
@@ -2382,11 +3339,17 @@
           },
           "failedTestExamples": [
             "projects only public course metadata and does not offer a continuation after an empty page"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/evidence-text-service.test.ts",
+            "test": "projects only public course metadata and does not offer a continuation after an empty page",
+            "error": "TypeError: Cannot read properties of undefined (reading 'reserveTool')"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 1,
           "skipped": 0,
@@ -2397,7 +3360,26 @@
           },
           "failedTestExamples": [
             "projects only public course metadata and does not offer a continuation after an empty page"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/evidence-text-service.test.ts",
+            "test": "projects only public course metadata and does not offer a continuation after an empty page",
+            "error": "TypeError: Cannot read properties of undefined (reading 'reserveTool')"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/course-info-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2416,12 +3398,13 @@
       "sourceSha256": "e12f219e8c4b15f163b2f1c72b61c350d120e9ca886a2fa9bfe8ffaba9a7bf87",
       "ownerSha256": "cb864e16483331b98076a5eb8e8c2073ea3665b59d78a3dc1bc7457077ddef63",
       "testsSha256": {
-        "test/external-evidence-service.test.ts": "b85f99c420af078cf4e7054d0e869cee6f1fa0fefe230fa2d364fc5742264d05"
+        "test/external-evidence-service.test.ts": "cd06286260d3acbdda91374ba57f9ac4f00d381c55a0349cd3f192393b84e312"
       },
       "runs": [
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 25,
           "failed": 0,
           "skipped": 0,
@@ -2435,6 +3418,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 22,
           "skipped": 0,
@@ -2447,11 +3431,17 @@
             "keeps external account cost for read_video_window (false, 1)",
             "keeps external account cost for search_scenes (true, 1)",
             "keeps external account cost for inspect_clip (true, 8)"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/external-evidence-service.test.ts",
+            "test": "keeps external account cost for read_video_window (false, 1)",
+            "error": "AssertionError: expected undefined to deeply equal { paid: false, cost: 1 }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 22,
           "skipped": 0,
@@ -2464,7 +3454,26 @@
             "keeps external account cost for read_video_window (false, 1)",
             "keeps external account cost for search_scenes (true, 1)",
             "keeps external account cost for inspect_clip (true, 8)"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/external-evidence-service.test.ts",
+            "test": "keeps external account cost for read_video_window (false, 1)",
+            "error": "AssertionError: expected undefined to deeply equal { paid: false, cost: 1 }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/external-service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2491,6 +3500,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 39,
           "failed": 0,
           "skipped": 0,
@@ -2504,6 +3514,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 4,
           "failed": 35,
           "skipped": 0,
@@ -2516,11 +3527,17 @@
             "D1 workerd native learning session contract creates one session across concurrent requests with metadata-free markers and nonces",
             "D1 workerd native learning session contract rejects concurrent reuse of the same signed request",
             "D1 workerd native learning session contract preserves accumulated scopes without replacing mutable session metadata"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/native-session.d1.integration.test.ts",
+            "test": "D1 workerd native learning session contract rejects concurrent reuse of the same signed request",
+            "error": "AssertionError: expected [] to have a length of 1 but got +0"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 4,
           "failed": 35,
           "skipped": 0,
@@ -2533,7 +3550,26 @@
             "D1 workerd native learning session contract creates one session across concurrent requests with metadata-free markers and nonces",
             "D1 workerd native learning session contract rejects concurrent reuse of the same signed request",
             "D1 workerd native learning session contract preserves accumulated scopes without replacing mutable session metadata"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/native-session.d1.integration.test.ts",
+            "test": "D1 workerd native learning session contract rejects concurrent reuse of the same signed request",
+            "error": "AssertionError: expected [] to have a length of 1 but got +0"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lms/native-session-policy.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2560,6 +3596,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 6,
           "failed": 0,
           "skipped": 0,
@@ -2573,6 +3610,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 4,
           "skipped": 0,
@@ -2585,11 +3623,17 @@
             "D1 (workerd): JobRepository contract gives exactly one concurrent delivery a lease",
             "D1 (workerd): JobRepository contract preserves identity and completed replay barriers",
             "D1 (workerd): JobRepository contract reclaims expired leases and fences out the old delivery"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/jobs.d1.integration.test.ts",
+            "test": "D1 (workerd): JobRepository contract gives exactly one concurrent delivery a lease",
+            "error": "AssertionError: expected [ { status: 'claimed', …(1) }, …(11) ] to have a length of 1 but got 12"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 4,
           "skipped": 0,
@@ -2602,7 +3646,26 @@
             "D1 (workerd): JobRepository contract gives exactly one concurrent delivery a lease",
             "D1 (workerd): JobRepository contract preserves identity and completed replay barriers",
             "D1 (workerd): JobRepository contract reclaims expired leases and fences out the old delivery"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/jobs.d1.integration.test.ts",
+            "test": "D1 (workerd): JobRepository contract gives exactly one concurrent delivery a lease",
+            "error": "AssertionError: expected [ { status: 'claimed', …(1) }, …(11) ] to have a length of 1 but got 12"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/job-repository.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2629,6 +3692,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 7,
           "failed": 0,
           "skipped": 0,
@@ -2642,6 +3706,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 4,
           "skipped": 0,
@@ -2654,11 +3719,17 @@
             "PostgreSQL jobs postgres: JobRepository contract gives exactly one concurrent delivery a lease",
             "PostgreSQL jobs postgres: JobRepository contract preserves identity and completed replay barriers",
             "PostgreSQL jobs postgres: JobRepository contract reclaims expired leases and fences out the old delivery"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/jobs.postgres.integration.test.ts",
+            "test": "PostgreSQL jobs postgres: JobRepository contract gives exactly one concurrent delivery a lease",
+            "error": "AssertionError: expected [ { status: 'claimed', …(1) }, …(11) ] to have a length of 1 but got 12"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 4,
           "skipped": 0,
@@ -2671,7 +3742,26 @@
             "PostgreSQL jobs postgres: JobRepository contract gives exactly one concurrent delivery a lease",
             "PostgreSQL jobs postgres: JobRepository contract preserves identity and completed replay barriers",
             "PostgreSQL jobs postgres: JobRepository contract reclaims expired leases and fences out the old delivery"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/jobs.postgres.integration.test.ts",
+            "test": "PostgreSQL jobs postgres: JobRepository contract gives exactly one concurrent delivery a lease",
+            "error": "AssertionError: expected [ { status: 'claimed', …(1) }, …(11) ] to have a length of 1 but got 12"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/job-repository.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2695,6 +3785,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 3,
           "failed": 0,
           "skipped": 0,
@@ -2708,6 +3799,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 1,
           "skipped": 0,
@@ -2718,11 +3810,17 @@
           },
           "failedTestExamples": [
             "delivers only after persistence commits and returns the persisted identity when delivery is delayed"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/reindex-job.test.ts",
+            "test": "delivers only after persistence commits and returns the persisted identity when delivery is delayed",
+            "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 1,
           "skipped": 0,
@@ -2733,7 +3831,26 @@
           },
           "failedTestExamples": [
             "delivers only after persistence commits and returns the persisted identity when delivery is delayed"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/reindex-job.test.ts",
+            "test": "delivers only after persistence commits and returns the persisted identity when delivery is delayed",
+            "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/reindex-job.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2757,6 +3874,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 22,
           "failed": 0,
           "skipped": 0,
@@ -2770,6 +3888,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 9,
           "failed": 13,
           "skipped": 0,
@@ -2782,11 +3901,17 @@
             "Python scene splitting parity short",
             "Python scene splitting parity otsu",
             "Python scene splitting parity unicode"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/search-worker-core.test.ts",
+            "test": "Python scene splitting parity short",
+            "error": "TypeError: Cannot read properties of undefined (reading 'next')"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 9,
           "failed": 13,
           "skipped": 0,
@@ -2799,7 +3924,26 @@
             "Python scene splitting parity short",
             "Python scene splitting parity otsu",
             "Python scene splitting parity unicode"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/search-worker-core.test.ts",
+            "test": "Python scene splitting parity short",
+            "error": "TypeError: Cannot read properties of undefined (reading 'next')"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/scene-splitting.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2824,6 +3968,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 6,
           "failed": 0,
           "skipped": 0,
@@ -2837,6 +3982,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 6,
           "skipped": 0,
@@ -2849,11 +3995,17 @@
             "bounded-memory durable Otsu kernel matches the in-memory kernel for range 0..120",
             "bounded-memory durable Otsu kernel matches the in-memory kernel for range 5..88",
             "bounded-memory durable Otsu kernel matches the in-memory kernel for range 16..33"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/streaming-otsu.test.ts",
+            "test": "bounded-memory durable Otsu kernel matches the in-memory kernel for range 0..120",
+            "error": "TypeError: Cannot read properties of undefined (reading 'length')"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 6,
           "skipped": 0,
@@ -2866,7 +4018,26 @@
             "bounded-memory durable Otsu kernel matches the in-memory kernel for range 0..120",
             "bounded-memory durable Otsu kernel matches the in-memory kernel for range 5..88",
             "bounded-memory durable Otsu kernel matches the in-memory kernel for range 16..33"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/streaming-otsu.test.ts",
+            "test": "bounded-memory durable Otsu kernel matches the in-memory kernel for range 0..120",
+            "error": "TypeError: Cannot read properties of undefined (reading 'length')"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/streaming-otsu.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2891,6 +4062,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 8,
           "failed": 0,
           "skipped": 0,
@@ -2904,6 +4076,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 6,
           "failed": 2,
           "skipped": 0,
@@ -2915,11 +4088,17 @@
           "failedTestExamples": [
             "D1 workerd LMS resource read contract rechecks connection and account revocation on every request",
             "D1 workerd LMS resource read contract preserves nullable ban semantics while refusing an indefinite ban"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/lms-resource-read.d1.integration.test.ts",
+            "test": "D1 workerd LMS resource read contract rechecks connection and account revocation on every request",
+            "error": "AssertionError: expected { resource: { …(17) }, …(2) } to be null"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 6,
           "failed": 2,
           "skipped": 0,
@@ -2931,7 +4110,26 @@
           "failedTestExamples": [
             "D1 workerd LMS resource read contract rechecks connection and account revocation on every request",
             "D1 workerd LMS resource read contract preserves nullable ban semantics while refusing an indefinite ban"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/lms-resource-read.d1.integration.test.ts",
+            "test": "D1 workerd LMS resource read contract rechecks connection and account revocation on every request",
+            "error": "AssertionError: expected { resource: { …(17) }, …(2) } to be null"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/lms-owner-policy.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -2956,6 +4154,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 8,
           "failed": 0,
           "skipped": 0,
@@ -2969,6 +4168,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 6,
           "failed": 2,
           "skipped": 0,
@@ -2980,11 +4180,17 @@
           "failedTestExamples": [
             "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract rechecks connection and account revocation on every request",
             "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract preserves nullable ban semantics while refusing an indefinite ban"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/lms-resource-read.postgres.integration.test.ts",
+            "test": "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract rechecks connection and account revocation on every request",
+            "error": "AssertionError: expected { resource: { …(17) }, …(2) } to be null"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 6,
           "failed": 2,
           "skipped": 0,
@@ -2996,7 +4202,26 @@
           "failedTestExamples": [
             "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract rechecks connection and account revocation on every request",
             "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract preserves nullable ban semantics while refusing an indefinite ban"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/persistence/lms-resource-read.postgres.integration.test.ts",
+            "test": "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract rechecks connection and account revocation on every request",
+            "error": "AssertionError: expected { resource: { …(17) }, …(2) } to be null"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/lms-owner-policy.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3022,6 +4247,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 10,
           "failed": 0,
           "skipped": 0,
@@ -3035,6 +4261,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 7,
           "skipped": 0,
@@ -3047,11 +4274,17 @@
             "chatThrottleChecks 公開デモだけ狭い IP 枠を消費し、上限で止める",
             "chatThrottleChecks 通常の共有リンクには公開デモの枠を掛けない",
             "enforceThrottles (memory backend) allows under the limit and blocks at the limit"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/rate-limit.test.ts",
+            "test": "enforceThrottles (memory backend) fails closed when no backend is configured",
+            "error": "AssertionError: expected null to deeply equal { allowed: false, retryAfterSec: 60 }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 7,
           "skipped": 0,
@@ -3064,7 +4297,26 @@
             "chatThrottleChecks 公開デモだけ狭い IP 枠を消費し、上限で止める",
             "chatThrottleChecks 通常の共有リンクには公開デモの枠を掛けない",
             "enforceThrottles (memory backend) allows under the limit and blocks at the limit"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/rate-limit.test.ts",
+            "test": "enforceThrottles (memory backend) fails closed when no backend is configured",
+            "error": "AssertionError: expected null to deeply equal { allowed: false, retryAfterSec: 60 }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/lib/rate-limit.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3090,6 +4342,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 3,
           "failed": 0,
           "skipped": 0,
@@ -3103,6 +4356,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 3,
           "skipped": 0,
@@ -3115,11 +4369,17 @@
             "keeps a collision suffix within the username limit",
             "tries at most fifty stable candidates before using the injected fallback identity",
             "propagates lookup failure without creating a fallback identity"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/username-policy.test.ts",
+            "test": "keeps a collision suffix within the username limit",
+            "error": "AssertionError: expected undefined to be 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…' // Object.is equality"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 3,
           "skipped": 0,
@@ -3132,7 +4392,26 @@
             "keeps a collision suffix within the username limit",
             "tries at most fifty stable candidates before using the injected fallback identity",
             "propagates lookup failure without creating a fallback identity"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/username-policy.test.ts",
+            "test": "tries at most fifty stable candidates before using the injected fallback identity",
+            "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/username.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3157,6 +4436,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 3,
           "failed": 0,
           "skipped": 0,
@@ -3170,6 +4450,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 2,
           "skipped": 0,
@@ -3181,11 +4462,17 @@
           "failedTestExamples": [
             "preserves supplied identity fields while enforcing fresh usage and configured quotas",
             "uses the allocated username for missing display identity without consuming a random ID"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/account-registration.test.ts",
+            "test": "preserves supplied identity fields while enforcing fresh usage and configured quotas",
+            "error": "Error: expected undefined to match object { email: 'alice@example.com', …(16) }"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 1,
           "failed": 2,
           "skipped": 0,
@@ -3197,7 +4484,26 @@
           "failedTestExamples": [
             "preserves supplied identity fields while enforcing fresh usage and configured quotas",
             "uses the allocated username for missing display identity without consuming a random ID"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/account-registration.test.ts",
+            "test": "preserves supplied identity fields while enforcing fresh usage and configured quotas",
+            "error": "Error: expected undefined to match object { email: 'alice@example.com', …(16) }"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/account-registration.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3222,6 +4528,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 3,
           "failed": 0,
           "skipped": 0,
@@ -3235,6 +4542,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 3,
           "skipped": 0,
@@ -3247,11 +4555,17 @@
             "trusts only a true verification claim with current Google mailbox authority",
             "preserves email and image bytes while trimming a display name and allocating a separate unique username",
             "uses the allocated identity when both profile email and name are absent"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/google-account-policy.test.ts",
+            "test": "trusts only a true verification claim with current Google mailbox authority",
+            "error": "TypeError: Cannot destructure property 'email' of '(void 0)' as it is undefined."
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 3,
           "skipped": 0,
@@ -3264,7 +4578,26 @@
             "trusts only a true verification claim with current Google mailbox authority",
             "preserves email and image bytes while trimming a display name and allocating a separate unique username",
             "uses the allocated identity when both profile email and name are absent"
-          ]
+          ],
+          "matchedWitness": {
+            "testFile": "test/google-account-policy.test.ts",
+            "test": "trusts only a true verification claim with current Google mailbox authority",
+            "error": "TypeError: Cannot destructure property 'email' of '((0 , __vite_ssr_import_0__.googleAccountFacts)(...) , (void 0))' as it is undefined."
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/google-account.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3283,12 +4616,13 @@
       "sourceSha256": "ce994f642ace05938ffd794dc6ab7f47741689b4506b0bfe70d400ca6d0a6562",
       "ownerSha256": "ed8e70ecc8efe6c4d588236b9ffa4ad856ca3fe63d4d492a7e5c5467cfe7e865",
       "testsSha256": {
-        "test/oauth-consent-policy.test.ts": "b32390c9693f5883f88b4af71cd7f9faaf44b114f2bf23f236b7e26aac5e2737"
+        "test/oauth-consent-policy.test.ts": "d96822e8b864bb0658db9ff267cc7c5f5691ded957e6ae5f3c60f5edfb92c48c"
       },
       "runs": [
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 9,
           "failed": 0,
           "skipped": 0,
@@ -3302,6 +4636,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 9,
           "skipped": 0,
@@ -3311,14 +4646,20 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "defers missing or consumed credentials to native rotation handling",
-            "defers missing or consumed credentials to native rotation handling",
-            "rejects incomplete grant identities before looking up consent"
-          ]
+            "defers missing or consumed credentials to native rotation handling (case 0)",
+            "defers missing or consumed credentials to native rotation handling (case 1)",
+            "rejects incomplete grant identities before looking up consent (case 0)"
+          ],
+          "matchedWitness": {
+            "testFile": "test/oauth-consent-policy.test.ts",
+            "test": "defers missing or consumed credentials to native rotation handling (case 0)",
+            "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 0,
           "failed": 9,
           "skipped": 0,
@@ -3328,10 +4669,29 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "defers missing or consumed credentials to native rotation handling",
-            "defers missing or consumed credentials to native rotation handling",
-            "rejects incomplete grant identities before looking up consent"
-          ]
+            "defers missing or consumed credentials to native rotation handling (case 0)",
+            "defers missing or consumed credentials to native rotation handling (case 1)",
+            "rejects incomplete grant identities before looking up consent (case 0)"
+          ],
+          "matchedWitness": {
+            "testFile": "test/oauth-consent-policy.test.ts",
+            "test": "defers missing or consumed credentials to native rotation handling (case 0)",
+            "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/oauth-consent.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3356,6 +4716,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 10,
           "failed": 0,
           "skipped": 0,
@@ -3369,6 +4730,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 5,
           "failed": 5,
           "skipped": 0,
@@ -3378,14 +4740,19 @@
             "sites": 1
           },
           "failedTestExamples": [
-            "test_cloud_backfill_queues_only_visual_work",
-            "test_cloud_backfill_can_complete_synchronously",
-            "test_source_change_cannot_be_reported_ready"
-          ]
+            "tests.test_prepare_visual_frames::test_cloud_backfill_queues_only_visual_work",
+            "tests.test_prepare_visual_frames::test_cloud_backfill_can_complete_synchronously",
+            "tests.test_prepare_visual_frames::test_source_change_cannot_be_reported_ready"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_prepare_visual_frames::test_cloud_backfill_queues_only_visual_work",
+            "error": "TypeError: cannot unpack non-iterable NoneType object"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 5,
           "failed": 5,
           "skipped": 0,
@@ -3395,10 +4762,28 @@
             "sites": 1
           },
           "failedTestExamples": [
-            "test_cloud_backfill_queues_only_visual_work",
-            "test_cloud_backfill_can_complete_synchronously",
-            "test_source_change_cannot_be_reported_ready"
-          ]
+            "tests.test_prepare_visual_frames::test_cloud_backfill_queues_only_visual_work",
+            "tests.test_prepare_visual_frames::test_cloud_backfill_can_complete_synchronously",
+            "tests.test_prepare_visual_frames::test_source_change_cannot_be_reported_ready"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_prepare_visual_frames::test_cloud_backfill_queues_only_visual_work",
+            "error": "TypeError: cannot unpack non-iterable NoneType object"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/visual_preparation.py",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3424,6 +4809,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 8,
           "failed": 0,
           "skipped": 0,
@@ -3437,6 +4823,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 6,
           "failed": 2,
           "skipped": 0,
@@ -3446,13 +4833,18 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
-            "test_queue_failure_retries_only_handoff_after_successful_save"
-          ]
+            "tests.test_transcription_use_case::test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
+            "tests.test_transcription_use_case::test_queue_failure_retries_only_handoff_after_successful_save"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_transcription_use_case::test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
+            "error": "Failed: DID NOT RAISE TranscriptionExecutionFailedError"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 6,
           "failed": 2,
           "skipped": 0,
@@ -3462,9 +4854,27 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
-            "test_queue_failure_retries_only_handoff_after_successful_save"
-          ]
+            "tests.test_transcription_use_case::test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
+            "tests.test_transcription_use_case::test_queue_failure_retries_only_handoff_after_successful_save"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_transcription_use_case::test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
+            "error": "Failed: DID NOT RAISE TranscriptionExecutionFailedError"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/transcription.py",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3490,6 +4900,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 6,
           "failed": 0,
           "skipped": 0,
@@ -3503,6 +4914,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 3,
           "skipped": 0,
@@ -3512,14 +4924,19 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "test_committed_source_never_restarts_provider_or_queues_again[indexing]",
-            "test_committed_source_never_restarts_provider_or_queues_again[completed]",
-            "test_failure_save_contains_only_safe_code_and_retries_only_provider_error[failure1-TRANSCRIPTION_FAILED-True]"
-          ]
+            "tests.test_cloud_transcription_use_case::test_committed_source_never_restarts_provider_or_queues_again[indexing]",
+            "tests.test_cloud_transcription_use_case::test_committed_source_never_restarts_provider_or_queues_again[completed]",
+            "tests.test_cloud_transcription_use_case::test_failure_save_contains_only_safe_code_and_retries_only_provider_error[failure1-TRANSCRIPTION_FAILED-True]"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_cloud_transcription_use_case::test_committed_source_never_restarts_provider_or_queues_again[indexing]",
+            "error": "AssertionError: Expected 'mock' to not have been called. Called 1 times."
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 3,
           "failed": 3,
           "skipped": 0,
@@ -3529,10 +4946,28 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "test_committed_source_never_restarts_provider_or_queues_again[indexing]",
-            "test_committed_source_never_restarts_provider_or_queues_again[completed]",
-            "test_failure_save_contains_only_safe_code_and_retries_only_provider_error[failure1-TRANSCRIPTION_FAILED-True]"
-          ]
+            "tests.test_cloud_transcription_use_case::test_committed_source_never_restarts_provider_or_queues_again[indexing]",
+            "tests.test_cloud_transcription_use_case::test_committed_source_never_restarts_provider_or_queues_again[completed]",
+            "tests.test_cloud_transcription_use_case::test_failure_save_contains_only_safe_code_and_retries_only_provider_error[failure1-TRANSCRIPTION_FAILED-True]"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_cloud_transcription_use_case::test_committed_source_never_restarts_provider_or_queues_again[indexing]",
+            "error": "AssertionError: Expected 'mock' to not have been called. Called 1 times."
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/cloud_transcription.py",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3558,6 +4993,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 23,
           "failed": 0,
           "skipped": 0,
@@ -3571,6 +5007,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 20,
           "failed": 3,
           "skipped": 0,
@@ -3580,14 +5017,19 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
-            "test_failed_chunk_resumes_and_silent_chunk_is_a_completed_checkpoint",
-            "test_all_silent_plan_ends_in_error_and_user_retry_can_start_again"
-          ]
+            "tests.test_segmented_transcription::test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
+            "tests.test_segmented_transcription::test_failed_chunk_resumes_and_silent_chunk_is_a_completed_checkpoint",
+            "tests.test_segmented_transcription::test_all_silent_plan_ends_in_error_and_user_retry_can_start_again"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_segmented_transcription::test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
+            "error": "AttributeError: 'NoneType' object has no attribute 'transcript'"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 20,
           "failed": 3,
           "skipped": 0,
@@ -3597,10 +5039,28 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
-            "test_failed_chunk_resumes_and_silent_chunk_is_a_completed_checkpoint",
-            "test_all_silent_plan_ends_in_error_and_user_retry_can_start_again"
-          ]
+            "tests.test_segmented_transcription::test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
+            "tests.test_segmented_transcription::test_failed_chunk_resumes_and_silent_chunk_is_a_completed_checkpoint",
+            "tests.test_segmented_transcription::test_all_silent_plan_ends_in_error_and_user_retry_can_start_again"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_segmented_transcription::test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
+            "error": "AttributeError: 'NoneType' object has no attribute 'transcript'"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/tasks/segmented_transcription.py",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3624,6 +5084,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 21,
           "failed": 0,
           "skipped": 0,
@@ -3637,6 +5098,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 9,
           "failed": 12,
           "skipped": 0,
@@ -3646,14 +5108,19 @@
             "sites": 1
           },
           "failedTestExamples": [
-            "test_manual_transcript_http_error_closes_before_automatic_fallback",
-            "test_retry_after_is_honored_before_repeating_the_same_caption_request[None-1]",
-            "test_retry_after_is_honored_before_repeating_the_same_caption_request[5-5]"
-          ]
+            "tests.test_youtube_transcript::test_manual_transcript_http_error_closes_before_automatic_fallback",
+            "tests.test_youtube_transcript::test_retry_after_is_honored_before_repeating_the_same_caption_request[None-1]",
+            "tests.test_youtube_transcript::test_retry_after_is_honored_before_repeating_the_same_caption_request[5-5]"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_youtube_transcript::test_manual_transcript_http_error_closes_before_automatic_fallback",
+            "error": "TypeError: 'NoneType' object is not iterable"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 9,
           "failed": 12,
           "skipped": 0,
@@ -3663,10 +5130,28 @@
             "sites": 1
           },
           "failedTestExamples": [
-            "test_manual_transcript_http_error_closes_before_automatic_fallback",
-            "test_retry_after_is_honored_before_repeating_the_same_caption_request[None-1]",
-            "test_retry_after_is_honored_before_repeating_the_same_caption_request[5-5]"
-          ]
+            "tests.test_youtube_transcript::test_manual_transcript_http_error_closes_before_automatic_fallback",
+            "tests.test_youtube_transcript::test_retry_after_is_honored_before_repeating_the_same_caption_request[None-1]",
+            "tests.test_youtube_transcript::test_retry_after_is_honored_before_repeating_the_same_caption_request[5-5]"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_youtube_transcript::test_manual_transcript_http_error_closes_before_automatic_fallback",
+            "error": "TypeError: 'NoneType' object is not iterable"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/pipeline/transcription.py",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
         }
       ]
     },
@@ -3693,6 +5178,7 @@
         {
           "mode": "baseline",
           "status": "passed",
+          "reason": "clean-baseline",
           "passed": 6,
           "failed": 0,
           "skipped": 0,
@@ -3706,6 +5192,7 @@
         {
           "mode": "bypass",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 4,
           "skipped": 0,
@@ -3715,14 +5202,19 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "test_completed_duplicate_is_not_claimed",
-            "test_active_duplicate_is_retried_instead_of_acknowledged",
-            "test_reused_job_id_with_different_payload_is_rejected"
-          ]
+            "tests.test_job_execution::test_completed_duplicate_is_not_claimed",
+            "tests.test_job_execution::test_active_duplicate_is_retried_instead_of_acknowledged",
+            "tests.test_job_execution::test_reused_job_id_with_different_payload_is_rejected"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_job_execution_integration::test_same_job_id_has_one_concurrent_owner",
+            "error": "AssertionError: assert 2 == 1"
+          }
         },
         {
           "mode": "ignore-result",
           "status": "detected",
+          "reason": "reviewed-failure-witness",
           "passed": 2,
           "failed": 4,
           "skipped": 0,
@@ -3732,10 +5224,28 @@
             "sites": 2
           },
           "failedTestExamples": [
-            "test_completed_duplicate_is_not_claimed",
-            "test_active_duplicate_is_retried_instead_of_acknowledged",
-            "test_reused_job_id_with_different_payload_is_rejected"
-          ]
+            "tests.test_job_execution::test_completed_duplicate_is_not_claimed",
+            "tests.test_job_execution::test_active_duplicate_is_retried_instead_of_acknowledged",
+            "tests.test_job_execution::test_reused_job_id_with_different_payload_is_rejected"
+          ],
+          "matchedWitness": {
+            "test": "tests.test_job_execution_integration::test_same_job_id_has_one_concurrent_owner",
+            "error": "AssertionError: assert 2 == 1"
+          }
+        },
+        {
+          "mode": "recovery",
+          "status": "passed",
+          "reason": "clean-baseline",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/job_execution.py",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
         }
       ]
     }

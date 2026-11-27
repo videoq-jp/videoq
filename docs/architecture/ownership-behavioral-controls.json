@@ -17,7 +17,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/course-name-contract.test.ts",
+          "test": "rejects invalid course names consistently: \"\"",
+          "error": "Error: expected TypeError: Cannot use 'in' operator to se… to match object { kind: 'validation' }"
+        },
+        "ignore-result": {
+          "testFile": "test/course-name-contract.test.ts",
+          "test": "rejects invalid course names consistently: \"\"",
+          "error": "Error: expected TypeError: Cannot use 'in' operator to se… to match object { kind: 'validation' }"
+        }
+      }
     },
     {
       "id": "ts-02",
@@ -34,7 +46,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/course-name-contract.test.ts",
+          "test": "rejects invalid course names consistently: \"\"",
+          "error": "TypeError: Cannot use 'in' operator to search for 'error' in undefined"
+        },
+        "ignore-result": {
+          "testFile": "test/course-name-contract.test.ts",
+          "test": "rejects invalid course names consistently: \"\"",
+          "error": "TypeError: Cannot use 'in' operator to search for 'error' in undefined"
+        }
+      }
     },
     {
       "id": "ts-03",
@@ -56,7 +80,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/video-upload-service.test.ts",
+          "test": "upload lifecycle without a runtime environment rejects invalid input and quota failures before issuing storage access",
+          "error": "AssertionError: expected { video: { id: 7, …(13) }, …(3) } to have property \"fieldError\""
+        },
+        "ignore-result": {
+          "testFile": "test/video-upload-service.test.ts",
+          "test": "upload lifecycle without a runtime environment rejects invalid input and quota failures before issuing storage access",
+          "error": "AssertionError: expected { video: { id: 7, …(13) }, …(3) } to have property \"fieldError\""
+        }
+      }
     },
     {
       "id": "ts-04",
@@ -78,7 +114,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/video-metadata-contract.test.ts",
+          "test": "normalizes metadata identically and preserves the explicit single PUT boundary",
+          "error": "AssertionError: expected { success: false, …(1) } to match object { success: true, data: { …(4) } }"
+        },
+        "ignore-result": {
+          "testFile": "test/video-metadata-contract.test.ts",
+          "test": "normalizes metadata identically and preserves the explicit single PUT boundary",
+          "error": "AssertionError: expected { success: false, …(1) } to match object { success: true, data: { …(4) } }"
+        }
+      }
     },
     {
       "id": "ts-05",
@@ -95,7 +143,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/chat-generation-service.test.ts",
+          "test": "answer application lifecycle without runtime adapters authorizes the course before reserving quota and supplies an atomic conversation log callback",
+          "error": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'ledger', 'completed', true ]"
+        },
+        "ignore-result": {
+          "testFile": "test/chat-generation-service.test.ts",
+          "test": "answer application lifecycle without runtime adapters authorizes the course before reserving quota and supplies an atomic conversation log callback",
+          "error": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'ledger', 'completed', true ]"
+        }
+      }
     },
     {
       "id": "ts-06",
@@ -112,7 +172,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/external-evidence-service.test.ts",
+          "test": "reserves the authorized owner before execution, closes before refund and records non-consuming completion",
+          "error": "AssertionError: expected \"vi.fn()\" to be called once with arguments: [ { status: 'completed', …(1) } ]"
+        },
+        "ignore-result": {
+          "testFile": "test/external-evidence-service.test.ts",
+          "test": "reserves the authorized owner before execution, closes before refund and records non-consuming completion",
+          "error": "AssertionError: expected \"vi.fn()\" to be called once with arguments: [ { status: 'completed', …(1) } ]"
+        }
+      }
     },
     {
       "id": "ts-07",
@@ -133,7 +205,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/billing-webhook.integration.test.ts",
+          "test": "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for jpy",
+          "error": "AssertionError: expected 500 to be 200 // Object.is equality"
+        },
+        "ignore-result": {
+          "testFile": "test/billing-webhook.integration.test.ts",
+          "test": "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for jpy",
+          "error": "AssertionError: expected 500 to be 200 // Object.is equality"
+        }
+      }
     },
     {
       "id": "ts-08",
@@ -150,7 +234,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/worker-account-deletion.d1.integration.test.ts",
+          "test": "D1 cloud account deletion deletes media pointers with durable storage/vector cleanup before removing the user, preserving other owners",
+          "error": "AssertionError: expected { status: 'denied' } to deeply equal { status: 'progress' }"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/worker-account-deletion.d1.integration.test.ts",
+          "test": "D1 cloud account deletion deletes media pointers with durable storage/vector cleanup before removing the user, preserving other owners",
+          "error": "AssertionError: expected { status: 'denied' } to deeply equal { status: 'progress' }"
+        }
+      }
     },
     {
       "id": "ts-09",
@@ -167,7 +263,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/worker-account-deletion.postgres.integration.test.ts",
+          "test": "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET banned=false WHERE id='owner'",
+          "error": "AssertionError: expected { status: 'completed' } to deeply equal { status: 'denied' }"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/worker-account-deletion.postgres.integration.test.ts",
+          "test": "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET banned=false WHERE id='owner'",
+          "error": "AssertionError: expected { status: 'completed' } to deeply equal { status: 'denied' }"
+        }
+      }
     },
     {
       "id": "ts-10",
@@ -184,7 +292,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/account-summary-policy.test.ts",
+          "test": "preserves exact role and plan projection: user,admin/pro/admin",
+          "error": "AssertionError: expected { is_admin: undefined, …(6) } to match object { is_admin: true, …(5) }"
+        },
+        "ignore-result": {
+          "testFile": "test/account-summary-policy.test.ts",
+          "test": "preserves exact role and plan projection: user,admin/pro/admin",
+          "error": "AssertionError: expected { is_admin: undefined, …(6) } to match object { is_admin: true, …(5) }"
+        }
+      }
     },
     {
       "id": "ts-11",
@@ -201,7 +321,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/auth-security.test.ts",
+          "test": "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=10000000-0000-4000-8000-000000000001",
+          "error": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "ignore-result": {
+          "testFile": "test/auth-security.test.ts",
+          "test": "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=10000000-0000-4000-8000-000000000001",
+          "error": "AssertionError: expected 200 to be 400 // Object.is equality"
+        }
+      }
     },
     {
       "id": "ts-12",
@@ -218,7 +350,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/worker-account-deletion.postgres.integration.test.ts",
+          "test": "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'",
+          "error": "AssertionError: expected { status: 'completed' } to deeply equal { status: 'denied' }"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/worker-account-deletion.postgres.integration.test.ts",
+          "test": "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'",
+          "error": "AssertionError: expected { status: 'completed' } to deeply equal { status: 'denied' }"
+        }
+      }
     },
     {
       "id": "ts-13",
@@ -237,7 +381,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/lti-session-service.test.ts",
+          "test": "returns the feature projection when a verified login issues a session",
+          "error": "AssertionError: expected { ok: true, value: { …(5) } } to match object { ok: true, value: { …(5) } }"
+        },
+        "ignore-result": {
+          "testFile": "test/lti-session-service.test.ts",
+          "test": "returns the feature projection when a verified login issues a session",
+          "error": "AssertionError: expected { ok: true, value: { …(5) } } to match object { ok: true, value: { …(5) } }"
+        }
+      }
     },
     {
       "id": "ts-14",
@@ -258,7 +414,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/learning-operation-policy.test.ts",
+          "test": "exposes current capability decisions through the operation adapter",
+          "error": "AssertionError: expected undefined to be true // Object.is equality"
+        },
+        "ignore-result": {
+          "testFile": "test/learning-operation-policy.test.ts",
+          "test": "exposes current capability decisions through the operation adapter",
+          "error": "AssertionError: expected undefined to be true // Object.is equality"
+        }
+      }
     },
     {
       "id": "ts-15",
@@ -277,7 +445,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/classroom-authorization-service.test.ts",
+          "test": "distinguishes a co-teacher moderation grant from the owner history grant",
+          "error": "AssertionError: expected { ownerHistory: undefined, …(2) } to match object { ownerHistory: false, …(1) }"
+        },
+        "ignore-result": {
+          "testFile": "test/classroom-authorization-service.test.ts",
+          "test": "distinguishes a co-teacher moderation grant from the owner history grant",
+          "error": "AssertionError: expected { ownerHistory: undefined, …(2) } to match object { ownerHistory: false, …(1) }"
+        }
+      }
     },
     {
       "id": "ts-16",
@@ -294,7 +474,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/lms-sync.integration.test.ts",
+          "test": "Moodle synchronization using existing VideoQ accounts needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance",
+          "error": "TypeError: Cannot read properties of undefined (reading 'some')"
+        },
+        "ignore-result": {
+          "testFile": "test/lms-sync.integration.test.ts",
+          "test": "Moodle synchronization using existing VideoQ accounts needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance",
+          "error": "TypeError: Cannot read properties of undefined (reading 'some')"
+        }
+      }
     },
     {
       "id": "ts-17",
@@ -312,7 +504,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/lti-course-access-service.test.ts",
+          "test": "requires a fresh course entry even when visible videos are returned",
+          "error": "Error: promise resolved \"undefined\" instead of rejecting"
+        },
+        "ignore-result": {
+          "testFile": "test/lti-course-access-service.test.ts",
+          "test": "intersects current authority generations with local bindings and keeps management separate",
+          "error": "AssertionError: expected undefined to match object { videos: [], …(2) }"
+        }
+      }
     },
     {
       "id": "ts-18",
@@ -330,7 +534,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/learning-operation-policy.test.ts",
+          "test": "keeps Q&A viewing, posting and moderation capabilities separate",
+          "error": "AssertionError: expected undefined to be true // Object.is equality"
+        },
+        "ignore-result": {
+          "testFile": "test/learning-operation-policy.test.ts",
+          "test": "keeps Q&A viewing, posting and moderation capabilities separate",
+          "error": "AssertionError: expected undefined to be true // Object.is equality"
+        }
+      }
     },
     {
       "id": "ts-19",
@@ -348,7 +564,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/qa.integration.test.ts",
+          "test": "d1 Q&A persistence contract uses a real cookie session through tRPC for posting and public reads",
+          "error": "AssertionError: expected 500 to be 200 // Object.is equality"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/qa.integration.test.ts",
+          "test": "d1 Q&A persistence contract uses a real cookie session through tRPC for posting and public reads",
+          "error": "AssertionError: expected 500 to be 200 // Object.is equality"
+        }
+      }
     },
     {
       "id": "ts-20",
@@ -366,7 +594,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/qa.integration.test.ts",
+          "test": "postgres Q&A persistence contract uses a real cookie session through tRPC for posting and public reads",
+          "error": "AssertionError: expected 403 to be 200 // Object.is equality"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/qa.integration.test.ts",
+          "test": "postgres Q&A persistence contract uses a real cookie session through tRPC for posting and public reads",
+          "error": "AssertionError: expected 403 to be 200 // Object.is equality"
+        }
+      }
     },
     {
       "id": "ts-21",
@@ -385,7 +625,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/scene-index-execution.test.ts",
+          "test": "returns a typed pending state before any provider work",
+          "error": "AssertionError: expected \"vi.fn()\" to not be called at all, but actually been called 1 times"
+        },
+        "ignore-result": {
+          "testFile": "test/scene-index-execution.test.ts",
+          "test": "returns a typed pending state before any provider work",
+          "error": "AssertionError: expected \"vi.fn()\" to not be called at all, but actually been called 1 times"
+        }
+      }
     },
     {
       "id": "ts-22",
@@ -404,7 +656,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/index-transcript-admission.test.ts",
+          "test": "refuses pending media before splitting or embedding",
+          "error": "Error: expected SafeJobError_INVALID_TRANSCRIPT: Video 1 … { …(2) } to match object { code: 'INDEX_NOT_READY' }"
+        },
+        "ignore-result": {
+          "testFile": "test/index-transcript-admission.test.ts",
+          "test": "refuses pending media before splitting or embedding",
+          "error": "Error: expected SafeJobError_INVALID_TRANSCRIPT: Video 1 … { …(2) } to match object { code: 'INDEX_NOT_READY' }"
+        }
+      }
     },
     {
       "id": "ts-23",
@@ -423,7 +687,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/search-workflow.d1.integration.test.ts",
+          "test": "resumable search workflow with actual D1 persistence hands propagation to durable tasks and completes the video from their acknowledgement without embedding again",
+          "error": "SafeJobError_INDEX_SOURCE_CHANGED: Scene source changed before indexing completion"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/search-workflow.d1.integration.test.ts",
+          "test": "resumable search workflow with actual D1 persistence hands propagation to durable tasks and completes the video from their acknowledgement without embedding again",
+          "error": "SafeJobError_INDEX_SOURCE_CHANGED: Scene source changed before indexing completion"
+        }
+      }
     },
     {
       "id": "ts-24",
@@ -442,7 +718,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/lms-upload-service.test.ts",
+          "test": "LMS upload generation before transport validation preserves content generation checks before metadata/header validation",
+          "error": "AssertionError: expected [Function] to not throw an error but 'ApplicationError: STALE_GENERATION' was thrown"
+        },
+        "ignore-result": {
+          "testFile": "test/lms-upload-service.test.ts",
+          "test": "LMS upload generation before transport validation preserves content generation checks before metadata/header validation",
+          "error": "AssertionError: expected [Function] to not throw an error but 'ApplicationError: STALE_GENERATION' was thrown"
+        }
+      }
     },
     {
       "id": "ts-25",
@@ -461,7 +749,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/lms-resource-service.test.ts",
+          "test": "selects upload eligibility for video enabled=true status=uploading",
+          "error": "AssertionError: expected null to deeply equal { fileKey: 'immutable-key', …(2) }"
+        },
+        "ignore-result": {
+          "testFile": "test/lms-resource-service.test.ts",
+          "test": "selects upload eligibility for video enabled=true status=uploading",
+          "error": "AssertionError: expected null to deeply equal { fileKey: 'immutable-key', …(2) }"
+        }
+      }
     },
     {
       "id": "ts-26",
@@ -479,7 +779,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/course-history.d1.integration.test.ts",
+          "test": "D1 workerd course history contract atomically appends concurrent completed turns and retains attribution",
+          "error": "Error: Failed query: insert into \"lti_credentials\" (\"id\", \"kind\", \"payload\", \"expires_at\") select ? as \"id\", 'lti-history' as \"kind\", json_set(json(),'$.scopeVideoIds',json(?),'$.turns',json_array(json(?))) as \"payload\", ? as \"expiresAt\" from (VALUES(1)) input where 1 on conflict (\"lti_credentials\".\"id\") do update set \"payload\" = json_set(excluded.payload,'$.turns',json(((select json_group_array(CASE WHEN \"entry_type\" IN('array','object') THEN json(\"entry_value\") WHEN \"entry_type\"='true' THEN json('true') WHEN \"entry_type\"='false' THEN json('false') ELSE \"entry_value\" END) from (select \"entry_value\" as \"entry_value\", \"entry_type\" as \"entry_type\" from (select key as \"entry_key\", value as \"entry_value\", type as \"entry_type\" from json_each(json_insert(,'$[#]',json(excluded.payload -> '$.turns[0]'))) order by CAST(key AS INTEGER) desc limit ?) \"latest\" order by CAST(\"entry_key\" AS INTEGER) asc) \"chronological\")))), \"expires_at\" = ? where \"lti_credentials\".\"kind\" = ? returning \"id\""
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/course-history.d1.integration.test.ts",
+          "test": "D1 workerd course history contract atomically appends concurrent completed turns and retains attribution",
+          "error": "Error: Failed query: insert into \"lti_credentials\" (\"id\", \"kind\", \"payload\", \"expires_at\") select ? as \"id\", 'lti-history' as \"kind\", json_set(json(),'$.scopeVideoIds',json(?),'$.turns',json_array(json(?))) as \"payload\", ? as \"expiresAt\" from (VALUES(1)) input where 1 on conflict (\"lti_credentials\".\"id\") do update set \"payload\" = json_set(excluded.payload,'$.turns',json(((select json_group_array(CASE WHEN \"entry_type\" IN('array','object') THEN json(\"entry_value\") WHEN \"entry_type\"='true' THEN json('true') WHEN \"entry_type\"='false' THEN json('false') ELSE \"entry_value\" END) from (select \"entry_value\" as \"entry_value\", \"entry_type\" as \"entry_type\" from (select key as \"entry_key\", value as \"entry_value\", type as \"entry_type\" from json_each(json_insert(,'$[#]',json(excluded.payload -> '$.turns[0]'))) order by CAST(key AS INTEGER) desc limit ?) \"latest\" order by CAST(\"entry_key\" AS INTEGER) asc) \"chronological\")))), \"expires_at\" = ? where \"lti_credentials\".\"kind\" = ? returning \"id\""
+        }
+      }
     },
     {
       "id": "ts-27",
@@ -497,7 +809,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/course-history.postgres.integration.test.ts",
+          "test": "PostgreSQL learning history PostgreSQL course history contract atomically appends concurrent completed turns and retains attribution",
+          "error": "Error: Failed query: insert into \"lti_credentials\" (\"id\", \"kind\", \"payload\", \"expires_at\") values ($1, $2, $3, $4) on conflict (\"id\") do update set \"payload\" = ::jsonb || jsonb_build_object('scopeVideoIds', $5::jsonb, 'turns',"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/course-history.postgres.integration.test.ts",
+          "test": "PostgreSQL learning history PostgreSQL course history contract atomically appends concurrent completed turns and retains attribution",
+          "error": "Error: Failed query: insert into \"lti_credentials\" (\"id\", \"kind\", \"payload\", \"expires_at\") values ($1, $2, $3, $4) on conflict (\"id\") do update set \"payload\" = ::jsonb || jsonb_build_object('scopeVideoIds', $5::jsonb, 'turns',"
+        }
+      }
     },
     {
       "id": "ts-28",
@@ -515,7 +839,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/teaching.d1.integration.test.ts",
+          "test": "D1 workerd teaching contract consumes a ticket at most once under concurrent requests",
+          "error": "AssertionError: expected [] to have a length of 1 but got +0"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/teaching.d1.integration.test.ts",
+          "test": "D1 workerd teaching contract consumes a ticket at most once under concurrent requests",
+          "error": "AssertionError: expected [] to have a length of 1 but got +0"
+        }
+      }
     },
     {
       "id": "ts-29",
@@ -533,7 +869,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/teaching.postgres.integration.test.ts",
+          "test": "PostgreSQL teaching PostgreSQL teaching contract consumes a ticket at most once under concurrent requests",
+          "error": "AssertionError: expected [] to have a length of 1 but got +0"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/teaching.postgres.integration.test.ts",
+          "test": "PostgreSQL teaching PostgreSQL teaching contract consumes a ticket at most once under concurrent requests",
+          "error": "AssertionError: expected [] to have a length of 1 but got +0"
+        }
+      }
     },
     {
       "id": "ts-30",
@@ -552,7 +900,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/scene-search.d1.integration.test.ts",
+          "test": "D1 + LangChain Vectorize scene search revalidates owner, selection, revision, existence and visibility against D1",
+          "error": "AssertionError: expected [] to deeply equal [ { …(6) } ]"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/scene-search.d1.integration.test.ts",
+          "test": "D1 + LangChain Vectorize scene search revalidates owner, selection, revision, existence and visibility against D1",
+          "error": "AssertionError: expected [] to deeply equal [ { …(6) } ]"
+        }
+      }
     },
     {
       "id": "ts-31",
@@ -571,7 +931,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/embedding-store.integration.test.ts",
+          "test": "openai shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index",
+          "error": "TypeError: Cannot read properties of undefined (reading 'length')"
+        },
+        "ignore-result": {
+          "testFile": "test/embedding-store.integration.test.ts",
+          "test": "openai shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index",
+          "error": "TypeError: Cannot read properties of undefined (reading 'length')"
+        }
+      }
     },
     {
       "id": "ts-32",
@@ -589,7 +961,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/conversation-scope-policy.test.ts",
+          "test": "requires a visitor identity for shared conversations",
+          "error": "AssertionError: expected [Function] to throw an error"
+        },
+        "ignore-result": {
+          "testFile": "test/conversation-scope-policy.test.ts",
+          "test": "preserves the persisted conversation namespace: 6982549d152f1d4146c6a380e4e09b5322b39a2…",
+          "error": "Error: expected 'e3b0c44298fc1c149afbf4c8996fb92427ae4…' to be '6982549d152f1d4146c6a380e4e09b5322b39…' // Object.is equality"
+        }
+      }
     },
     {
       "id": "ts-33",
@@ -609,7 +993,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/conversation-scope-policy.test.ts",
+          "test": "preserves the persisted conversation namespace: 0c842b736eaae53c783f73ccce7fe7084a096bb…",
+          "error": "Error: promise rejected \"Error: Invalid LTI subject scope\" instead of resolving"
+        },
+        "ignore-result": {
+          "testFile": "test/conversation-scope-policy.test.ts",
+          "test": "preserves the persisted conversation namespace: 0c842b736eaae53c783f73ccce7fe7084a096bb…",
+          "error": "Error: promise rejected \"Error: Invalid LTI subject scope\" instead of resolving"
+        }
+      }
     },
     {
       "id": "ts-34",
@@ -627,7 +1023,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/video-evidence-service.test.ts",
+          "test": "shares call reservations across tool types and serializes in-flight model payloads",
+          "error": "AssertionError: expected \"vi.fn()\" to be called 1 times, but got 0 times"
+        },
+        "ignore-result": {
+          "testFile": "test/video-evidence-service.test.ts",
+          "test": "shares call reservations across tool types and serializes in-flight model payloads",
+          "error": "AssertionError: expected \"vi.fn()\" to be called 1 times, but got 0 times"
+        }
+      }
     },
     {
       "id": "ts-35",
@@ -645,7 +1053,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/evidence-text-service.test.ts",
+          "test": "reserves concurrent search calls before awaiting providers and ignores invalid scope selections",
+          "error": "TypeError: Cannot read properties of undefined (reading 'hasCapacity')"
+        },
+        "ignore-result": {
+          "testFile": "test/evidence-text-service.test.ts",
+          "test": "reserves concurrent search calls before awaiting providers and ignores invalid scope selections",
+          "error": "TypeError: Cannot read properties of undefined (reading 'hasCapacity')"
+        }
+      }
     },
     {
       "id": "ts-36",
@@ -663,7 +1083,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/evidence-text-service.test.ts",
+          "test": "projects only public course metadata and does not offer a continuation after an empty page",
+          "error": "TypeError: Cannot read properties of undefined (reading 'reserveTool')"
+        },
+        "ignore-result": {
+          "testFile": "test/evidence-text-service.test.ts",
+          "test": "projects only public course metadata and does not offer a continuation after an empty page",
+          "error": "TypeError: Cannot read properties of undefined (reading 'reserveTool')"
+        }
+      }
     },
     {
       "id": "ts-37",
@@ -681,7 +1113,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/external-evidence-service.test.ts",
+          "test": "keeps external account cost for read_video_window (false, 1)",
+          "error": "AssertionError: expected undefined to deeply equal { paid: false, cost: 1 }"
+        },
+        "ignore-result": {
+          "testFile": "test/external-evidence-service.test.ts",
+          "test": "keeps external account cost for read_video_window (false, 1)",
+          "error": "AssertionError: expected undefined to deeply equal { paid: false, cost: 1 }"
+        }
+      }
     },
     {
       "id": "ts-38",
@@ -700,7 +1144,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/native-session.d1.integration.test.ts",
+          "test": "D1 workerd native learning session contract rejects concurrent reuse of the same signed request",
+          "error": "AssertionError: expected [] to have a length of 1 but got +0"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/native-session.d1.integration.test.ts",
+          "test": "D1 workerd native learning session contract rejects concurrent reuse of the same signed request",
+          "error": "AssertionError: expected [] to have a length of 1 but got +0"
+        }
+      }
     },
     {
       "id": "ts-39",
@@ -720,7 +1176,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/jobs.d1.integration.test.ts",
+          "test": "D1 (workerd): JobRepository contract gives exactly one concurrent delivery a lease",
+          "error": "AssertionError: expected [ { status: 'claimed', …(1) }, …(11) ] to have a length of 1 but got 12"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/jobs.d1.integration.test.ts",
+          "test": "D1 (workerd): JobRepository contract gives exactly one concurrent delivery a lease",
+          "error": "AssertionError: expected [ { status: 'claimed', …(1) }, …(11) ] to have a length of 1 but got 12"
+        }
+      }
     },
     {
       "id": "ts-40",
@@ -740,7 +1208,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/jobs.postgres.integration.test.ts",
+          "test": "PostgreSQL jobs postgres: JobRepository contract gives exactly one concurrent delivery a lease",
+          "error": "AssertionError: expected [ { status: 'claimed', …(1) }, …(11) ] to have a length of 1 but got 12"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/jobs.postgres.integration.test.ts",
+          "test": "PostgreSQL jobs postgres: JobRepository contract gives exactly one concurrent delivery a lease",
+          "error": "AssertionError: expected [ { status: 'claimed', …(1) }, …(11) ] to have a length of 1 but got 12"
+        }
+      }
     },
     {
       "id": "ts-41",
@@ -757,7 +1237,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/reindex-job.test.ts",
+          "test": "delivers only after persistence commits and returns the persisted identity when delivery is delayed",
+          "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+        },
+        "ignore-result": {
+          "testFile": "test/reindex-job.test.ts",
+          "test": "delivers only after persistence commits and returns the persisted identity when delivery is delayed",
+          "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+        }
+      }
     },
     {
       "id": "ts-42",
@@ -774,7 +1266,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/search-worker-core.test.ts",
+          "test": "Python scene splitting parity short",
+          "error": "TypeError: Cannot read properties of undefined (reading 'next')"
+        },
+        "ignore-result": {
+          "testFile": "test/search-worker-core.test.ts",
+          "test": "Python scene splitting parity short",
+          "error": "TypeError: Cannot read properties of undefined (reading 'next')"
+        }
+      }
     },
     {
       "id": "ts-43",
@@ -792,7 +1296,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/streaming-otsu.test.ts",
+          "test": "bounded-memory durable Otsu kernel matches the in-memory kernel for range 0..120",
+          "error": "TypeError: Cannot read properties of undefined (reading 'length')"
+        },
+        "ignore-result": {
+          "testFile": "test/streaming-otsu.test.ts",
+          "test": "bounded-memory durable Otsu kernel matches the in-memory kernel for range 0..120",
+          "error": "TypeError: Cannot read properties of undefined (reading 'length')"
+        }
+      }
     },
     {
       "id": "ts-44",
@@ -810,7 +1326,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/lms-resource-read.d1.integration.test.ts",
+          "test": "D1 workerd LMS resource read contract rechecks connection and account revocation on every request",
+          "error": "AssertionError: expected { resource: { …(17) }, …(2) } to be null"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/lms-resource-read.d1.integration.test.ts",
+          "test": "D1 workerd LMS resource read contract rechecks connection and account revocation on every request",
+          "error": "AssertionError: expected { resource: { …(17) }, …(2) } to be null"
+        }
+      }
     },
     {
       "id": "ts-45",
@@ -828,7 +1356,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/persistence/lms-resource-read.postgres.integration.test.ts",
+          "test": "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract rechecks connection and account revocation on every request",
+          "error": "AssertionError: expected { resource: { …(17) }, …(2) } to be null"
+        },
+        "ignore-result": {
+          "testFile": "test/persistence/lms-resource-read.postgres.integration.test.ts",
+          "test": "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract rechecks connection and account revocation on every request",
+          "error": "AssertionError: expected { resource: { …(17) }, …(2) } to be null"
+        }
+      }
     },
     {
       "id": "ts-46",
@@ -847,7 +1387,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/rate-limit.test.ts",
+          "test": "enforceThrottles (memory backend) fails closed when no backend is configured",
+          "error": "AssertionError: expected null to deeply equal { allowed: false, retryAfterSec: 60 }"
+        },
+        "ignore-result": {
+          "testFile": "test/rate-limit.test.ts",
+          "test": "enforceThrottles (memory backend) fails closed when no backend is configured",
+          "error": "AssertionError: expected null to deeply equal { allowed: false, retryAfterSec: 60 }"
+        }
+      }
     },
     {
       "id": "ts-47",
@@ -866,7 +1418,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/username-policy.test.ts",
+          "test": "keeps a collision suffix within the username limit",
+          "error": "AssertionError: expected undefined to be 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…' // Object.is equality"
+        },
+        "ignore-result": {
+          "testFile": "test/username-policy.test.ts",
+          "test": "tries at most fifty stable candidates before using the injected fallback identity",
+          "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+        }
+      }
     },
     {
       "id": "ts-48",
@@ -884,7 +1448,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/account-registration.test.ts",
+          "test": "preserves supplied identity fields while enforcing fresh usage and configured quotas",
+          "error": "Error: expected undefined to match object { email: 'alice@example.com', …(16) }"
+        },
+        "ignore-result": {
+          "testFile": "test/account-registration.test.ts",
+          "test": "preserves supplied identity fields while enforcing fresh usage and configured quotas",
+          "error": "Error: expected undefined to match object { email: 'alice@example.com', …(16) }"
+        }
+      }
     },
     {
       "id": "ts-49",
@@ -902,7 +1478,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/google-account-policy.test.ts",
+          "test": "trusts only a true verification claim with current Google mailbox authority",
+          "error": "TypeError: Cannot destructure property 'email' of '(void 0)' as it is undefined."
+        },
+        "ignore-result": {
+          "testFile": "test/google-account-policy.test.ts",
+          "test": "trusts only a true verification claim with current Google mailbox authority",
+          "error": "TypeError: Cannot destructure property 'email' of '((0 , __vite_ssr_import_0__.googleAccountFacts)(...) , (void 0))' as it is undefined."
+        }
+      }
     },
     {
       "id": "ts-50",
@@ -920,7 +1508,19 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service.",
+      "failureWitnesses": {
+        "bypass": {
+          "testFile": "test/oauth-consent-policy.test.ts",
+          "test": "defers missing or consumed credentials to native rotation handling (case 0)",
+          "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+        },
+        "ignore-result": {
+          "testFile": "test/oauth-consent-policy.test.ts",
+          "test": "defers missing or consumed credentials to native rotation handling (case 0)",
+          "error": "Error: promise rejected \"TypeError: Cannot read properties of unde…\" instead of resolving"
+        }
+      }
     }
   ],
   "pythonControls": [
@@ -940,7 +1540,17 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls.",
+      "failureWitnesses": {
+        "bypass": {
+          "test": "tests.test_prepare_visual_frames::test_cloud_backfill_queues_only_visual_work",
+          "error": "TypeError: cannot unpack non-iterable NoneType object"
+        },
+        "ignore-result": {
+          "test": "tests.test_prepare_visual_frames::test_cloud_backfill_queues_only_visual_work",
+          "error": "TypeError: cannot unpack non-iterable NoneType object"
+        }
+      }
     },
     {
       "id": "py-02",
@@ -959,7 +1569,17 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls.",
+      "failureWitnesses": {
+        "bypass": {
+          "test": "tests.test_transcription_use_case::test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
+          "error": "Failed: DID NOT RAISE TranscriptionExecutionFailedError"
+        },
+        "ignore-result": {
+          "test": "tests.test_transcription_use_case::test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
+          "error": "Failed: DID NOT RAISE TranscriptionExecutionFailedError"
+        }
+      }
     },
     {
       "id": "py-03",
@@ -978,7 +1598,17 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls.",
+      "failureWitnesses": {
+        "bypass": {
+          "test": "tests.test_cloud_transcription_use_case::test_committed_source_never_restarts_provider_or_queues_again[indexing]",
+          "error": "AssertionError: Expected 'mock' to not have been called. Called 1 times."
+        },
+        "ignore-result": {
+          "test": "tests.test_cloud_transcription_use_case::test_committed_source_never_restarts_provider_or_queues_again[indexing]",
+          "error": "AssertionError: Expected 'mock' to not have been called. Called 1 times."
+        }
+      }
     },
     {
       "id": "py-04",
@@ -997,7 +1627,17 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls.",
+      "failureWitnesses": {
+        "bypass": {
+          "test": "tests.test_segmented_transcription::test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
+          "error": "AttributeError: 'NoneType' object has no attribute 'transcript'"
+        },
+        "ignore-result": {
+          "test": "tests.test_segmented_transcription::test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
+          "error": "AttributeError: 'NoneType' object has no attribute 'transcript'"
+        }
+      }
     },
     {
       "id": "py-05",
@@ -1014,7 +1654,17 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls.",
+      "failureWitnesses": {
+        "bypass": {
+          "test": "tests.test_youtube_transcript::test_manual_transcript_http_error_closes_before_automatic_fallback",
+          "error": "TypeError: 'NoneType' object is not iterable"
+        },
+        "ignore-result": {
+          "test": "tests.test_youtube_transcript::test_manual_transcript_http_error_closes_before_automatic_fallback",
+          "error": "TypeError: 'NoneType' object is not iterable"
+        }
+      }
     },
     {
       "id": "py-06",
@@ -1033,7 +1683,17 @@
         "bypass",
         "ignore-result"
       ],
-      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls.",
+      "failureWitnesses": {
+        "bypass": {
+          "test": "tests.test_job_execution_integration::test_same_job_id_has_one_concurrent_owner",
+          "error": "AssertionError: assert 2 == 1"
+        },
+        "ignore-result": {
+          "test": "tests.test_job_execution_integration::test_same_job_id_has_one_concurrent_owner",
+          "error": "AssertionError: assert 2 == 1"
+        }
+      }
     }
   ]
 }

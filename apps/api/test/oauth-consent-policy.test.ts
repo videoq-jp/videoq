@@ -5,13 +5,13 @@ const grant: RefreshConsentGrant = {
   revoked: false, userId: 'owner', clientId: 'client', scopes: ['videoq.read', 'videoq.write'],
 };
 
-it.each([null, { ...grant, revoked: true }])('defers missing or consumed credentials to native rotation handling', async token => {
+it.each([null, { ...grant, revoked: true }])('defers missing or consumed credentials to native rotation handling (case %#)', async token => {
   const hasConsent = vi.fn();
   await expect(refreshConsentDecision(token, undefined, hasConsent)).resolves.toBe('provider');
   expect(hasConsent).not.toHaveBeenCalled();
 });
 
-it.each([{ ...grant, userId: null }, { ...grant, clientId: undefined }])('rejects incomplete grant identities before looking up consent', async token => {
+it.each([{ ...grant, userId: null }, { ...grant, clientId: undefined }])('rejects incomplete grant identities before looking up consent (case %#)', async token => {
   const hasConsent = vi.fn();
   await expect(refreshConsentDecision(token, undefined, hasConsent)).resolves.toBe('denied');
   expect(hasConsent).not.toHaveBeenCalled();
