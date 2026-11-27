@@ -1,2 +1,2 @@
 # AWS SDK used by the API key audit and reviewed rotation workflows.
-boto3==1.43.122
+boto3==1.44.7
