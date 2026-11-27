@@ -1,3 +1,4 @@
+import { consumptionTime, consumptionEntries, refundReservation, validateRateLimit, type RateLimitEntry } from '../lib/rate-limit-history';
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { runtimeRateLimits as limits } from "../db/schema";
@@ -18,9 +19,9 @@ export function postgresRateLimitBackend(pool: pg.Pool): RateLimitBackend {
     key: string,
     windowSec: number,
     update: (
-      history: number[],
+      history: RateLimitEntry[],
       now: number,
-    ) => { history: number[]; result: T },
+    ) => { history: RateLimitEntry[]; result: T },
   ) {
     const client = await pool.connect();
     try {
@@ -51,7 +52,7 @@ export function postgresRateLimitBackend(pool: pg.Pool): RateLimitBackend {
           .set({
             history,
             windowSec,
-            expiresAt: sql`to_timestamp(${(history[0] ?? now) + windowSec})`,
+            expiresAt: sql`to_timestamp(${(history[0] === undefined ? now : consumptionTime(history[0])) + windowSec})`,
           })
           .where(eq(limits.key, hashed));
         return result;
@@ -62,16 +63,8 @@ export function postgresRateLimitBackend(pool: pg.Pool): RateLimitBackend {
   }
 
   const backend: RateLimitBackend = {
-    async consume(key, limit, windowSec, cost = 1) {
-      if (
-        !Number.isSafeInteger(cost) ||
-        cost < 1 ||
-        !Number.isSafeInteger(limit) ||
-        limit < 1 ||
-        !Number.isSafeInteger(windowSec) ||
-        windowSec < 1
-      )
-        throw new Error("Invalid rate limit");
+    async consume(key, limit, windowSec, cost = 1, reservationId) {
+      validateRateLimit(limit, windowSec, cost);
       return locked<ConsumeResult>(key, windowSec, (history, now) => {
         if (history.length + cost > limit) {
           const oldest = history.at(-1);
@@ -82,19 +75,19 @@ export function postgresRateLimitBackend(pool: pg.Pool): RateLimitBackend {
               retryAfterSec:
                 oldest === undefined
                   ? windowSec
-                  : Math.max(1, Math.ceil(windowSec - (now - oldest))),
+                  : Math.max(1, Math.ceil(windowSec - (now - consumptionTime(oldest)))),
             },
           };
         }
         return {
-          history: [...Array<number>(cost).fill(now), ...history],
+          history: [...consumptionEntries(now, cost, reservationId), ...history],
           result: { allowed: true, retryAfterSec: 0 },
         };
       });
     },
-    async release(key, windowSec, cost) {
+    async release(key, windowSec, reservationId) {
       await locked(key, windowSec, (history) => ({
-        history: history.slice(cost),
+        history: refundReservation(history, reservationId),
         result: undefined,
       }));
     },
@@ -114,7 +107,7 @@ export function postgresRateLimitBackend(pool: pg.Pool): RateLimitBackend {
         row.windowSec,
       );
       return history.length
-        ? { count: history.length, lastRequestMs: history[0] * 1000 }
+        ? { count: history.length, lastRequestMs: consumptionTime(history[0]) * 1000 }
         : null;
     },
     async record(key, windowSec) {

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { currentConsentAllows, refreshConsentDecision, type RefreshConsentGrant } from '../src/domain/identity/oauth-consent';
+import { currentConsentAllows, refreshConsentDecision, type RefreshConsentGrant } from '../src/application/identity/oauth-consent';
 
 const grant: RefreshConsentGrant = {
   revoked: false, userId: 'owner', clientId: 'client', scopes: ['videoq.read', 'videoq.write'],

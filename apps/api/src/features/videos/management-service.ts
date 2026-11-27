@@ -1,3 +1,5 @@
+import { youtubeUrlTextFailure } from '@videoq/domain/youtube';
+import { textValueFailure } from '@videoq/domain/text-value';
 import { videoTitleFailure } from '@videoq/domain/video-upload';
 import type { CreationIdempotency } from "../../persistence/contracts/creation-idempotency";
 import {
@@ -44,10 +46,14 @@ export function createVideoManagementService(
     body: YoutubeCreateRequest,
     idempotency?: CreationIdempotency,
   ) {
+    const descriptionError = textValueFailure(body.description);
+    if (descriptionError) return { fieldError: { description: [descriptionError] } } as const;
     const titleError = videoTitleFailure(body.title);
     if (titleError) return { fieldError: { title: [titleError] } } as const;
     body = { ...body, title: body.title.trim() };
     deps.requireYoutube();
+    body = { ...body, youtube_url: body.youtube_url.trim() };
+    if (youtubeUrlTextFailure(body.youtube_url)) return { fieldError: { youtube_url: [INVALID_YOUTUBE_URL_MESSAGE] } } as const;
     const youtubeVideoId = deps.extractYoutubeVideoId(body.youtube_url);
     if (youtubeVideoId === null) {
       return {
@@ -80,6 +86,14 @@ export function createVideoManagementService(
     userId: string,
     fields: { title?: string; description?: string; transcript?: string },
   ) {
+    for (const field of ['description', 'transcript'] as const) {
+      const value = fields[field];
+      const error = value === undefined ? null : textValueFailure(value);
+      if (error) {
+        if (!await deps.ownedBy(videoId, userId)) return { notFound: true } as const;
+        return { fieldError: { [field]: [error] } } as const;
+      }
+    }
     if (fields.title !== undefined) {
       const error = videoTitleFailure(fields.title);
       if (error) {

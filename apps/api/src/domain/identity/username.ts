@@ -11,9 +11,8 @@ export function usernameFromEmail(email: string): string {
   return base.slice(0, 150);
 }
 
-export async function allocateUniqueUsername(
-  usernameExists: (candidate: string) => Promise<boolean>, preferred: string, newId: () => string,
-): Promise<string> {
+/** Normalize facts once; the application owns querying candidates in order. */
+export function usernameSeed(preferred: string): string {
   let seed = preferred.includes("@")
     ? usernameFromEmail(preferred)
     : preferred
@@ -24,11 +23,12 @@ export async function allocateUniqueUsername(
         .slice(0, 150);
   if (seed.length < 3) seed = usernameFromEmail(preferred.includes("@") ? preferred : `${seed || "user"}@x`);
 
-  for (let i = 0; i < 50; i++) {
-    const suffix = i === 0 ? "" : `_${i}`;
-    const candidate = `${seed.slice(0, Math.max(1, 150 - suffix.length))}${suffix}`;
-    if (!await usernameExists(candidate)) return candidate;
-  }
-  return `user_${newId().replace(/-/g, "").slice(0, 12)}`;
+  return seed;
 }
-
+export function usernameCandidate(seed: string, index: number): string {
+  const suffix = index === 0 ? '' : `_${index}`;
+  return `${seed.slice(0, Math.max(1, 150 - suffix.length))}${suffix}`;
+}
+export function fallbackUsername(id: string): string {
+  return `user_${id.replace(/-/g, '').slice(0, 12)}`;
+}

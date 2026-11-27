@@ -12,6 +12,11 @@ export interface LmsUploadSource {
 export function lmsUploadMaterialAllowed(resource: { kind: string; enabled: boolean }, hasVideo: boolean): boolean {
   return hasVideo && resource.kind === 'video' && resource.enabled;
 }
+/** A capability is executable only when both metadata values are known. */
+export function lmsUploadMetadata(resource: { fileSize: number | null; contentType: string | null }): { size: number; contentType: string } | null {
+  return resource.fileSize !== null && Number.isSafeInteger(resource.fileSize) && resource.fileSize > 0 && resource.contentType?.trim()
+    ? { size: resource.fileSize, contentType: resource.contentType } : null;
+}
 export function currentLmsUploadSource<T extends LmsUploadSource>(data: T | null, generation: number): data is T & { video: NonNullable<T['video']> } {
   return !!data && lmsUploadMaterialAllowed(data.resource, !!data.video) && data.resource.generation === generation;
 }
@@ -19,7 +24,9 @@ export function lmsUploadActorAllowed(operation: 'content' | 'confirm', ownerUse
   return operation !== 'confirm' || !!ownerUserId;
 }
 export function planLmsUploadSnapshot(data: LmsUploadSource | null, externalId: string, generation: number): LmsUploadSnapshot | null {
-  if (!currentLmsUploadSource(data, generation) || data.resource.fileSize === null || !data.resource.contentType) return null;
+  if (!currentLmsUploadSource(data, generation)) return null;
+  const metadata = lmsUploadMetadata(data.resource);
+  if (!metadata) return null;
   return { resourceId: data.resource.id, externalId, generation, videoId: data.video.id,
-    fileKey: data.video.file, size: data.resource.fileSize, contentType: data.resource.contentType };
+    fileKey: data.video.file, ...metadata };
 }

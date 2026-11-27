@@ -167,3 +167,16 @@ describe('direct upload application failures', () => {
     expect(deps.videos.delete).not.toHaveBeenCalled();
   });
 });
+
+it.each(['title','description','filename'] as const)('rejects NUL upload %s before reservation or storage', async field => {
+  const {deps,service} = fixture();
+  const bad = 'prefix' + String.fromCharCode(0) + '.mp4';
+  expect(await service.requestPresignedUpload('owner',{...request,[field]:bad})).toHaveProperty(`fieldError.${field}`);
+  deps.storage.presigned = false;
+  expect(await service.createDirectUpload('owner',{
+    file:{name:field === 'filename' ? bad : 'lesson.mp4',type:'video/mp4',size:3,stream:()=>new Uint8Array([1,2,3])},
+    title:field === 'title' ? bad : 'Lesson',description:field === 'description' ? bad : '',
+  })).toMatchObject({ok:false,error:{kind:'validation'}});
+  expect(deps.videos.reserveUpload).not.toHaveBeenCalled();
+  expect(deps.storage.put).not.toHaveBeenCalled();
+});

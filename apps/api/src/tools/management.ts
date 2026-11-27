@@ -1,4 +1,5 @@
-import { videoTitleSchema, uploadFilenameSchema, uploadContentTypeSchema, uploadFileSizeSchema } from '@videoq/trpc/video-upload';
+import { textValueSchema } from '@videoq/trpc/text-value';
+import { youtubeUrlSchema, videoTitleSchema, uploadFilenameSchema, uploadContentTypeSchema, uploadFileSizeSchema } from '@videoq/trpc/video-upload';
 import { courseNameSchema } from '@videoq/trpc/course-name';
 import { z } from "zod";
 import { defineTool, type ToolDefinition, type ToolMetadata } from "./definition";
@@ -37,7 +38,7 @@ function integerInput(schema: z.ZodNumber) {
   ]);
 }
 const intId = integerInput(z.number().int().positive().safe());
-const description = z.string().max(10_000).default("");
+const description = textValueSchema.max(10_000).default("");
 const idempotencyKey = z
   .string()
   .trim()
@@ -126,7 +127,7 @@ export const managementToolSchemas = {
   }),
   create_youtube_video: z.strictObject({
     idempotency_key: idempotencyKey,
-    youtube_url: z.string().trim().url().max(200),
+    youtube_url: youtubeUrlSchema,
     title: videoTitleSchema,
     description,
   }),

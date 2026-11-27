@@ -1,3 +1,4 @@
+import { youtubeVideoIdFromParts } from '@videoq/domain/youtube';
 import { describe, it, expect } from "vitest";
 import { extractYoutubeVideoId } from "../src/lib/youtube";
 
@@ -31,4 +32,11 @@ describe("extractYoutubeVideoId", () => {
       expect(extractYoutubeVideoId(url)).toBe(null);
     });
   }
+});
+
+it('handles long slash runs without an unbounded trailing-slash regex', () => {
+  const id = 'abcdefghijk', padding = '/'.repeat(100000);
+  expect(youtubeVideoIdFromParts({protocol:'https:',host:'youtu.be',pathname:'/'+id+padding+'suffix',videoQuery:null})).toBe(id);
+  expect(youtubeVideoIdFromParts({protocol:'https:',host:'youtu.be',pathname:padding+id+'/',videoQuery:null})).toBe(id);
+  expect(youtubeVideoIdFromParts({protocol:'https:',host:'youtube.com',pathname:'/embed/'+id+padding+'suffix',videoQuery:null})).toBe(id);
 });

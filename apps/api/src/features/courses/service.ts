@@ -1,3 +1,4 @@
+import { textValueFailure } from '@videoq/domain/text-value';
 import { normalizeCourseName } from '@videoq/domain/course-name';
 import { validationFailure } from '../../application/errors';
 import {
@@ -15,6 +16,12 @@ export function createCourseService(courses: CourseRepository) {
     return result.name;
   };
 
+  const checkedText = (value: string) => {
+    const error = textValueFailure(value);
+    if (error) throw validationFailure(error);
+    return value;
+  };
+
   async function getCourse(courseId: number, userId: string) {
     return courses.getDetail(courseId, userId, { includeTags: false });
   }
@@ -28,7 +35,7 @@ export function createCourseService(courses: CourseRepository) {
     name: string,
     description: string,
   ) {
-    const created = await courses.create(userId, checkedName(name), description);
+    const created = await courses.create(userId, checkedName(name), checkedText(description));
     if ("idempotencyConflict" in created) {
       throw new Error("Unexpected idempotency conflict without an idempotency key.");
     }
@@ -45,7 +52,7 @@ export function createCourseService(courses: CourseRepository) {
     const created = await courses.create(
       userId,
       checkedName(name),
-      description,
+      checkedText(description),
       idempotency,
     );
     if ("idempotencyConflict" in created) return created;
@@ -77,6 +84,10 @@ export function createCourseService(courses: CourseRepository) {
     getCourse, getSharedCourse, createUserCourse, createUserCourseIdempotent, saveShareLink,
     listCourses: (userId: string, limit: number, offset: number) => courses.listPage(userId, limit, offset),
     updateUserCourse: async (id: number, userId: string, fields: { name?: string; description?: string }) => {
+      if (fields.description !== undefined && textValueFailure(fields.description)) {
+        if (!await courses.ownedBy(id, userId)) return { notFound: true } as const;
+        checkedText(fields.description);
+      }
       if (fields.name === undefined) return courses.update(id, userId, fields);
       const result = normalizeCourseName(fields.name);
       if ('error' in result) {

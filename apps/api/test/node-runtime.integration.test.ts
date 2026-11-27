@@ -45,9 +45,9 @@ withPostgres("on-prem runtime with PostgreSQL", () => {
 
   it("supports atomic multi-cost consumption, compensation, expiration and restart", async () => {
     const first = postgresRateLimitBackend(pool);
-    expect((await first.consume("batch", 3, 60, 2)).allowed).toBe(true);
-    expect((await first.consume("batch", 3, 60, 2)).allowed).toBe(false);
-    await postgresRateLimitBackend(second).release("batch", 60, 2);
+    expect((await first.consume("batch", 3, 60, 2, "batch-reservation")).allowed).toBe(true);
+    expect((await first.consume("batch", 3, 60, 2, "batch-reservation")).allowed).toBe(false);
+    await postgresRateLimitBackend(second).release("batch", 60, "batch-reservation");
     expect((await first.consume("batch", 3, 60, 3)).allowed).toBe(true);
     await admin.query("UPDATE runtime_rate_limits SET history = '[1, 0]'::jsonb, expires_at = now() - interval '1 second'");
     expect(await first.snapshot("batch")).toBeNull();

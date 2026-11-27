@@ -1,7 +1,7 @@
 import { adminRoleIncludes, adminBooleanRoleLogic } from '../domain/identity/admin';
 import { adminRoleChangeFailure } from "../domain/identity/admin";
 import { accountIsBanned } from "../domain/lms/resource-access";
-import { currentConsentAllows, refreshConsentDecision } from "../domain/identity/oauth-consent";
+import { currentConsentAllows, refreshConsentDecision } from "../application/identity/oauth-consent";
 import type { AuthContext, BetterAuthPlugin, GenericEndpointContext } from "better-auth";
 import {
   APIError,

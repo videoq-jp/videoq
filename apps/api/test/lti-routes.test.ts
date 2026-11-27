@@ -223,8 +223,8 @@ describe("LTI transport boundaries", () => {
       headers: { "X-VideoQ-Client-IP": "127.0.0.1", "CF-Connecting-IP": "198.51.100.9" },
     }, { ...env, RUNTIME: "node" });
     expect(response.status).toBe(400);
-    expect(consume).toHaveBeenCalledWith("throttle_lti_request_ip_127.0.0.1", 1200, 60, 1);
-    expect(consume).toHaveBeenCalledWith("throttle_lti_launch_ip_127.0.0.1", 1200, 3600, 1);
+    expect(consume).toHaveBeenCalledWith("throttle_lti_request_ip_127.0.0.1", 1200, 60, 1, expect.any(String));
+    expect(consume).toHaveBeenCalledWith("throttle_lti_launch_ip_127.0.0.1", 1200, 3600, 1, expect.any(String));
   });
   it("is unavailable without explicit configuration", async () => {
     const response = await app.request("https://api.example/api/lti/login", {}, {});

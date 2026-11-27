@@ -1,5 +1,6 @@
+import { textValueSchema } from '../text-value';
 import { z } from "zod";
-import { isValidUploadPartEtag, MAX_UPLOAD_PARTS, videoTitleSchema, uploadFilenameSchema, uploadContentTypeSchema, uploadFileSizeSchema, transcriptionLanguageSchema } from "../video-upload";
+import { isValidUploadPartEtag, MAX_UPLOAD_PARTS, youtubeUrlSchema, videoTitleSchema, uploadFilenameSchema, uploadContentTypeSchema, uploadFileSizeSchema, transcriptionLanguageSchema } from "../video-upload";
 
 const id = z.number().int().positive();
 const title = videoTitleSchema;
@@ -22,7 +23,7 @@ export const videosInputSchemas = {
     multipart: z.boolean().optional(),
     transcriptionLanguage: transcriptionLanguageSchema.optional(),
     title,
-    description: z.string().default(""),
+    description: textValueSchema.default(""),
   }),
   "videos.confirmUpload": z.object({ id }),
   "videos.uploadPartUrl": z.object({ id, partNumber: z.number().int().min(1).max(MAX_UPLOAD_PARTS) }),
@@ -34,12 +35,12 @@ export const videosInputSchemas = {
     })).min(1).max(MAX_UPLOAD_PARTS),
   }),
   "videos.abortUpload": z.object({ id }),
-  "videos.createYoutube": z.object({ youtubeUrl: z.string().trim().min(1), title, description: z.string().default("") }),
+  "videos.createYoutube": z.object({ youtubeUrl: youtubeUrlSchema, title, description: textValueSchema.default("") }),
   "videos.update": z.object({
     id,
     title: title.optional(),
-    description: z.string().optional(),
-    transcript: z.string().optional(),
+    description: textValueSchema.optional(),
+    transcript: textValueSchema.optional(),
   }),
   "videos.delete": z.object({ id }),
 };

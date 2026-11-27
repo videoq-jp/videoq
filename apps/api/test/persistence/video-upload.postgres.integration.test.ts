@@ -1,3 +1,5 @@
+import { videos } from '../../src/db/schema';
+import { assertPostgresColumnContract } from '../helpers/postgres-column-contract';
 import pg from "pg";
 import { describe } from "vitest";
 import { createPostgresVideoUploadRepository } from "../../src/persistence/postgres/video-upload-repository";
@@ -26,9 +28,9 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
         storage_limit_gb double precision, monthly_upload_limit_gb double precision, upload_usage_period_start timestamptz
       );
       CREATE TABLE videos (
-        managed_by_lms boolean NOT NULL DEFAULT false, id bigserial PRIMARY KEY, user_id text NOT NULL REFERENCES users(id), file text NOT NULL,
-        title text NOT NULL CHECK (title <> 'reject'), description text NOT NULL, status text NOT NULL,
-        source_type text NOT NULL, source_url text NOT NULL, youtube_video_id text NOT NULL,
+        managed_by_lms boolean NOT NULL DEFAULT false, id bigserial PRIMARY KEY, user_id text NOT NULL REFERENCES users(id), file varchar(100) NOT NULL,
+        title varchar(255) NOT NULL CHECK (title <> 'reject'), description text NOT NULL, status text NOT NULL,
+        source_type text NOT NULL, source_url varchar(200) NOT NULL, youtube_video_id text NOT NULL,
         transcript text NOT NULL, error_message text NOT NULL, uploaded_at timestamptz NOT NULL,
         upload_usage_period_start timestamptz, transcription_language text, multipart_upload jsonb, upload_heartbeat_at timestamptz, processing_seconds integer NOT NULL DEFAULT 0
       );
@@ -42,6 +44,7 @@ const databaseUrl = process.env.PERSISTENCE_TEST_DATABASE_URL;
         available_at timestamptz NOT NULL DEFAULT now(),locked_at timestamptz,completed_at timestamptz,dead_at timestamptz,
         effect_applied_at timestamptz,last_error text NOT NULL DEFAULT '',updated_at timestamptz NOT NULL DEFAULT now()
       );`);
+      await assertPostgresColumnContract(pool, videos, ['file','title','description','sourceUrl']);
       return {
         repository: createPostgresVideoUploadRepository({ DATABASE_POOL: pool } as Bindings),
         removeVideo: async videoId => { await pool.query('DELETE FROM videos WHERE id=$1', [videoId]); },
