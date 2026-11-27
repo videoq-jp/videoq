@@ -80,7 +80,8 @@ export function courseSkillManagement(env: Bindings, ownerId: string) {
       const builds = await (await createCourseSkillExecutionRepository(env)).progress(courseId, ownerId);
       if (!candidate || candidate.contentHash !== expectedHash || candidate.status === 'published' || candidate.buildRevision !== snapshot?.revision || candidate.sourceState !== snapshot.sourceState || !builds.some(b => b.id === candidate.buildId && b.state === 'completed')) throw new CourseSkillManagementError('conflict', 'Skill candidate changed; reload before editing');
       if (draft.slug !== candidate.content.task.slug) throw new CourseSkillManagementError('invalid', 'Skill identity cannot be edited');
-      validateSkillDraft(draft, candidate.content.facts);
+      try { validateSkillDraft(draft, candidate.content.facts); }
+      catch { throw new CourseSkillManagementError('invalid', 'Skill draft, exclusions and exceptions must be supported by its fixed source facts'); }
       const audit = await courseSkillDraftDependencies(env, ownerId, snapshot.settings.language).audit(draft, candidate.content.facts);
       const content = { ...candidate.content, draft, issues: audit.supported ? audit.issues : [...audit.issues, 'SKILL_SEMANTIC_REVIEW_REQUIRED'] };
       if (!await repository.edit(candidateId, ownerId, expectedHash, content, await digest(JSON.stringify(content)))) throw new CourseSkillManagementError('conflict', 'Skill candidate changed; reload before editing');

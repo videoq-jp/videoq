@@ -146,7 +146,7 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
   it("discovers all tools and runs search → subtitles → visual inspection without an agent", async () => {
     const client = await external();
     const tools = (await client.listTools()).tools;
-    expect(tools).toHaveLength(19);
+    expect(tools).toHaveLength(22);
     expect(tools.some(tool => tool.name === "get_skill")).toBe(false);
     const scenes = await call(client, "search_scenes", { course_id: 3, query: "red graph", video_ids: null });
     expect(scenes.structuredContent).toMatchObject({ result: { scenes: [{ videoId: 42, text: "A red line rises on the graph." }] } });

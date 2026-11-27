@@ -5,6 +5,8 @@ import { registerTools } from "../../tools/mcp";
 import { enforceThrottles } from "../../lib/rate-limit";
 import { createExternalEvidenceTools } from "./evidence-tools";
 
+import { createCourseSkillTools } from "./course-skill-tools";
+
 async function runTool(
   definition: ToolDefinition,
   input: unknown,
@@ -52,8 +54,8 @@ async function runTool(
 
 /** Assemble the request-scoped catalog. Definitions enforce the actor’s authority at execution. */
 export function createVideoqMcpServer(ctx: ToolActorContext): McpServer {
-  const server = new McpServer({ name: "videoq-api", version: "0.3.0" });
-  const management = createManagementTools(ctx).map(definition => ({
+  const server = new McpServer({ name: "videoq-api", version: "0.4.0" });
+  const management = [...createManagementTools(ctx), ...createCourseSkillTools(ctx)].map(definition => ({
     ...definition,
     invoke: (input: unknown, execution: ToolExecution) => runTool(definition, input, execution, ctx),
   }));

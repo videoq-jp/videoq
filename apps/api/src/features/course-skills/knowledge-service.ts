@@ -8,6 +8,7 @@ export interface SkillKnowledgeDependencies {
   now(): number;
   model: string;
   promptVersion: string;
+  chunkCharacters?: number;
   extract(cues: { id: string; startMs: number; endMs: number; text: string }[], language: 'ja' | 'en'): Promise<SkillKnowledge[]>;
   visuals?(cues: { id: string; startMs: number; endMs: number; text: string }[], facts: SkillKnowledge[]): Promise<{ id: string; timestampMs: number; jpegBase64: string }[]>;
   extractVisual?(cues: { id: string; startMs: number; endMs: number; text: string }[], facts: SkillKnowledge[], frames: { id: string; timestampMs: number; jpegBase64: string }[], language: 'ja' | 'en'): Promise<SkillKnowledge[]>;
@@ -27,7 +28,7 @@ export async function extractSkillKnowledge(
     if (!page) throw new Error('SKILL_INPUT_CHANGED');
     return page;
   };
-  for await (const chunk of skillTranscriptChunks(read)) {
+  for await (const chunk of skillTranscriptChunks(read, deps.chunkCharacters ?? 12_000)) {
     const key = await deps.hash(JSON.stringify({ ownerId: input.lease.ownerId, videoId: input.source.videoId, analysisRevision: input.source.analysisRevision,
       policyVersion: input.policyVersion, language: input.language, model: deps.model, promptVersion: deps.promptVersion, chunk }));
     let cached = await deps.repository.cached(input.lease, key, deps.now());

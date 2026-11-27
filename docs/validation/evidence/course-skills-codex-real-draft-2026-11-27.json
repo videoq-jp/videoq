@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-27",
+  "client": "codex-cli 0.160.0",
+  "scope": "unapproved real-course draft in isolated temporary project Skill directory; file inspection only, not authenticated publication retrieval",
+  "courseId": 51,
+  "sourceVideoId": 578,
+  "nativeProjectSkillDiscovered": true,
+  "filesRead": [
+    "SKILL.md",
+    "references/sources.md"
+  ],
+  "files": [
+    {
+      "path": "SKILL.md",
+      "sha256": "7989794493a57bf265b416855fbed9fb723af52719fa7a03d8b06ce19511770e"
+    },
+    {
+      "path": "references/sources.md",
+      "sha256": "de556d222be75af8edca97e7ba22af75b495cf3ce1e5a6d2cfdb5153ffbe39b3"
+    }
+  ],
+  "completed": true,
+  "readOnlyCommands": true,
+  "sourceVideoCited": true,
+  "sourceTimestampsCited": true,
+  "mcpToolsCalled": 0,
+  "workflowExecuted": false,
+  "humanApproved": false,
+  "published": false,
+  "reviewFinding": "A detail in a generated fact summary is not explicitly covered by that fact’s cited excerpt; source-granularity review remains necessary.",
+  "effectComparisonCompleted": false
+}

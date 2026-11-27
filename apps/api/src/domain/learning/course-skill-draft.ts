@@ -20,6 +20,9 @@ export function validateSkillDraft(draft: SkillDraft, facts: readonly SupportedS
   for (const block of [...draft.criteria, ...draft.steps, ...draft.exceptions, ...draft.checks, ...draft.examples]) {
     if (!block.factIds.length || block.factIds.some(id => !known.has(id))) throw new Error('SKILL_UNSUPPORTED_BLOCK');
   }
+  const hasException = (fact: SupportedSkillFact) => fact.kind === 'exception' || fact.exceptions.length > 0;
+  if (draft.doNotUseWhen.length && !facts.some(hasException)) throw new Error('SKILL_UNSUPPORTED_EXCLUSION');
+  for (const block of draft.exceptions) if (!facts.some(f => block.factIds.includes(f.id) && hasException(f))) throw new Error('SKILL_UNSUPPORTED_EXCEPTION');
 }
 const plainLine = (value: string) => value.replaceAll('\n', ' ').replaceAll('\r', ' ');
 const line = (value: string) => plainLine(value).replaceAll('<', '&lt;').replaceAll('>', '&gt;').replace(/[\\[\]`!]/g, '\\$&');
@@ -41,7 +44,7 @@ export function renderCourseSkill(courseId: number, draft: SkillDraft, facts: re
     `## ${labels[4]}`, ...draft.steps.map((x, i) => `${i + 1}. ${line(x.action)}\n   ${labels[8]}: ${line(x.expectedResult)} ${cite(x.factIds)}`), '',
     `## ${labels[5]}`, ...draft.exceptions.map(x => `- ${line(x.condition)}: ${line(x.behavior)} ${cite(x.factIds)}`), '',
     `## ${labels[6]}`, ...draft.checks.map(x => `- ${line(x.check)} ${cite(x.factIds)}`), '',
-    `## ${labels[7]}`, ...draft.examples.map(x => `- ${line(x.situation)}: ${line(x.application)} ${cite(x.factIds)}`), '',
+    `## ${labels[7]}`, ...(draft.examples.length ? [language === 'en' ? 'These are illustrative applications, not API specifications or exact implementations from the course. Check actual names and interfaces in the target project.' : '以下は知識を応用した仮の例です。教材のAPI仕様や実装そのものを示すものではありません。実際の名前とインターフェースは対象プロジェクトで確認してください。', ''] : []), ...draft.examples.map(x => `- ${line(x.situation)}: ${line(x.application)} ${cite(x.factIds)}`), '',
     language === 'en' ? 'See [sources](references/sources.md) for evidence. Verify version-sensitive API specifications against primary documentation at use time.' : '詳しい根拠は [出典](references/sources.md) を参照してください。時間依存のAPI仕様は利用時に一次資料を確認してください。', '',
   ].join('\n');
   const used = new Set([...draft.criteria, ...draft.steps, ...draft.exceptions, ...draft.checks, ...draft.examples].flatMap(x => x.factIds));

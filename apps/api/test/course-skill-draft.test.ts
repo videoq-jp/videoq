@@ -8,7 +8,7 @@ const chunk: SkillKnowledgeChunk = { version: 1, videoId: 1, analysisRevision: '
   cues: [{ id: 'cue-0', startMs: 1000, endMs: 2000, text: '引用の説明' }],
   facts: (['principle', 'procedure', 'verification'] as const).map((kind, i) => ({ id: `fact-${i}`, kind, claim: '説明', appliesWhen: ['条件'], exceptions: [], evidence: [{ cueId: 'cue-0', quote: '引用' }], requiresVisualEvidence: false, status: 'supported', versionContext: { language: null, framework: null, version: null } })),
 };
-const draft: SkillDraft = { slug: 'review-retry', title: '再試行をレビューする', description: '再試行処理の実装を調べるときに利用する', useWhen: ['再試行の実装'], doNotUseWhen: ['別の方針が適用される'],
+const draft: SkillDraft = { slug: 'review-retry', title: '再試行をレビューする', description: '再試行処理の実装を調べるときに利用する', useWhen: ['再試行の実装'], doNotUseWhen: [],
   criteria: [{ decision: '判断', factIds: ['fact-0'] }], steps: [{ action: '調査', expectedResult: '確認済み', factIds: ['fact-1'] }], exceptions: [], checks: [{ check: '検証', factIds: ['fact-2'] }], examples: [] };
 const deps: SkillDraftDependencies = { id: () => 'server-id', plan: () => Promise.resolve({ proposals: [{ existingSkillId: null, slug: draft.slug, objective: '再試行をレビューする', factIds: chunk.facts.map(f => f.id) }], issues: [] }), synthesize: () => Promise.resolve(draft), audit: () => Promise.resolve({ supported: true, issues: [] }) };
 
@@ -51,5 +51,19 @@ describe('task-based course skills', () => {
     const planner = { ...deps, plan: () => Promise.resolve({ proposals: [{ existingSkillId: 'existing', slug: draft.slug, objective: draft.title, factIds: chunk.facts.map(f => f.id) }], issues: [] }) };
     expect((await generateCourseSkillDrafts(planner, [chunk], existing)).candidates).toHaveLength(0);
     expect((await generateCourseSkillDrafts(planner, [chunk], existing, { force: true })).candidates).toHaveLength(1);
+  });  it('rejects invented exclusions and exceptions while retaining explicitly sourced ones', () => {
+    const facts = supportedSkillFacts([chunk]);
+    expect(() => validateSkillDraft({ ...draft, doNotUseWhen: ['Prototype policy'] }, facts)).toThrow('SKILL_UNSUPPORTED_EXCLUSION');
+    const exception = { condition: 'Explicit condition', behavior: 'Source behavior', factIds: ['fact-0'] };
+    expect(() => validateSkillDraft({ ...draft, exceptions: [exception] }, facts)).toThrow('SKILL_UNSUPPORTED_EXCEPTION');
+    const sourced = facts.map(f => f.id === 'fact-0' ? { ...f, exceptions: ['Explicit condition'] } : f);
+    expect(() => validateSkillDraft({ ...draft, doNotUseWhen: ['Explicit condition'], exceptions: [exception] }, sourced)).not.toThrow();
+    expect(() => validateSkillDraft({ ...draft, exceptions: [{ ...exception, factIds: ['fact-1'] }] }, sourced)).toThrow('SKILL_UNSUPPORTED_EXCEPTION');
   });
+  it('labels generated applications separately from course API specifications', () => {
+    const example = { ...draft, examples: [{ situation: 'Example', application: 'Use a hypothetical helper', factIds: ['fact-0'] }] };
+    expect(renderCourseSkill(7, example, supportedSkillFacts([chunk])).files[0].content).toContain('教材のAPI仕様や実装そのものを示すものではありません');
+    expect(renderCourseSkill(7, example, supportedSkillFacts([chunk]), 'en').files[0].content).toContain('not API specifications');
+  });
+
 });

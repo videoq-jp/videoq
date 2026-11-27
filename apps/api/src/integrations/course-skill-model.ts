@@ -7,22 +7,16 @@ import { llmTimeoutMs } from '../lib/llm';
 import { reserveAiAnswerUsage, releaseAiAnswerReservation } from '../repositories/quota-repository';
 import { AnswerCostLedger, startAnswerCostLedger, finishAnswerCostLedger } from '../lib/answer-cost-ledger';
 
-/** Workers AI's grammar compiler rejects pattern combined with string length bounds.
- * Keep the pattern in its grammar; the original Zod schema still checks every bound. */
-function providerSchema(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(providerSchema);
-  if (!value || typeof value !== 'object') return value;
-  const result = Object.fromEntries(Object.entries(value).map(([key, child]) => [key, providerSchema(child)]));
-  if (typeof result.pattern === 'string') { delete result.minLength; delete result.maxLength; }
-  return result;
-}
-
 /** One bounded, metered provider call. Source text never appears in propagated errors. */
 export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bindings, ownerId: string, options: {
   name: string; system: string; input: unknown; schema: Schema; images?: { id: string; jpegBase64: string }[];
 }): Promise<z.output<Schema>> {
   const input = JSON.stringify(options.input);
-  if (input.length > 200_000) throw new Error('SKILL_MODEL_INPUT_TOO_LARGE');
+  const schema = z.toJSONSchema(options.schema);
+  const schemaText = JSON.stringify(schema);
+  const workersAi = env.LLM_MODEL?.startsWith('@cf/');
+  const system = workersAi ? `${options.system}\nReturn one complete JSON object, with all required fields and no extra keys, matching this JSON Schema. Do not use Markdown or trailing commentary. JSON Schema: ${schemaText}` : options.system;
+  if (input.length + schemaText.length + system.length > 200_000) throw new Error('SKILL_MODEL_INPUT_TOO_LARGE');
   if (options.images && (options.images.length > 8 || options.images.some(image => !/^\/9j\/[A-Za-z0-9+/]*={0,2}$/.test(image.jpegBase64) || image.jpegBase64.length > 349_528))) throw new Error('SKILL_INVALID_MODEL_IMAGES');
   const admitted = await reserveAiAnswerUsage(env, ownerId);
   if (!('reservation' in admitted)) throw new Error('SKILL_QUOTA_EXCEEDED');
@@ -33,9 +27,8 @@ export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bin
     started = true;
     const model = createChatModel(env, { timeoutMs: llmTimeoutMs(env), maxTokens: 8000, purpose: 'skill_generation', costLedger: ledger });
     invoked = true;
-    const schema = z.toJSONSchema(options.schema);
-    const message = await model.invoke([new SystemMessage(options.system), new HumanMessage(options.images?.length ? { content: [{ type: 'text', text: input }, ...options.images.flatMap(image => [{ type: 'text' as const, text: `frame_id=${image.id}` }, { type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${image.jpegBase64}`, detail: 'high' as const } }])] } : input)], {
-      response_format: { type: 'json_schema', json_schema: { name: options.name, strict: true, schema: env.LLM_MODEL?.startsWith('@cf/') ? providerSchema(schema) as typeof schema : schema } },
+    const message = await model.invoke([new SystemMessage(system), new HumanMessage(options.images?.length ? { content: [{ type: 'text', text: input }, ...options.images.flatMap(image => [{ type: 'text' as const, text: `frame_id=${image.id}` }, { type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${image.jpegBase64}`, detail: 'high' as const } }])] } : input)], {
+      response_format: workersAi ? { type: 'json_object' } : { type: 'json_schema', json_schema: { name: options.name, strict: true, schema } },
     });
     assertCompletedAnswer(message);
     const value = options.schema.parse(JSON.parse(message.text));

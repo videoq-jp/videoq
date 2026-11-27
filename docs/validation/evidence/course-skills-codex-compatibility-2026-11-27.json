@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-27",
+  "client": "codex-cli 0.160.0",
+  "route": "local bootstrap Skill + standard MCP tools",
+  "scope": "localhost bearer-authenticated synthetic published course 9999 fixture; not real course 51 retrieval",
+  "success": {
+    "calls": [
+      {
+        "tool": "list_course_skills",
+        "status": "completed"
+      },
+      {
+        "tool": "get_course_skill",
+        "status": "completed"
+      },
+      {
+        "tool": "read_course_skill_resource",
+        "status": "completed"
+      },
+      {
+        "tool": "read_course_skill_resource",
+        "status": "completed"
+      }
+    ],
+    "completed": true,
+    "sourceVideo": 900001,
+    "sourceIntervalMs": [
+      1000,
+      6000
+    ]
+  },
+  "revoked": {
+    "calls": [
+      {
+        "tool": "get_course_skill",
+        "status": "failed",
+        "errorCode": "SKILL_UNAVAILABLE"
+      },
+      {
+        "tool": "list_course_skills",
+        "status": "completed"
+      },
+      {
+        "tool": "read_course_skill_resource",
+        "status": "failed",
+        "errorCode": "SKILL_UNAVAILABLE"
+      }
+    ],
+    "completed": true,
+    "reportedStopped": true
+  },
+  "databaseVerification": "Separate real D1 workerd integration test covers published retrieval, other-user denial and live source-membership removal using the actual SDK server and compatibility tools.",
+  "nativeSkillsExtensionVerified": false,
+  "effectComparisonCompleted": false
+}

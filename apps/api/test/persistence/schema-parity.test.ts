@@ -27,7 +27,7 @@ it("preserves application table/column names and foreign-key relationships acros
     const references = (keys: typeof original.foreignKeys | NonNullable<typeof counterpart>["foreignKeys"]) => keys.map(key => {
       const ref = key.reference();
       return { columns: ref.columns.map(column => column.name), foreignColumns: ref.foreignColumns.map(column => column.name), foreignTable: getTableName(ref.foreignTable), onDelete: key.onDelete ?? "no action", onUpdate: key.onUpdate ?? "no action" };
-    });
+    }).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
     expect(references(counterpart!.foreignKeys), original.name).toEqual(references(original.foreignKeys));
   }
 });

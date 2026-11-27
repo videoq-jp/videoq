@@ -1,4 +1,9 @@
 import { expect, it, vi } from 'vitest';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/cfworker';
+import { createVideoqMcpServer } from '../../src/features/mcp/server';
+import { createMemoryRateLimitBackend } from '../../src/lib/rate-limit';
 import type { Bindings } from '../../src/types/bindings';
 import { createD1Fixture } from './d1-fixture';
 import { courseSkillManagement } from '../../src/integrations/course-skill-management';
@@ -12,12 +17,21 @@ vi.mock('../../src/integrations/course-skill-model', () => ({ generateCourseSkil
 it('integrates runtime factories, metered ticks, owner review and live MCP revocation', async () => {
   const f = await createD1Fixture();
   const sql = async (value: string, args: (string | number)[] = []) => { await f.database.prepare(value).bind(...args).run(); };
-  const env = { DB: f.database, PERSISTENCE_BACKEND: 'd1', DEPLOYMENT_EDITION: 'cloud', TASK_SCHEDULER: { getByName: () => ({ armAt: async () => undefined }) }, OPENAI_API_KEY: 'synthetic-not-a-real-key', LLM_MODEL: 'gpt-6-luna' } as Bindings;
+  const env = { DB: f.database, RATE_LIMIT_BACKEND: createMemoryRateLimitBackend(), PERSISTENCE_BACKEND: 'd1', DEPLOYMENT_EDITION: 'cloud', TASK_SCHEDULER: { getByName: () => ({ armAt: async () => undefined }) }, OPENAI_API_KEY: 'synthetic-not-a-real-key', LLM_MODEL: 'gpt-6-luna' } as Bindings;
+  async function compatibilityCall(userId: string, name: string, args: Record<string, unknown> = {}) {
+    const server = createVideoqMcpServer({ env, userId, canWrite: false });
+    const client = new Client({ name: 'legacy-skill-client', version: '1' }, { jsonSchemaValidator: new CfWorkerJsonSchemaValidator() });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    try {
+      await server.connect(st); await client.connect(ct);
+      return await client.callTool({ name, arguments: args });
+    } finally { await client.close(); await server.close(); }
+  }
   generate.mockReset().mockImplementation(async (_env, _owner, options) => {
     const input = options.input;
     let result: unknown;
     switch (options.name) {
-      case 'course_knowledge': result = { facts: ['principle', 'procedure', 'verification'].map(kind => ({ kind, claim: 'Check retry guarantees', appliesWhen: ['Changing retries'], exceptions: [], evidence: [{ cueId: input.cues[0].id, quote: input.cues[0].text }], requiresVisualEvidence: false, versionContext: { language: null, framework: null, version: null } })) }; break;
+      case 'course_knowledge': result = { facts: ['principle', 'procedure', 'verification'].map(kind => ({ kind, claim: 'Check retry guarantees', appliesWhen: ['Changing retries'], exceptions: [], evidence: [{ cueId: input.cues[0].id }], requiresVisualEvidence: false, versionContext: { language: '', framework: '', version: '' } })), verificationFacts: [] }; break;
       case 'skill_task_plan': result = { proposals: [{ existingSkillId: input.existing[0]?.skillId ?? null, slug: 'review-retry', objective: 'Review retries', criterionFactIds: input.facts.filter((f: { kind: string }) => f.kind === 'principle').map((f: { id: string }) => f.id), procedureFactIds: input.facts.filter((f: { kind: string }) => f.kind === 'procedure').map((f: { id: string }) => f.id), verificationFactIds: input.facts.filter((f: { kind: string }) => f.kind === 'verification').map((f: { id: string }) => f.id), additionalFactIds: [] }], issues: [] }; break;
       case 'skill_draft': result = { slug: input.task.slug, title: 'Review retries', description: 'Review retry guarantees before changing code.', useWhen: ['Changing retries'], doNotUseWhen: [], criteria: [{ decision: 'Check assumptions', factIds: [input.facts[0].id] }], steps: [{ action: 'Inspect code', expectedResult: 'Known guarantees', factIds: [input.facts[1].id] }], exceptions: [], checks: [{ check: 'Repeat the request', factIds: [input.facts[2].id] }], examples: [] }; break;
       case 'skill_draft_audit': result = { supported: true, issues: [] }; break;
@@ -68,12 +82,25 @@ it('integrates runtime factories, metered ticks, owner review and live MCP revoc
     const next = await owner.get(1, rebuilt.candidates[0].id);
     expect(next.previousDraft?.title).toBe('Review retries');
     await expect(owner.update(1, next.id, 'stale-hash', next.draft!)).rejects.toMatchObject({ kind: 'conflict' });
+    const beforeInvalidEdit = generate.mock.calls.length;
+    await expect(owner.update(1, next.id, next.contentHash, { ...next.draft!, doNotUseWhen: ['Unsourced prototype policy'] })).rejects.toMatchObject({ kind: 'invalid' });
+    expect(generate.mock.calls.length).toBe(beforeInvalidEdit);
+    expect((await owner.get(1, next.id)).contentHash).toBe(next.contentHash);
     await owner.update(1, next.id, next.contentHash, { ...next.draft!, title: 'Check retries before editing' });
     const edited = await owner.get(1, next.id);
     expect(edited.contentHash).not.toBe(next.contentHash);
     await owner.publish(1, edited.id, edited.contentHash);
     expect((await mcp.list()).skills[0].uri).not.toBe(entry.uri);
+    const currentUri = (await mcp.list()).skills[0].uri;
+    expect(await compatibilityCall('owner', 'list_course_skills')).toMatchObject({ structuredContent: { result: { skills: [{ uri: currentUri }] } } });
+    expect(await compatibilityCall('other', 'list_course_skills')).toMatchObject({ structuredContent: { result: { skills: [] } } });
+    expect(await compatibilityCall('owner', 'get_course_skill', { uri: currentUri })).toMatchObject({ structuredContent: { result: { skill: { uri: currentUri } } } });
+    expect(await compatibilityCall('owner', 'read_course_skill_resource', { uri: currentUri })).toMatchObject({ structuredContent: { result: { contents: [{ text: expect.stringContaining('Check retries before editing') }] } } });
+    expect(await compatibilityCall('other', 'read_course_skill_resource', { uri: currentUri })).toMatchObject({ isError: true, structuredContent: { code: 'SKILL_UNAVAILABLE' } });
     await sql('DELETE FROM video_course_members WHERE course_id=1 AND video_id=1');
+    expect(await compatibilityCall('owner', 'list_course_skills')).toMatchObject({ structuredContent: { result: { skills: [] } } });
+    expect(await compatibilityCall('owner', 'get_course_skill', { uri: currentUri })).toMatchObject({ isError: true, structuredContent: { code: 'SKILL_UNAVAILABLE' } });
+    expect(await compatibilityCall('owner', 'read_course_skill_resource', { uri: currentUri })).toMatchObject({ isError: true, structuredContent: { code: 'SKILL_UNAVAILABLE' } });
     await expect(mcp.read(entry.uri)).rejects.toThrow('Unknown skill or file');
     expect((await owner.list(1)).candidates[0].publication?.validSources).toBe(false);
     await owner.withdraw(1, edited.skillId);

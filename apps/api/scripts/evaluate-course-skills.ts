@@ -1,26 +1,49 @@
-/** Opt-in live-model pilot; all data is synthetic and the DB is disposable. */
+/** Opt-in live-model pilot with synthetic data or a private, bounded local snapshot. */
 import { parseArgs } from 'node:util';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, stat, rename, unlink } from 'node:fs/promises';
 import { createD1Fixture } from '../test/persistence/d1-fixture';
 import { courseSkillManagement } from '../src/integrations/course-skill-management';
 import { executeNextCourseSkillBuild } from '../src/integrations/course-skill-execution';
+import { createCourseSkillInputRepository } from '../src/integrations/course-skill-inputs';
+import { COURSE_SKILL_KNOWLEDGE_PROMPT_VERSION, COURSE_SKILL_KNOWLEDGE_CHUNK_CHARACTERS } from '../src/integrations/course-skill-knowledge';
+import { skillTranscriptChunks, verifySkillKnowledge, type SkillKnowledgeChunk } from '../src/domain/learning/skill-knowledge';
 import type { Bindings } from '../src/types/bindings';
 
-const { values } = parseArgs({ options: { 'account-id': { type: 'string' }, 'wrangler-auth-file': { type: 'string' }, output: { type: 'string' }, run: { type: 'boolean', default: false } } });
+const { values } = parseArgs({ options: { 'account-id': { type: 'string' }, 'wrangler-auth-file': { type: 'string' }, output: { type: 'string' }, 'source-file': { type: 'string' }, 'resume-file': { type: 'string' }, 'stop-file': { type: 'string' }, 'max-calls': { type: 'string' }, 'capture-output': { type: 'boolean', default: false }, run: { type: 'boolean', default: false } } });
 if (!values.run) {
-  console.info('Use --run --account-id <id> --output <path>, with LLM_API_KEY or --wrangler-auth-file <path>. Makes at most 12 billed model calls. No remote DB or media storage is used.');
+  console.info('Use --run --account-id <id> --output <path>, with LLM_API_KEY or --wrangler-auth-file <path>. Use --source-file for a private bounded snapshot (at most 3 videos), --max-calls 1..100 (default 12). Use --resume-file to reuse verified subtitle knowledge from a prior private report; planning steps are regenerated. Create --stop-file to stop after a completed tick. Each tick checkpoints private subtitle knowledge. Use --capture-output only for private diagnostics. Only the model endpoint is contacted; no remote DB or media storage is used.');
 } else {
   if (!values['account-id'] || !/^[a-f0-9]{32}$/.test(values['account-id']) || !values.output) throw new Error('Account ID and output path are required');
+  const outputPath = values.output;
+  const writeReport = async (value: unknown) => {
+    const temporary = `${outputPath}.${crypto.randomUUID()}.tmp`;
+    await writeFile(temporary, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
+    try { await rename(temporary, outputPath); }
+    catch (error) { await unlink(temporary).catch(() => undefined); throw error; }
+  };
   let token = process.env.LLM_API_KEY;
   if (values['wrangler-auth-file']) {
     const config = await readFile(values['wrangler-auth-file'], 'utf8');
     token = /^oauth_token\s*=\s*"([^"]+)"/m.exec(config)?.[1];
   }
   if (!token) throw new Error('Model authentication is unavailable');
+  const maxCalls = Number(values['max-calls'] ?? 12);
+  if (!Number.isSafeInteger(maxCalls) || maxCalls < 1 || maxCalls > 100) throw new Error('max-calls must be between 1 and 100');
+  const source = values['source-file'] ? JSON.parse(await readFile(values['source-file'], 'utf8')) as { courseId: number; courseName: string; videos: { id: number; title: string; transcript: string }[] } : undefined;
+  if (source && (!Number.isSafeInteger(source.courseId) || !source.courseName || !Array.isArray(source.videos) || !source.videos.length || source.videos.length > 3 || source.videos.some(v => !Number.isSafeInteger(v.id) || typeof v.title !== 'string' || typeof v.transcript !== 'string'))) throw new Error('Invalid bounded local source snapshot');
+  let modelCalls = 0;
+  let stopping = false;
+  let stopReason: string | undefined;
+  const modelResponses: unknown[] = [];
   const requests: { status: number; code?: string; type?: string; message?: string }[] = [];
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    if (url.hostname !== 'api.cloudflare.com' || !url.pathname.startsWith(`/client/v4/accounts/${values['account-id']}/ai/`)) throw new Error('PILOT_OUTBOUND_NOT_ALLOWED');
+    if (modelCalls >= maxCalls) throw new Error('PILOT_MODEL_CALL_LIMIT');
+    modelCalls++;
     const response = await originalFetch(input, init);
+    if (response.status === 401 || response.status === 403) { stopping = true; stopReason = 'provider_authentication'; }
     if (!response.ok && new URL(input instanceof Request ? input.url : String(input)).hostname === 'api.cloudflare.com') {
       const body = await response.clone().json().catch(() => ({})) as { error?: { code?: unknown; type?: unknown; message?: unknown }; errors?: { code?: unknown; message?: unknown }[] };
       const error = body.error ?? body.errors?.[0];
@@ -28,6 +51,7 @@ if (!values.run) {
         type: body.error?.type && typeof body.error.type === 'string' ? body.error.type : undefined,
         message: typeof error?.message === 'string' ? error.message.replaceAll(token, '[redacted]').slice(0, 1000) : undefined });
     }
+    if (values['capture-output'] && response.ok) modelResponses.push(await response.clone().json());
     return response;
   };
   const fixture = await createD1Fixture();
@@ -42,34 +66,77 @@ if (!values.run) {
     '3\n00:00:41,000 --> 00:01:00,000\n検証では、同じキーの逐次要求だけでなく同時要求も試します。コミット後に応答が失われ、同じキーで再試行された場合も検証します。副作用が重複せず、保存済みの同じ結果を返すことを確かめます。教材で定めていない待ち時間や試行回数を勝手に一般則として追加しないでください。',
   ].join('\n\n');
   const sql = async (query: string, args: (string | number)[] = []) => { await fixture.database.prepare(query).bind(...args).run(); };
+  const readKnowledge = async () => (await fixture.database.prepare('SELECT key,content FROM course_skill_knowledge_chunks').all()).results.map(row => ({ key: row.key, content: JSON.parse(String(row.content)) as SkillKnowledgeChunk }));
   const started = Date.now();
-  let report: Record<string, unknown> = { model: env.LLM_MODEL, maxTokens: env.LLM_MAX_TOKENS, source: 'synthetic-retry-lecture-v1', evaluation: 'generation-pilot-only', effectComparisonCompleted: false };
+  let report: Record<string, unknown> = { model: env.LLM_MODEL, maxTokens: env.LLM_MAX_TOKENS, source: source ? `course-${source.courseId}-bounded-snapshot` : 'synthetic-retry-lecture-v1', scope: source ? { courseId: source.courseId, videoIds: source.videos.map(v => v.id), visualsCopied: false } : undefined, evaluation: 'generation-pilot-only', effectComparisonCompleted: false };
   try {
-    await sql("INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,ai_answers_limit) VALUES('pilot','pilot','pilot@example.test',0,0,0,0,12)");
-    await sql("INSERT INTO videos(id,user_id,title,file,status,transcript,description,uploaded_at,error_message,source_type,source_url,youtube_video_id) VALUES(1,'pilot','Retry lecture','synthetic.mp4','completed',?,'','2026-11-27','','uploaded','','')", [lecture]);
-    await sql("INSERT INTO video_courses(id,user_id,name,description,created_at,updated_at,display_order) VALUES(1,'pilot','Skill generation pilot','','2026-11-27','2026-11-27',0)");
-    await sql('INSERT INTO video_course_members(course_id,video_id,added_at,"order") VALUES(1,1,?,0)', ['2026-11-27']);
+    await sql("INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,ai_answers_limit) VALUES('pilot','pilot','pilot@example.test',0,0,0,0,?)", [maxCalls]);
+    const courseId = source?.courseId ?? 1;
+    for (const [order, video] of (source?.videos ?? [{ id: 1, title: 'Retry lecture', transcript: lecture }]).entries()) {
+      await sql("INSERT INTO videos(id,user_id,title,file,status,transcript,description,uploaded_at,error_message,source_type,source_url,youtube_video_id) VALUES(?,'pilot',?,?,'completed',?,'','2026-11-27','','uploaded','','')", [video.id, video.title, `isolated-${video.id}.mp4`, video.transcript]);
+      const revision = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(video.transcript)))].map(n => n.toString(16).padStart(2, '0')).join('');
+      await sql('INSERT INTO video_index_versions(video_id,revision) VALUES(?,?) ON CONFLICT(video_id) DO UPDATE SET revision=excluded.revision', [video.id, revision]);
+      if (order === 0) await sql("INSERT INTO video_courses(id,user_id,name,description,created_at,updated_at,display_order) VALUES(?,'pilot',?,'','2026-11-27','2026-11-27',0)", [courseId, source?.courseName ?? 'Skill generation pilot']);
+      await sql('INSERT INTO video_course_members(course_id,video_id,added_at,"order") VALUES(?,?,?,?)', [courseId, video.id, '2026-11-27', order]);
+    }
     const owner = courseSkillManagement(env, 'pilot');
-    await owner.configure(1, { generationEnabled: true, distributionEnabled: false, language: 'ja', policyVersion: '1' });
-    for (let tick = 0; tick < 16; tick++) {
+    await owner.configure(courseId, { generationEnabled: true, distributionEnabled: false, language: 'ja', policyVersion: '1' });
+    if (values['resume-file']) {
+      const previous = JSON.parse(await readFile(values['resume-file'], 'utf8')) as { knowledge?: { key: string; content: SkillKnowledgeChunk }[] };
+      if (!Array.isArray(previous.knowledge) || previous.knowledge.length > 1000) throw new Error('INVALID_PILOT_RESUME');
+      const snapshot = await (await createCourseSkillInputRepository(env)).snapshot(courseId, 'pilot');
+      const expected = new Map<string, { cues: SkillKnowledgeChunk['cues']; revision: string }>();
+      for (const video of source?.videos ?? [{ id: 1, title: 'Retry lecture', transcript: lecture }]) {
+        const revision = snapshot?.sources.find(s => s.videoId === video.id)?.analysisRevision;
+        if (!revision) throw new Error('INVALID_PILOT_RESUME');
+        const chars = [...video.transcript];
+        for await (const chunk of skillTranscriptChunks(offset => Promise.resolve({ text: chars.slice(offset, offset + 12000).join(''), nextOffset: Math.min(offset + 12000, chars.length), done: offset + 12000 >= chars.length }), COURSE_SKILL_KNOWLEDGE_CHUNK_CHARACTERS)) expected.set(`${video.id}:${chunk.index}`, { cues: chunk.cues, revision });
+      }
+      const seen = new Set<string>();
+      for (const row of previous.knowledge) {
+        const chunk = row.content;
+        const current = expected.get(`${chunk.videoId}:${chunk.chunkIndex}`);
+        if (!current || chunk.version !== 1 || chunk.model !== env.LLM_MODEL || chunk.promptVersion !== COURSE_SKILL_KNOWLEDGE_PROMPT_VERSION || chunk.analysisRevision !== current.revision || JSON.stringify(chunk.cues) !== JSON.stringify(current.cues) || chunk.frames?.length || seen.has(row.key)) throw new Error('INVALID_PILOT_RESUME');
+        verifySkillKnowledge(chunk.facts, current.cues);
+        if (chunk.facts.some((f, i) => f.id !== `${row.key}:${i}` || f.status !== (f.requiresVisualEvidence ? 'needs_visual_review' : 'supported'))) throw new Error('INVALID_PILOT_RESUME');
+        const data = JSON.stringify({ ownerId: 'pilot', videoId: chunk.videoId, analysisRevision: current.revision, policyVersion: '1', language: 'ja', model: env.LLM_MODEL, promptVersion: COURSE_SKILL_KNOWLEDGE_PROMPT_VERSION, chunk: { index: chunk.chunkIndex, cues: current.cues } });
+        const key = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data)))].map(n => n.toString(16).padStart(2, '0')).join('');
+        const content = JSON.stringify(chunk);
+        if (key !== row.key || Buffer.byteLength(content) > 240000) throw new Error('INVALID_PILOT_RESUME');
+        seen.add(key);
+        await sql('INSERT INTO course_skill_knowledge_chunks(key,owner_id,video_id,content) VALUES(?,?,?,?)', [key, 'pilot', chunk.videoId, content]);
+      }
+      report.resumedKnowledgeChunks = seen.size;
+    }
+    if (values['stop-file'] && await stat(values['stop-file']).then(() => true, () => false)) { stopping = true; stopReason = 'stop_file'; }
+    for (let tick = 0; tick < maxCalls + 8 && !stopping; tick++) {
       await executeNextCourseSkillBuild(env);
-      const state = await owner.list(1);
-      console.info(JSON.stringify({ tick, state: state.jobs[0]?.state, phase: state.jobs[0]?.phase, candidates: state.candidates.length }));
-      if (['completed', 'failed'].includes(state.jobs[0]?.state)) break;
+      const state = await owner.list(courseId);
+      const chunks = await fixture.database.prepare('SELECT count(*) AS count FROM course_skill_knowledge_chunks').first<{ count: number }>();
+      await writeReport({ ...report, partial: true, state, modelCalls, knowledgeChunks: chunks?.count ?? 0, knowledge: await readKnowledge(), requests: [...requests], ...(values['capture-output'] ? { modelResponses: [...modelResponses] } : {}) });
+      console.info(JSON.stringify({ tick, state: state.jobs[0]?.state, phase: state.jobs[0]?.phase, candidates: state.candidates.length, knowledgeChunks: chunks?.count ?? 0, modelCalls }));
+      if (values['stop-file'] && await stat(values['stop-file']).then(() => true, () => false)) { stopping = true; stopReason = 'stop_file'; }
+      if (['completed', 'failed'].includes(state.jobs[0]?.state) || modelCalls >= maxCalls || stopping) break;
       await sql('UPDATE course_skill_builds SET lease_until=0');
     }
-    const state = await owner.list(1);
-    report = { ...report, elapsedMs: Date.now() - started, state, details: await Promise.all(state.candidates.map(c => owner.get(1, c.id))),
-      knowledge: (await fixture.database.prepare('SELECT key,content FROM course_skill_knowledge_chunks').all()).results.map(row => ({ key: row.key, content: JSON.parse(String(row.content)) as unknown })),
+    const state = await owner.list(courseId);
+    report = { ...report, elapsedMs: Date.now() - started, state, details: await Promise.all(state.candidates.map(c => owner.get(courseId, c.id))),
+      knowledge: await readKnowledge(),
       candidates: (await fixture.database.prepare('SELECT content FROM course_skill_candidates').all()).results.map(row => JSON.parse(String(row.content)) as unknown),
       quota: await fixture.database.prepare("SELECT used_ai_answers FROM users WHERE id='pilot'").first(),
       ledger: (await fixture.database.prepare('SELECT status,quota_consumed,provider_calls FROM ai_answer_attempts').all()).results };
   } catch {
+    process.exitCode = 1;
     report = { ...report, elapsedMs: Date.now() - started, error: 'PILOT_EXECUTION_FAILED' };
   } finally {
+    report.stopped = stopping;
+    report.stopReason = stopReason;
     report.requests = requests;
+    if (values['capture-output']) report.modelResponses = modelResponses;
+    report.modelCalls = modelCalls;
+    report.callLimit = maxCalls;
     globalThis.fetch = originalFetch;
-    await writeFile(values.output, JSON.stringify(report, null, 2) + '\n', { mode: 0o600 });
-    await fixture.dispose();
+    try { await writeReport(report); }
+    finally { await fixture.dispose(); }
   }
 }

@@ -468,3 +468,12 @@ MCP接続先は原則VideoQのみとし、参照資料から外部サーバー�
 - [Agent Skills specification](https://agentskills.io/specification) — Skillファイル形式。実装時に採用版を確認する。
 
 仕様参照の確認日: 2026年11月27日。実装と接続検証の結果は、本設計の仕様判断とは別に記録する。
+
+
+## Codex 0.160.0の互換経路（実接続での追記）
+
+同版のCLIではSkills拡張への参加を確認できなかった。新プロトコルの機能フラグを有効にしてもskills/listは呼ばれなかったため、自動対応を前提にしない。
+
+標準MCPのlist_course_skills / get_course_skill / read_course_skill_resourceを公開版サービスへ接続し、取得手順のみのローカルSkillをCodexのプロジェクトに置く互換経路を追加する。認証、読み取り制限、所属・入力版の失効検査は共通とし、講座本文をローカルSkillへ複製しない。利用時に現在の本文を読む。MCP Skills拡張を使う経路と、ローカル起動Skillから標準ツールで読む経路を区別する。後者は各タスクSkillのネイティブ自動登録を意味しない。
+
+[講座51とCodexの検証](../validation/course-skills-course51-codex-2026-11-27.md)に実行範囲と未完了の受入条件を記録する。
