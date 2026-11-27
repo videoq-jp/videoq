@@ -31,6 +31,7 @@ describe('course skill owner review', () => {
     expect(screen.getByText('Removed advice')).toBeInTheDocument();
     expect(screen.getByText(/courseSkills.imageSource/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('courseSkills.name'), { target: { value: 'Check retries before changes' } });
+    fireEvent.change(screen.getByLabelText('courseSkills.description'), { target: { value: 'Review retry guarantees before editing code' } });
     expect(button('publish')).toBeDisabled();
     fireEvent.click(button('save'));
     await waitFor(() => expect(button('publish')).toBeEnabled());
@@ -77,4 +78,41 @@ describe('course skill owner review', () => {
     render(<CourseSkillsDialog {...props()} />); await review(); fireEvent.click(button('reject'));
     await waitFor(() => expect(handlers.reject).toHaveBeenCalledWith({ courseId: 7, candidateId: 'candidate', expectedHash: 'a'.repeat(64) }));
   });
+  it('saves generation and language changes and disables rebuilding when generation is off', async () => {
+    handlers.configure.mockImplementation(async input => { list.settings = input.settings; return { success: true }; });
+    render(<CourseSkillsDialog {...props()} />);
+    fireEvent.click(await screen.findByLabelText('courseSkills.generation'));
+    fireEvent.change(screen.getByLabelText('courseSkills.language'), { target: { value: 'en' } });
+    fireEvent.click(button('saveSettings'));
+    await waitFor(() => expect(handlers.configure).toHaveBeenCalledWith({ courseId: 7, settings: { generationEnabled: false, distributionEnabled: true, language: 'en', policyVersion: '1' } }));
+    await waitFor(() => expect(button('rebuild')).toBeDisabled());
+  });
+  it('explains held knowledge instead of offering publication', async () => {
+    detail.draft = null; detail.issues = ['SKILL_INSUFFICIENT_TASK_KNOWLEDGE']; list.candidates[0].hasDraft = false; list.candidates[0].canPublish = false;
+    render(<CourseSkillsDialog {...props()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'courseSkills.review' }));
+    await screen.findByText('courseSkills.insufficient');
+    expect(button('publish')).toBeDisabled(); expect(screen.queryByRole('button', { name: 'courseSkills.save' })).not.toBeInTheDocument();
+  });
+  it('reports a loading failure without offering settings or publication', async () => {
+    globalThis.__setTrpcHandler('courseSkills.list', async () => { throw new Error('Could not read course skills'); });
+    render(<CourseSkillsDialog {...props()} />);
+    await screen.findByText('Could not read course skills');
+    expect(screen.queryByRole('button', { name: 'courseSkills.saveSettings' })).not.toBeInTheDocument();
+  });
+
+  it('lets the owner correct applicability and exceptions and remove an inferred example before review', async () => {
+    detail.draft!.exceptions = [{ condition: 'External side effect', behavior: 'Check provider guarantees', factIds: ['f'] }];
+    detail.draft!.examples = [{ situation: 'Generated order example', application: 'Generated application', factIds: ['f'] }];
+    render(<CourseSkillsDialog {...props()} />); await review();
+    for (const [label, value] of [
+      ['courseSkills.applicability 1', 'Database-only changes'], ['courseSkills.exclusions 1', 'External policy takes precedence'],
+      ['courseSkills.exceptionCondition 1', 'External provider call'], ['courseSkills.exceptionBehavior 1', 'Use the provider idempotency guarantee'],
+      ['courseSkills.exampleSituation 1', 'Inferred example'], ['courseSkills.exampleApplication 1', 'Remove until its source is verified'],
+    ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    fireEvent.click(button('removeExample')); expect(screen.queryByLabelText('courseSkills.exampleSituation 1')).not.toBeInTheDocument();
+    fireEvent.click(button('save'));
+    await waitFor(() => expect(handlers.update).toHaveBeenCalledWith(expect.objectContaining({ draft: expect.objectContaining({ useWhen: ['Database-only changes'], doNotUseWhen: ['External policy takes precedence'], examples: [], exceptions: [{ condition: 'External provider call', behavior: 'Use the provider idempotency guarantee', factIds: ['f'] }] }) })));
+  });
+
 });

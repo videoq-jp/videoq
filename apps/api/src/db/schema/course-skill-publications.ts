@@ -1,14 +1,14 @@
-import { pgTable, text, bigint, integer, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, bigint, integer, primaryKey, index, foreignKey } from 'drizzle-orm/pg-core';
 import { videoCourses } from './modern';
 import { courseSkillCandidates } from './course-skill-candidates';
 export const courseSkillPublications = pgTable('course_skill_publications', {
   id: text('id').primaryKey(),
-  candidateId: text('candidate_id').notNull().references(() => courseSkillCandidates.id, { onDelete: 'cascade' }),
+  candidateId: text('candidate_id').notNull(),
   courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
   skillId: text('skill_id').notNull(), name: text('name').notNull(), description: text('description').notNull(),
   contentHash: text('content_hash').notNull(), state: text('state').notNull().default('staged'),
   sources: text('sources').notNull(), manifest: text('manifest').notNull(),
-}, table => [index('course_skill_publications_course_idx').on(table.courseId, table.skillId)]);
+}, table => [index('course_skill_publications_course_idx').on(table.courseId, table.skillId), foreignKey({ name: 'course_skill_publications_candidate_fk', columns: [table.candidateId], foreignColumns: [courseSkillCandidates.id] }).onDelete('cascade')]);
 export const courseSkillHeads = pgTable('course_skill_heads', {
   courseId: bigint('course_id', { mode: 'number' }).notNull().references(() => videoCourses.id, { onDelete: 'cascade' }),
   skillId: text('skill_id').notNull(),

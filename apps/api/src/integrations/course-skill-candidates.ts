@@ -42,7 +42,7 @@ export async function generateAndSaveCourseSkillCandidates(env: Bindings, input:
   const result = await generateCourseSkillDrafts(dependencies, chunks, [...existing.values()], { force });
   for (const candidate of result.candidates) {
     const content = { ...candidate, issues: [...result.issues, ...candidate.issues], generation: {
-      knowledgeModels: [...new Set(chunks.map(c => c.model))], knowledgePromptVersions: [...new Set(chunks.map(c => c.promptVersion))], draftPromptVersion: 'course-draft-v1', language: input.language, epoch: input.generationEpoch,
+      knowledgeModels: [...new Set(chunks.map(c => c.model))], knowledgePromptVersions: [...new Set(chunks.map(c => c.promptVersion))], draftPromptVersion: 'course-draft-v2', language: input.language, epoch: input.generationEpoch,
     } };
     const contentHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(content))))].map(n => n.toString(16).padStart(2, '0')).join('');
     if (!await repository.save(input.lease, { id: crypto.randomUUID(), content, contentHash }, Date.now())) throw new Error('SKILL_INPUT_CHANGED');

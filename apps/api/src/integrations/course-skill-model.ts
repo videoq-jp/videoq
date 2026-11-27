@@ -7,6 +7,16 @@ import { llmTimeoutMs } from '../lib/llm';
 import { reserveAiAnswerUsage, releaseAiAnswerReservation } from '../repositories/quota-repository';
 import { AnswerCostLedger, startAnswerCostLedger, finishAnswerCostLedger } from '../lib/answer-cost-ledger';
 
+/** Workers AI's grammar compiler rejects pattern combined with string length bounds.
+ * Keep the pattern in its grammar; the original Zod schema still checks every bound. */
+function providerSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(providerSchema);
+  if (!value || typeof value !== 'object') return value;
+  const result = Object.fromEntries(Object.entries(value).map(([key, child]) => [key, providerSchema(child)]));
+  if (typeof result.pattern === 'string') { delete result.minLength; delete result.maxLength; }
+  return result;
+}
+
 /** One bounded, metered provider call. Source text never appears in propagated errors. */
 export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bindings, ownerId: string, options: {
   name: string; system: string; input: unknown; schema: Schema; images?: { id: string; jpegBase64: string }[];
@@ -23,8 +33,9 @@ export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bin
     started = true;
     const model = createChatModel(env, { timeoutMs: llmTimeoutMs(env), maxTokens: 8000, purpose: 'skill_generation', costLedger: ledger });
     invoked = true;
+    const schema = z.toJSONSchema(options.schema);
     const message = await model.invoke([new SystemMessage(options.system), new HumanMessage(options.images?.length ? { content: [{ type: 'text', text: input }, ...options.images.flatMap(image => [{ type: 'text' as const, text: `frame_id=${image.id}` }, { type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${image.jpegBase64}`, detail: 'high' as const } }])] } : input)], {
-      response_format: { type: 'json_schema', json_schema: { name: options.name, strict: true, schema: z.toJSONSchema(options.schema) } },
+      response_format: { type: 'json_schema', json_schema: { name: options.name, strict: true, schema: env.LLM_MODEL?.startsWith('@cf/') ? providerSchema(schema) as typeof schema : schema } },
     });
     assertCompletedAnswer(message);
     const value = options.schema.parse(JSON.parse(message.text));

@@ -45,4 +45,15 @@ describe('metered course skill model boundary', () => {
     const messages = mocks.invoke.mock.calls[0][0];
     expect(messages[1].content).toEqual(expect.arrayContaining([{ type: 'text', text: 'frame_id=frame' }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,/9j/AA==', detail: 'high' } }]));
   });
+  it('adapts Workers AI grammar without weakening server-side string validation', async () => {
+    const schema = z.object({ slug: z.string().regex(/^[a-z]+$/).max(4), notes: z.array(z.string().max(20)) }).strict();
+    mocks.invoke.mockResolvedValue(new AIMessage({ content: '{"slug":"validtoolong","notes":[]}', response_metadata: { finish_reason: 'stop' } }));
+    await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', { ...options, schema })).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
+    const sent = mocks.invoke.mock.calls[0][1].response_format.json_schema.schema;
+    expect(sent.properties.slug).toMatchObject({ pattern: '^[a-z]+$' });
+    expect(sent.properties.slug.maxLength).toBeUndefined();
+    expect(sent.properties.notes.items.maxLength).toBe(20);
+    expect(schema.safeParse({ slug: 'validtoolong', notes: [] }).success).toBe(false);
+  });
+
 });

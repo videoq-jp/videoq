@@ -526,6 +526,13 @@
       "when": 1795760339465,
       "tag": "0074_course_skill_generation_epoch",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795764061140,
+      "tag": "0075_course_skill_publication_fk_name",
+      "breakpoints": true
     }
   ]
 }

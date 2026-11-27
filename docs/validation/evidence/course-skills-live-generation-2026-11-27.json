@@ -1,0 +1,599 @@
+{
+  "model": "@cf/google/gemma-4-26b-a4b-it",
+  "maxTokens": "4096",
+  "source": "synthetic-retry-lecture-v1",
+  "evaluation": "generation-pilot-only",
+  "effectComparisonCompleted": false,
+  "elapsedMs": 269951,
+  "state": {
+    "settings": {
+      "generationEnabled": true,
+      "distributionEnabled": false,
+      "policyVersion": "1",
+      "language": "ja"
+    },
+    "revision": 1,
+    "candidates": [
+      {
+        "id": "a03364ef-4af5-4d72-9e7b-30b3f300081c",
+        "skillId": "c8753372-ff50-4ce4-b4a9-fcad9a248c05-0",
+        "title": "冪等な再試行ロジックの実装",
+        "description": "再試行時に副作用の重複を防ぐため、同一の論理的要求に対して一貫した冪等性キーを使用し、データベース内処理および外部サービス呼び出しにおける冪等性を確保します。",
+        "status": "review_required",
+        "contentHash": "b985cde68f4c8b4ef340367ad2588729b6e14af96a91c9bf26af6201538e562a",
+        "issues": [],
+        "hasDraft": true,
+        "editable": true,
+        "canPublish": true,
+        "publication": null
+      }
+    ],
+    "jobs": [
+      {
+        "id": "c8753372-ff50-4ce4-b4a9-fcad9a248c05",
+        "revision": 1,
+        "state": "completed",
+        "phase": "review_required",
+        "processedVideos": 1,
+        "totalVideos": 1,
+        "error": null
+      }
+    ]
+  },
+  "details": [
+    {
+      "changes": {
+        "addedKnowledge": [
+          "再試行を実装する際は、同一の論理的要求に対しては常に同じ冪等性キーを使用し、副作用の重複を防ぐ必要がある。",
+          "データベース内で完結する処理の冪等性を確保するには、キーの一意制約、業務上の変更、処理結果の保存を単一のトランザクション内で実行し、処理済みであれば保存済みの結果を返す。",
+          "冪等性の検証では、同一キーによる逐次的な要求、同時実行される要求、およびコミット後に応答が失われた後の再試行の3パターンをテストし、副作用の重複がなく保存済みの同じ結果が返ることを確認する。"
+        ],
+        "removedKnowledge": [],
+        "addedVideos": [
+          1
+        ],
+        "removedVideos": []
+      },
+      "id": "a03364ef-4af5-4d72-9e7b-30b3f300081c",
+      "skillId": "c8753372-ff50-4ce4-b4a9-fcad9a248c05-0",
+      "contentHash": "b985cde68f4c8b4ef340367ad2588729b6e14af96a91c9bf26af6201538e562a",
+      "status": "review_required",
+      "issues": [],
+      "draft": {
+        "slug": "implement-idempotent-retry-logic",
+        "title": "冪等な再試行ロジックの実装",
+        "description": "再試行時に副作用の重複を防ぐため、同一の論理的要求に対して一貫した冪等性キーを使用し、データベース内処理および外部サービス呼び出しにおける冪等性を確保します。",
+        "useWhen": [
+          "再試行（Retry）ロジックを追加する場合"
+        ],
+        "doNotUseWhen": [
+          "（特になし）"
+        ],
+        "criteria": [
+          {
+            "decision": "同一の論理的要求に対しては、常に同じ冪等性キーを使用する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0"
+            ]
+          },
+          {
+            "decision": "データベース内で完結する処理の場合、以下の3要素を単一のトランザクション内で実行する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          },
+          {
+            "decision": "外部サービス（決済、メール送信など）を呼び出す場合、DBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスの利用を検討する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          }
+        ],
+        "steps": [
+          {
+            "action": "冪等性キーの設計",
+            "expectedResult": "再試行のたびに新しいキーを生成するのではなく、同じ論理的要求を識別できる一貫したキーを使用するように設計する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0"
+            ]
+          },
+          {
+            "action": "データベース処理の実装",
+            "expectedResult": "単一のトランザクション内で「キーの一意制約の確認」「業務上の変更」「処理結果の保存」をまとめて実行する。既に処理済みであれば、保存済みの結果を返すように実装する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          },
+          {
+            "action": "外部サービス呼び出しの考慮",
+            "expectedResult": "外部サービス呼び出しが含まれる場合、DBトランザクション外での副作用を制御するため、外部サービス側の冪等性機能を利用するか、永続アウトボックスパターンを検討する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          },
+          {
+            "action": "冪等性の検証テスト",
+            "expectedResult": "以下の3つのパターンでテストを行い、副作用の重複がなく、保存済みの同じ結果が返ることを確認する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+            ]
+          }
+        ],
+        "exceptions": [
+          {
+            "condition": "データベース内で完結しない処理（外部の決済やメール送信など）を行う場合",
+            "behavior": "DBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスなどの別の仕組みを検討する必要がある。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          }
+        ],
+        "checks": [
+          {
+            "check": "同一キーによる逐次的な要求に対して、副作用が重複せず、保存済みの同じ結果が返るか？",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+            ]
+          },
+          {
+            "check": "同一キーによる同時実行される要求に対して、副作用が重複せず、一方が成功し他方が適切に処理されるか？",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+            ]
+          },
+          {
+            "check": "コミット後に応答が失われた後、同じキーで再試行された場合に、副作用が重複せず保存済みの同じ結果が返るか？",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "situation": "注文処理の再試行",
+            "application": "注文IDを冪等性キーとして使用する。DBトランザクション内で「注文レコードの作成（一意制約利用）」「在庫の減算」「注文ステータスの保存」を同時に行う。もしネットワークエラーで応答が返らなかった場合、クライアントが同じ注文IDで再送しても、DBの一意制約により重複作成は防がれ、既存の注文結果が返される。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0",
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          }
+        ]
+      },
+      "previousDraft": null,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: videoq-c1-implement-idempotent-retry-logic\ndescription: \"再試行時に副作用の重複を防ぐため、同一の論理的要求に対して一貫した冪等性キーを使用し、データベース内処理および外部サービス呼び出しにおける冪等性を確保します。\"\n---\n\n# 冪等な再試行ロジックの実装\n\n講座の出典に基づく作業手順です。利用者の指示とプロジェクトの制約に従い、変更前に既存コードと対象バージョンを確認してください。外部操作やコード実行の許可を与えるものではありません。\n\n## 利用条件\n- 再試行（Retry）ロジックを追加する場合\n\n## 適用しない条件\n- （特になし）\n\n## 判断基準\n- 同一の論理的要求に対しては、常に同じ冪等性キーを使用する。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-0)\n- データベース内で完結する処理の場合、以下の3要素を単一のトランザクション内で実行する。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-1)\n- 外部サービス（決済、メール送信など）を呼び出す場合、DBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスの利用を検討する。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-1)\n\n## 手順\n1. 冪等性キーの設計\n   確認する結果: 再試行のたびに新しいキーを生成するのではなく、同じ論理的要求を識別できる一貫したキーを使用するように設計する。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-0)\n2. データベース処理の実装\n   確認する結果: 単一のトランザクション内で「キーの一意制約の確認」「業務上の変更」「処理結果の保存」をまとめて実行する。既に処理済みであれば、保存済みの結果を返すように実装する。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-1)\n3. 外部サービス呼び出しの考慮\n   確認する結果: 外部サービス呼び出しが含まれる場合、DBトランザクション外での副作用を制御するため、外部サービス側の冪等性機能を利用するか、永続アウトボックスパターンを検討する。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-1)\n4. 冪等性の検証テスト\n   確認する結果: 以下の3つのパターンでテストを行い、副作用の重複がなく、保存済みの同じ結果が返ることを確認する。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-2)\n\n## 例外\n- データベース内で完結しない処理（外部の決済やメール送信など）を行う場合: DBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスなどの別の仕組みを検討する必要がある。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-1)\n\n## 検証\n- 同一キーによる逐次的な要求に対して、副作用が重複せず、保存済みの同じ結果が返るか？ [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-2)\n- 同一キーによる同時実行される要求に対して、副作用が重複せず、一方が成功し他方が適切に処理されるか？ [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-2)\n- コミット後に応答が失われた後、同じキーで再試行された場合に、副作用が重複せず保存済みの同じ結果が返るか？ [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-2)\n\n## 適用例\n- 注文処理の再試行: 注文IDを冪等性キーとして使用する。DBトランザクション内で「注文レコードの作成（一意制約利用）」「在庫の減算」「注文ステータスの保存」を同時に行う。もしネットワークエラーで応答が返らなかった場合、クライアントが同じ注文IDで再送しても、DBの一意制約により重複作成は防がれ、既存の注文結果が返される。 [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-0) [出典](references/sources.md#k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-1)\n\n詳しい根拠は [出典](references/sources.md) を参照してください。時間依存のAPI仕様は利用時に一次資料を確認してください。\n"
+        },
+        {
+          "path": "references/sources.md",
+          "content": "# 出典\n\n<a id=\"k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-0\"></a>\n## 再試行を実装する際は、同一の論理的要求に対しては常に同じ冪等性キーを使用し、副作用の重複を防ぐ必要がある。\n\n動画ID: 1 / 解析版: 5ce56e3bae32cb810017724b6f933796\n\n時刻: 1000〜20000 ms\n\n> 要求を識別する冪等性キーは、再試行のたびに作り直さず、同じ論理要求では同じキーを使います。\n\n適用条件: 再試行を追加する場合\n例外: \n\n<a id=\"k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-1\"></a>\n## データベース内で完結する処理の冪等性を確保するには、キーの一意制約、業務上の変更、処理結果の保存を単一のトランザクション内で実行し、処理済みであれば保存済みの結果を返す。\n\n動画ID: 1 / 解析版: 5ce56e3bae32cb810017724b6f933796\n\n時刻: 21000〜40000 ms\n\n> データベース内で完結する処理では、キーの一意制約、業務上の変更、処理結果の保存を同じトランザクションで行います。処理済みなら保存した結果を返します。\n\n時刻: 21000〜40000 ms\n\n> 外部の決済やメール送信は、そのDBトランザクションだけでは一度の実行を保証できません。外部サービスの冪等性キーや、永続アウトボックスなどを別に検討します。\n\n適用条件: データベース内で完結する処理を行う場合\n例外: 外部の決済やメール送信などの外部サービス呼び出し（これらはDBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスの検討が必要）\n\n<a id=\"k-95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0-2\"></a>\n## 冪等性の検証では、同一キーによる逐次的な要求、同時実行される要求、およびコミット後に応答が失われた後の再試行の3パターンをテストし、副作用の重複がなく保存済みの同じ結果が返ることを確認する。\n\n動画ID: 1 / 解析版: 5ce56e3bae32cb810017724b6f933796\n\n時刻: 41000〜60000 ms\n\n> 検証では、同じキーの逐次要求だけでなく同時要求も試します。コミット後に応答が失われ、同じキーで再試行された場合も検証します。副作用が重複せず、保存済みの同じ結果を返すことを確かめます。\n\n適用条件: 冪等性の検証を行う場合\n例外: \n"
+        }
+      ],
+      "sources": [
+        {
+          "factId": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0",
+          "claim": "再試行を実装する際は、同一の論理的要求に対しては常に同じ冪等性キーを使用し、副作用の重複を防ぐ必要がある。",
+          "videoId": 1,
+          "startMs": 1000,
+          "endMs": 20000,
+          "quote": "要求を識別する冪等性キーは、再試行のたびに作り直さず、同じ論理要求では同じキーを使います。",
+          "kind": "subtitle"
+        },
+        {
+          "factId": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1",
+          "claim": "データベース内で完結する処理の冪等性を確保するには、キーの一意制約、業務上の変更、処理結果の保存を単一のトランザクション内で実行し、処理済みであれば保存済みの結果を返す。",
+          "videoId": 1,
+          "startMs": 21000,
+          "endMs": 40000,
+          "quote": "データベース内で完結する処理では、キーの一意制約、業務上の変更、処理結果の保存を同じトランザクションで行います。処理済みなら保存した結果を返します。",
+          "kind": "subtitle"
+        },
+        {
+          "factId": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1",
+          "claim": "データベース内で完結する処理の冪等性を確保するには、キーの一意制約、業務上の変更、処理結果の保存を単一のトランザクション内で実行し、処理済みであれば保存済みの結果を返す。",
+          "videoId": 1,
+          "startMs": 21000,
+          "endMs": 40000,
+          "quote": "外部の決済やメール送信は、そのDBトランザクションだけでは一度の実行を保証できません。外部サービスの冪等性キーや、永続アウトボックスなどを別に検討します。",
+          "kind": "subtitle"
+        },
+        {
+          "factId": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2",
+          "claim": "冪等性の検証では、同一キーによる逐次的な要求、同時実行される要求、およびコミット後に応答が失われた後の再試行の3パターンをテストし、副作用の重複がなく保存済みの同じ結果が返ることを確認する。",
+          "videoId": 1,
+          "startMs": 41000,
+          "endMs": 60000,
+          "quote": "検証では、同じキーの逐次要求だけでなく同時要求も試します。コミット後に応答が失われ、同じキーで再試行された場合も検証します。副作用が重複せず、保存済みの同じ結果を返すことを確かめます。",
+          "kind": "subtitle"
+        }
+      ]
+    }
+  ],
+  "knowledge": [
+    {
+      "key": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0",
+      "content": {
+        "version": 1,
+        "videoId": 1,
+        "analysisRevision": "5ce56e3bae32cb810017724b6f933796",
+        "chunkIndex": 0,
+        "cues": [
+          {
+            "id": "cue-0",
+            "startMs": 1000,
+            "endMs": 20000,
+            "text": "再試行を追加する前に、同じ要求が二回届いた場合に副作用が重複するか確認します。要求を識別する冪等性キーは、再試行のたびに作り直さず、同じ論理要求では同じキーを使います。"
+          },
+          {
+            "id": "cue-1",
+            "startMs": 21000,
+            "endMs": 40000,
+            "text": "データベース内で完結する処理では、キーの一意制約、業務上の変更、処理結果の保存を同じトランザクションで行います。処理済みなら保存した結果を返します。外部の決済やメール送信は、そのDBトランザクションだけでは一度の実行を保証できません。外部サービスの冪等性キーや、永続アウトボックスなどを別に検討します。"
+          },
+          {
+            "id": "cue-2",
+            "startMs": 41000,
+            "endMs": 60000,
+            "text": "検証では、同じキーの逐次要求だけでなく同時要求も試します。コミット後に応答が失われ、同じキーで再試行された場合も検証します。副作用が重複せず、保存済みの同じ結果を返すことを確かめます。教材で定めていない待ち時間や試行回数を勝手に一般則として追加しないでください。"
+          }
+        ],
+        "facts": [
+          {
+            "kind": "principle",
+            "claim": "再試行を実装する際は、同一の論理的要求に対しては常に同じ冪等性キーを使用し、副作用の重複を防ぐ必要がある。",
+            "appliesWhen": [
+              "再試行を追加する場合"
+            ],
+            "exceptions": [],
+            "evidence": [
+              {
+                "cueId": "cue-0",
+                "quote": "要求を識別する冪等性キーは、再試行のたびに作り直さず、同じ論理要求では同じキーを使います。"
+              }
+            ],
+            "requiresVisualEvidence": false,
+            "versionContext": {
+              "language": "ja",
+              "framework": "engineering_knowledge",
+              "version": "1.0"
+            },
+            "id": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0",
+            "status": "supported"
+          },
+          {
+            "kind": "procedure",
+            "claim": "データベース内で完結する処理の冪等性を確保するには、キーの一意制約、業務上の変更、処理結果の保存を単一のトランザクション内で実行し、処理済みであれば保存済みの結果を返す。",
+            "appliesWhen": [
+              "データベース内で完結する処理を行う場合"
+            ],
+            "exceptions": [
+              "外部の決済やメール送信などの外部サービス呼び出し（これらはDBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスの検討が必要）"
+            ],
+            "evidence": [
+              {
+                "cueId": "cue-1",
+                "quote": "データベース内で完結する処理では、キーの一意制約、業務上の変更、処理結果の保存を同じトランザクションで行います。処理済みなら保存した結果を返します。"
+              },
+              {
+                "cueId": "cue-1",
+                "quote": "外部の決済やメール送信は、そのDBトランザクションだけでは一度の実行を保証できません。外部サービスの冪等性キーや、永続アウトボックスなどを別に検討します。"
+              }
+            ],
+            "requiresVisualEvidence": false,
+            "versionContext": {
+              "language": "ja",
+              "framework": "engineering_knowledge",
+              "version": "1.0"
+            },
+            "id": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1",
+            "status": "supported"
+          },
+          {
+            "kind": "verification",
+            "claim": "冪等性の検証では、同一キーによる逐次的な要求、同時実行される要求、およびコミット後に応答が失われた後の再試行の3パターンをテストし、副作用の重複がなく保存済みの同じ結果が返ることを確認する。",
+            "appliesWhen": [
+              "冪等性の検証を行う場合"
+            ],
+            "exceptions": [],
+            "evidence": [
+              {
+                "cueId": "cue-2",
+                "quote": "検証では、同じキーの逐次要求だけでなく同時要求も試します。コミット後に応答が失われ、同じキーで再試行された場合も検証します。副作用が重複せず、保存済みの同じ結果を返すことを確かめます。"
+              }
+            ],
+            "requiresVisualEvidence": false,
+            "versionContext": {
+              "language": "ja",
+              "framework": "engineering_knowledge",
+              "version": "1.0"
+            },
+            "id": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2",
+            "status": "supported"
+          }
+        ],
+        "model": "@cf/google/gemma-4-26b-a4b-it",
+        "promptVersion": "course-knowledge-v3"
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "task": {
+        "skillId": "c8753372-ff50-4ce4-b4a9-fcad9a248c05-0",
+        "slug": "implement-idempotent-retry-logic",
+        "objective": "再試行時に副作用の重複を防ぐため、同一の論理的要求に対して一貫した冪等性キーを使用し、データベース内処理および外部サービス呼び出しにおける冪等性を確保する。",
+        "factIds": [
+          "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0",
+          "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1",
+          "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+        ]
+      },
+      "draft": {
+        "slug": "implement-idempotent-retry-logic",
+        "title": "冪等な再試行ロジックの実装",
+        "description": "再試行時に副作用の重複を防ぐため、同一の論理的要求に対して一貫した冪等性キーを使用し、データベース内処理および外部サービス呼び出しにおける冪等性を確保します。",
+        "useWhen": [
+          "再試行（Retry）ロジックを追加する場合"
+        ],
+        "doNotUseWhen": [
+          "（特になし）"
+        ],
+        "criteria": [
+          {
+            "decision": "同一の論理的要求に対しては、常に同じ冪等性キーを使用する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0"
+            ]
+          },
+          {
+            "decision": "データベース内で完結する処理の場合、以下の3要素を単一のトランザクション内で実行する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          },
+          {
+            "decision": "外部サービス（決済、メール送信など）を呼び出す場合、DBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスの利用を検討する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          }
+        ],
+        "steps": [
+          {
+            "action": "冪等性キーの設計",
+            "expectedResult": "再試行のたびに新しいキーを生成するのではなく、同じ論理的要求を識別できる一貫したキーを使用するように設計する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0"
+            ]
+          },
+          {
+            "action": "データベース処理の実装",
+            "expectedResult": "単一のトランザクション内で「キーの一意制約の確認」「業務上の変更」「処理結果の保存」をまとめて実行する。既に処理済みであれば、保存済みの結果を返すように実装する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          },
+          {
+            "action": "外部サービス呼び出しの考慮",
+            "expectedResult": "外部サービス呼び出しが含まれる場合、DBトランザクション外での副作用を制御するため、外部サービス側の冪等性機能を利用するか、永続アウトボックスパターンを検討する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          },
+          {
+            "action": "冪等性の検証テスト",
+            "expectedResult": "以下の3つのパターンでテストを行い、副作用の重複がなく、保存済みの同じ結果が返ることを確認する。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+            ]
+          }
+        ],
+        "exceptions": [
+          {
+            "condition": "データベース内で完結しない処理（外部の決済やメール送信など）を行う場合",
+            "behavior": "DBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスなどの別の仕組みを検討する必要がある。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          }
+        ],
+        "checks": [
+          {
+            "check": "同一キーによる逐次的な要求に対して、副作用が重複せず、保存済みの同じ結果が返るか？",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+            ]
+          },
+          {
+            "check": "同一キーによる同時実行される要求に対して、副作用が重複せず、一方が成功し他方が適切に処理されるか？",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+            ]
+          },
+          {
+            "check": "コミット後に応答が失われた後、同じキーで再試行された場合に、副作用が重複せず保存済みの同じ結果が返るか？",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "situation": "注文処理の再試行",
+            "application": "注文IDを冪等性キーとして使用する。DBトランザクション内で「注文レコードの作成（一意制約利用）」「在庫の減算」「注文ステータスの保存」を同時に行う。もしネットワークエラーで応答が返らなかった場合、クライアントが同じ注文IDで再送しても、DBの一意制約により重複作成は防がれ、既存の注文結果が返される。",
+            "factIds": [
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0",
+              "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1"
+            ]
+          }
+        ]
+      },
+      "facts": [
+        {
+          "kind": "principle",
+          "claim": "再試行を実装する際は、同一の論理的要求に対しては常に同じ冪等性キーを使用し、副作用の重複を防ぐ必要がある。",
+          "appliesWhen": [
+            "再試行を追加する場合"
+          ],
+          "exceptions": [],
+          "evidence": [
+            {
+              "cueId": "cue-0",
+              "quote": "要求を識別する冪等性キーは、再試行のたびに作り直さず、同じ論理要求では同じキーを使います。"
+            }
+          ],
+          "requiresVisualEvidence": false,
+          "versionContext": {
+            "language": "ja",
+            "framework": "engineering_knowledge",
+            "version": "1.0"
+          },
+          "id": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:0",
+          "status": "supported",
+          "videoId": 1,
+          "analysisRevision": "5ce56e3bae32cb810017724b6f933796",
+          "cues": [
+            {
+              "id": "cue-0",
+              "startMs": 1000,
+              "endMs": 20000,
+              "text": "再試行を追加する前に、同じ要求が二回届いた場合に副作用が重複するか確認します。要求を識別する冪等性キーは、再試行のたびに作り直さず、同じ論理要求では同じキーを使います。"
+            }
+          ]
+        },
+        {
+          "kind": "procedure",
+          "claim": "データベース内で完結する処理の冪等性を確保するには、キーの一意制約、業務上の変更、処理結果の保存を単一のトランザクション内で実行し、処理済みであれば保存済みの結果を返す。",
+          "appliesWhen": [
+            "データベース内で完結する処理を行う場合"
+          ],
+          "exceptions": [
+            "外部の決済やメール送信などの外部サービス呼び出し（これらはDBトランザクションのみでは一度の実行を保証できないため、外部サービスの冪等性キーや永続アウトボックスの検討が必要）"
+          ],
+          "evidence": [
+            {
+              "cueId": "cue-1",
+              "quote": "データベース内で完結する処理では、キーの一意制約、業務上の変更、処理結果の保存を同じトランザクションで行います。処理済みなら保存した結果を返します。"
+            },
+            {
+              "cueId": "cue-1",
+              "quote": "外部の決済やメール送信は、そのDBトランザクションだけでは一度の実行を保証できません。外部サービスの冪等性キーや、永続アウトボックスなどを別に検討します。"
+            }
+          ],
+          "requiresVisualEvidence": false,
+          "versionContext": {
+            "language": "ja",
+            "framework": "engineering_knowledge",
+            "version": "1.0"
+          },
+          "id": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:1",
+          "status": "supported",
+          "videoId": 1,
+          "analysisRevision": "5ce56e3bae32cb810017724b6f933796",
+          "cues": [
+            {
+              "id": "cue-1",
+              "startMs": 21000,
+              "endMs": 40000,
+              "text": "データベース内で完結する処理では、キーの一意制約、業務上の変更、処理結果の保存を同じトランザクションで行います。処理済みなら保存した結果を返します。外部の決済やメール送信は、そのDBトランザクションだけでは一度の実行を保証できません。外部サービスの冪等性キーや、永続アウトボックスなどを別に検討します。"
+            }
+          ]
+        },
+        {
+          "kind": "verification",
+          "claim": "冪等性の検証では、同一キーによる逐次的な要求、同時実行される要求、およびコミット後に応答が失われた後の再試行の3パターンをテストし、副作用の重複がなく保存済みの同じ結果が返ることを確認する。",
+          "appliesWhen": [
+            "冪等性の検証を行う場合"
+          ],
+          "exceptions": [],
+          "evidence": [
+            {
+              "cueId": "cue-2",
+              "quote": "検証では、同じキーの逐次要求だけでなく同時要求も試します。コミット後に応答が失われ、同じキーで再試行された場合も検証します。副作用が重複せず、保存済みの同じ結果を返すことを確かめます。"
+            }
+          ],
+          "requiresVisualEvidence": false,
+          "versionContext": {
+            "language": "ja",
+            "framework": "engineering_knowledge",
+            "version": "1.0"
+          },
+          "id": "95eb7be99ffe267119ab34d1a79f58e95acdc410eb3484cd86ed183a162a63a0:2",
+          "status": "supported",
+          "videoId": 1,
+          "analysisRevision": "5ce56e3bae32cb810017724b6f933796",
+          "cues": [
+            {
+              "id": "cue-2",
+              "startMs": 41000,
+              "endMs": 60000,
+              "text": "検証では、同じキーの逐次要求だけでなく同時要求も試します。コミット後に応答が失われ、同じキーで再試行された場合も検証します。副作用が重複せず、保存済みの同じ結果を返すことを確かめます。教材で定めていない待ち時間や試行回数を勝手に一般則として追加しないでください。"
+            }
+          ]
+        }
+      ],
+      "issues": [],
+      "generation": {
+        "knowledgeModels": [
+          "@cf/google/gemma-4-26b-a4b-it"
+        ],
+        "knowledgePromptVersions": [
+          "course-knowledge-v3"
+        ],
+        "draftPromptVersion": "course-draft-v2",
+        "language": "ja",
+        "epoch": 0
+      }
+    }
+  ],
+  "quota": {
+    "used_ai_answers": 7
+  },
+  "ledger": [
+    {
+      "status": "completed",
+      "quota_consumed": 1,
+      "provider_calls": "[{\"kind\":\"skill_generation\",\"model\":\"@cf/google/gemma-4-26b-a4b-it\",\"startedAt\":\"2026-11-27T07:16:17.893Z\",\"finishedAt\":\"2026-11-27T07:16:34.007Z\",\"status\":\"completed\",\"usage\":{\"prompt_tokens\":482,\"completion_tokens\":838,\"total_tokens\":1320,\"prompt_tokens_details\":{\"cached_tokens\":0},\"neurons\":27.23636245727539}}]"
+    },
+    {
+      "status": "failed",
+      "quota_consumed": 1,
+      "provider_calls": "[{\"kind\":\"skill_generation\",\"model\":\"@cf/google/gemma-4-26b-a4b-it\",\"startedAt\":\"2026-11-27T07:16:35.035Z\",\"finishedAt\":\"2026-11-27T07:17:52.214Z\",\"status\":\"completed\",\"usage\":{\"prompt_tokens\":1333,\"completion_tokens\":4096,\"total_tokens\":5429,\"prompt_tokens_details\":{\"cached_tokens\":0},\"neurons\":123.8272705078125}}]"
+    },
+    {
+      "status": "completed",
+      "quota_consumed": 1,
+      "provider_calls": "[{\"kind\":\"skill_generation\",\"model\":\"@cf/google/gemma-4-26b-a4b-it\",\"startedAt\":\"2026-11-27T07:17:52.295Z\",\"finishedAt\":\"2026-11-27T07:17:58.984Z\",\"status\":\"completed\",\"usage\":{\"prompt_tokens\":1334,\"completion_tokens\":451,\"total_tokens\":1785,\"prompt_tokens_details\":{\"cached_tokens\":0},\"neurons\":24.42727279663086}}]"
+    },
+    {
+      "status": "failed",
+      "quota_consumed": 1,
+      "provider_calls": "[{\"kind\":\"skill_generation\",\"model\":\"@cf/google/gemma-4-26b-a4b-it\",\"startedAt\":\"2026-11-27T07:17:59.060Z\",\"finishedAt\":\"2026-11-27T07:19:16.481Z\",\"status\":\"completed\",\"usage\":{\"prompt_tokens\":1531,\"completion_tokens\":4096,\"total_tokens\":5627,\"prompt_tokens_details\":{\"cached_tokens\":0},\"neurons\":125.62727355957031}}]"
+    },
+    {
+      "status": "failed",
+      "quota_consumed": 1,
+      "provider_calls": "[{\"kind\":\"skill_generation\",\"model\":\"@cf/google/gemma-4-26b-a4b-it\",\"startedAt\":\"2026-11-27T07:19:16.581Z\",\"finishedAt\":\"2026-11-27T07:20:30.218Z\",\"status\":\"completed\",\"usage\":{\"prompt_tokens\":1531,\"completion_tokens\":4096,\"total_tokens\":5627,\"prompt_tokens_details\":{\"cached_tokens\":0},\"neurons\":125.62727355957031}}]"
+    },
+    {
+      "status": "completed",
+      "quota_consumed": 1,
+      "provider_calls": "[{\"kind\":\"skill_generation\",\"model\":\"@cf/google/gemma-4-26b-a4b-it\",\"startedAt\":\"2026-11-27T07:20:30.305Z\",\"finishedAt\":\"2026-11-27T07:20:46.054Z\",\"status\":\"completed\",\"usage\":{\"prompt_tokens\":1532,\"completion_tokens\":1757,\"total_tokens\":3289,\"prompt_tokens_details\":{\"cached_tokens\":0},\"neurons\":61.845455169677734}}]"
+    },
+    {
+      "status": "completed",
+      "quota_consumed": 1,
+      "provider_calls": "[{\"kind\":\"skill_generation\",\"model\":\"@cf/google/gemma-4-26b-a4b-it\",\"startedAt\":\"2026-11-27T07:20:46.133Z\",\"finishedAt\":\"2026-11-27T07:20:47.334Z\",\"status\":\"completed\",\"usage\":{\"prompt_tokens\":2672,\"completion_tokens\":12,\"total_tokens\":2684,\"prompt_tokens_details\":{\"cached_tokens\":0},\"neurons\":24.618181228637695}}]"
+    }
+  ],
+  "requests": [],
+  "usageSummary": {
+    "prompt": 10415,
+    "completion": 15346,
+    "neurons": 513.2090892791748
+  },
+  "estimatedModelUsd": 0.0056453,
+  "priceSource": "https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/",
+  "scope": "This successful synthetic generation trial only; excludes earlier diagnostic trials and real-client/effect comparisons."
+}

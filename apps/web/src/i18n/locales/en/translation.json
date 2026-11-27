@@ -1474,6 +1474,12 @@
     "next": "Next"
   },
   "courseSkills": {
+    "exceptionCondition": "Exception condition",
+    "exceptionBehavior": "Exception behavior",
+    "exampleSituation": "Example situation",
+    "exampleApplication": "Example application",
+    "removeExample": "Remove this example",
+
     "changes": "Knowledge and source changes since publication",
     "addedKnowledge": "Added or updated knowledge",
     "removedKnowledge": "Removed knowledge",

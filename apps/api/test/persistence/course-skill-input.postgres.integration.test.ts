@@ -30,6 +30,7 @@ const url = process.env.PERSISTENCE_TEST_DATABASE_URL;
     await execute((await readFile(new URL('../../drizzle/0072_course_skill_publications.sql', import.meta.url), 'utf8')).replaceAll('"public".', ''));
     await execute((await readFile(new URL('../../drizzle/0073_course_skill_steps.sql', import.meta.url), 'utf8')).replaceAll('"public".', ''));
     await execute((await readFile(new URL('../../drizzle/0074_course_skill_generation_epoch.sql', import.meta.url), 'utf8')).replaceAll('"public".', ''));
+    await execute((await readFile(new URL('../../drizzle/0075_course_skill_publication_fk_name.sql', import.meta.url), 'utf8')).replaceAll('"public".', ''));
     return { repository: createPostgresCourseSkillInputRepository({ DATABASE_POOL: f.pool } as Bindings), execute,
       knowledge: createSqlCourseSkillKnowledgeRepository(createPostgresSkillSqlDriver({ DATABASE_POOL: f.pool } as Bindings)),
       candidates: createSqlCourseSkillCandidateRepository(createPostgresSkillSqlDriver({ DATABASE_POOL: f.pool } as Bindings)),
