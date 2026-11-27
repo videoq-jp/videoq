@@ -1,0 +1,1039 @@
+{
+  "version": 1,
+  "trackingIssue": 1750,
+  "controls": [
+    {
+      "id": "ts-01",
+      "issue": 1703,
+      "owner": "packages/domain/src/course-name.ts",
+      "consumer": "apps/api/src/features/courses/service.ts",
+      "symbols": [
+        "normalizeCourseName"
+      ],
+      "tests": [
+        "test/course-name-contract.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-02",
+      "issue": 1703,
+      "owner": "packages/domain/src/course-name.ts",
+      "consumer": "packages/trpc/src/course-name.ts",
+      "symbols": [
+        "normalizeCourseName"
+      ],
+      "tests": [
+        "test/course-name-contract.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-03",
+      "issue": 1704,
+      "owner": "packages/domain/src/video-upload.ts",
+      "consumer": "apps/api/src/features/videos/upload-service.ts",
+      "symbols": [
+        "videoTitleFailure",
+        "uploadFilenameFailure",
+        "uploadContentTypeFailure",
+        "uploadSizeFailure",
+        "transcriptionLanguageFailure"
+      ],
+      "tests": [
+        "test/video-metadata-contract.test.ts",
+        "test/video-upload-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-04",
+      "issue": 1704,
+      "owner": "packages/domain/src/video-upload.ts",
+      "consumer": "packages/trpc/src/video-upload.ts",
+      "symbols": [
+        "videoTitleFailure",
+        "uploadFilenameFailure",
+        "uploadContentTypeFailure",
+        "uploadSizeFailure",
+        "transcriptionLanguageFailure"
+      ],
+      "tests": [
+        "test/video-metadata-contract.test.ts",
+        "test/video-upload-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-05",
+      "issue": 1705,
+      "owner": "apps/api/src/domain/billing/ai-consumption.ts",
+      "consumer": "apps/api/src/features/chat/generation-service.ts",
+      "symbols": [
+        "aiQuotaConsumed"
+      ],
+      "tests": [
+        "test/chat-generation-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-06",
+      "issue": 1705,
+      "owner": "apps/api/src/domain/billing/ai-consumption.ts",
+      "consumer": "apps/api/src/features/evidence/external-service.ts",
+      "symbols": [
+        "aiQuotaConsumed"
+      ],
+      "tests": [
+        "test/external-evidence-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-07",
+      "issue": 1706,
+      "owner": "apps/api/src/domain/billing/subscription-policy.ts",
+      "consumer": "apps/api/src/features/billing/service.ts",
+      "symbols": [
+        "selectBillingSubscription",
+        "subscriptionEntitlementPatch",
+        "billingCheckoutAlreadySubscribed",
+        "usableBillingPriceAmount"
+      ],
+      "tests": [
+        "test/billing-subscription-policy.test.ts",
+        "test/billing-webhook.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-08",
+      "issue": 1707,
+      "owner": "apps/api/src/domain/operations/worker-account-deletion.ts",
+      "consumer": "apps/api/src/persistence/d1/worker-account-deletion.ts",
+      "symbols": [
+        "accountDeletionForbidden"
+      ],
+      "tests": [
+        "test/persistence/worker-account-deletion.d1.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-09",
+      "issue": 1707,
+      "owner": "apps/api/src/domain/operations/worker-account-deletion.ts",
+      "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+      "symbols": [
+        "accountDeletionForbidden"
+      ],
+      "tests": [
+        "test/persistence/worker-account-deletion.postgres.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-10",
+      "issue": 1708,
+      "owner": "apps/api/src/domain/identity/admin.ts",
+      "consumer": "apps/api/src/application/account-summary.ts",
+      "symbols": [
+        "adminRoleIncludes"
+      ],
+      "tests": [
+        "test/account-summary-policy.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-11",
+      "issue": 1708,
+      "owner": "apps/api/src/domain/identity/admin.ts",
+      "consumer": "apps/api/src/lib/auth-security.ts",
+      "symbols": [
+        "adminRoleIncludes"
+      ],
+      "tests": [
+        "test/auth-security.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-12",
+      "issue": 1708,
+      "owner": "apps/api/src/domain/identity/admin.ts",
+      "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+      "symbols": [
+        "adminRoleIncludes"
+      ],
+      "tests": [
+        "test/persistence/worker-account-deletion.postgres.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-13",
+      "issue": 1709,
+      "owner": "apps/api/src/domain/lms/learning-features.ts",
+      "consumer": "apps/api/src/features/lti/session-service.ts",
+      "symbols": [
+        "learningFeatures",
+        "classroomLearningPermissions",
+        "classroomOwnerHistory"
+      ],
+      "tests": [
+        "test/lti-session-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-14",
+      "issue": 1709,
+      "owner": "apps/api/src/domain/lms/learning-features.ts",
+      "consumer": "apps/api/src/features/lti/operation-policy.ts",
+      "symbols": [
+        "canUseLearningConversations",
+        "canUseLearningTags",
+        "canChangeLearningTags",
+        "canManageLearningMaterials",
+        "canReadLearningReports"
+      ],
+      "tests": [
+        "test/learning-operation-policy.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-15",
+      "issue": 1709,
+      "owner": "apps/api/src/domain/lms/learning-features.ts",
+      "consumer": "apps/api/src/features/classroom/authorization-service.ts",
+      "symbols": [
+        "learningFeatures",
+        "classroomLearningPermissions",
+        "classroomOwnerHistory"
+      ],
+      "tests": [
+        "test/classroom-authorization-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-16",
+      "issue": 1710,
+      "owner": "apps/api/src/domain/lms/registration-policy.ts",
+      "consumer": "apps/api/src/integrations/lti-registrations.ts",
+      "symbols": [
+        "mergeLtiRegistrations"
+      ],
+      "tests": [
+        "test/lms-sync.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-17",
+      "issue": 1710,
+      "owner": "apps/api/src/domain/lms/course-binding.ts",
+      "consumer": "apps/api/src/features/lti/course-access-service.ts",
+      "symbols": [
+        "boundCourseAccess",
+        "linkedCourseBinding"
+      ],
+      "tests": [
+        "test/lti-course-access-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-18",
+      "issue": 1711,
+      "owner": "apps/api/src/domain/qa/policy.ts",
+      "consumer": "apps/api/src/features/lti/operation-policy.ts",
+      "symbols": [
+        "qaOperationPrecheck",
+        "qaMutationAllowed"
+      ],
+      "tests": [
+        "test/learning-operation-policy.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-19",
+      "issue": 1711,
+      "owner": "apps/api/src/domain/qa/policy.ts",
+      "consumer": "apps/api/src/persistence/d1/qa-repository.ts",
+      "symbols": [
+        "qaOperationPrecheck",
+        "qaMutationAllowed"
+      ],
+      "tests": [
+        "test/persistence/qa.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-20",
+      "issue": 1711,
+      "owner": "apps/api/src/domain/qa/policy.ts",
+      "consumer": "apps/api/src/persistence/postgres/qa-repository.ts",
+      "symbols": [
+        "qaOperationPrecheck",
+        "qaMutationAllowed"
+      ],
+      "tests": [
+        "test/persistence/qa.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-21",
+      "issue": 1714,
+      "owner": "apps/api/src/domain/search/index-lifecycle.ts",
+      "consumer": "apps/api/src/application/scene-index-execution.ts",
+      "symbols": [
+        "sceneIndexAdmission",
+        "sceneTranscriptState",
+        "sceneIndexFinishDecision"
+      ],
+      "tests": [
+        "test/scene-index-execution.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-22",
+      "issue": 1714,
+      "owner": "apps/api/src/domain/search/index-lifecycle.ts",
+      "consumer": "apps/api/src/integrations/search-index/index-transcript.ts",
+      "symbols": [
+        "sceneIndexAdmission",
+        "sceneTranscriptState",
+        "sceneIndexFinishDecision"
+      ],
+      "tests": [
+        "test/index-transcript-admission.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-23",
+      "issue": 1714,
+      "owner": "apps/api/src/domain/search/index-lifecycle.ts",
+      "consumer": "apps/api/src/workflows/search-index.ts",
+      "symbols": [
+        "sceneIndexAdmission",
+        "sceneTranscriptState",
+        "sceneIndexFinishDecision"
+      ],
+      "tests": [
+        "test/persistence/search-workflow.d1.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-24",
+      "issue": 1715,
+      "owner": "apps/api/src/domain/lms/lms-upload.ts",
+      "consumer": "apps/api/src/features/lms/upload-service.ts",
+      "symbols": [
+        "lmsUploadMaterialAllowed",
+        "currentLmsUploadSource",
+        "planLmsUploadSnapshot"
+      ],
+      "tests": [
+        "test/lms-upload-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-25",
+      "issue": 1715,
+      "owner": "apps/api/src/domain/lms/lms-upload.ts",
+      "consumer": "apps/api/src/domain/lms/resource-state.ts",
+      "symbols": [
+        "lmsUploadMaterialAllowed",
+        "currentLmsUploadSource",
+        "planLmsUploadSnapshot"
+      ],
+      "tests": [
+        "test/lms-resource-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-26",
+      "issue": 1716,
+      "owner": "apps/api/src/domain/learning/course-history.ts",
+      "consumer": "apps/api/src/persistence/d1/course-history-repository.ts",
+      "symbols": [
+        "retainedCourseHistory",
+        "courseHistoryAttribution"
+      ],
+      "tests": [
+        "test/persistence/course-history.d1.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-27",
+      "issue": 1716,
+      "owner": "apps/api/src/domain/learning/course-history.ts",
+      "consumer": "apps/api/src/persistence/postgres/course-history-repository.ts",
+      "symbols": [
+        "retainedCourseHistory",
+        "courseHistoryAttribution"
+      ],
+      "tests": [
+        "test/persistence/course-history.postgres.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-28",
+      "issue": 1717,
+      "owner": "apps/api/src/domain/lms/teaching.ts",
+      "consumer": "apps/api/src/persistence/d1/teaching-repository.ts",
+      "symbols": [
+        "teachingConnectionConflicts",
+        "selectTeachingCourse"
+      ],
+      "tests": [
+        "test/persistence/teaching.d1.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-29",
+      "issue": 1717,
+      "owner": "apps/api/src/domain/lms/teaching.ts",
+      "consumer": "apps/api/src/persistence/postgres/teaching-repository.ts",
+      "symbols": [
+        "teachingConnectionConflicts",
+        "selectTeachingCourse"
+      ],
+      "tests": [
+        "test/persistence/teaching.postgres.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-30",
+      "issue": 1718,
+      "owner": "apps/api/src/domain/search/scene-retrieval.ts",
+      "consumer": "apps/api/src/persistence/d1/scene-search.ts",
+      "symbols": [
+        "sceneCandidateCurrent",
+        "sceneOwnerVisible",
+        "sceneSearchSelection"
+      ],
+      "tests": [
+        "test/persistence/scene-search.d1.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-31",
+      "issue": 1718,
+      "owner": "apps/api/src/domain/search/scene-retrieval.ts",
+      "consumer": "apps/api/src/persistence/postgres/scene-search.ts",
+      "symbols": [
+        "sceneCandidateCurrent",
+        "sceneOwnerVisible",
+        "sceneSearchSelection"
+      ],
+      "tests": [
+        "test/embedding-store.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-32",
+      "issue": 1719,
+      "owner": "apps/api/src/domain/conversation/scope-identity.ts",
+      "consumer": "apps/api/src/application/conversation-scope.ts",
+      "symbols": [
+        "conversationIdentityInput"
+      ],
+      "tests": [
+        "test/conversation-scope-policy.test.ts",
+        "test/privacy-recovery-policy.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-33",
+      "issue": 1719,
+      "owner": "apps/api/src/domain/lms/subject-identity.ts",
+      "consumer": "apps/api/src/application/subject-identity.ts",
+      "symbols": [
+        "checkedLtiSubjectIdentity",
+        "courseQaAuthorInput",
+        "courseHistoryIdentityInput"
+      ],
+      "tests": [
+        "test/conversation-scope-policy.test.ts",
+        "test/privacy-recovery-policy.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-34",
+      "issue": 1720,
+      "owner": "apps/api/src/domain/conversation/evidence-budget.ts",
+      "consumer": "apps/api/src/features/evidence/video-evidence-service.ts",
+      "symbols": [
+        "EvidenceBudget",
+        "externalEvidencePlan"
+      ],
+      "tests": [
+        "test/video-evidence-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-35",
+      "issue": 1720,
+      "owner": "apps/api/src/domain/conversation/evidence-budget.ts",
+      "consumer": "apps/api/src/features/evidence/scene-search-service.ts",
+      "symbols": [
+        "EvidenceBudget",
+        "externalEvidencePlan"
+      ],
+      "tests": [
+        "test/evidence-text-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-36",
+      "issue": 1720,
+      "owner": "apps/api/src/domain/conversation/evidence-budget.ts",
+      "consumer": "apps/api/src/features/evidence/course-info-service.ts",
+      "symbols": [
+        "EvidenceBudget",
+        "externalEvidencePlan"
+      ],
+      "tests": [
+        "test/evidence-text-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-37",
+      "issue": 1720,
+      "owner": "apps/api/src/domain/conversation/evidence-budget.ts",
+      "consumer": "apps/api/src/features/evidence/external-service.ts",
+      "symbols": [
+        "EvidenceBudget",
+        "externalEvidencePlan"
+      ],
+      "tests": [
+        "test/external-evidence-service.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-38",
+      "issue": 1721,
+      "owner": "apps/api/src/domain/lms/native-session-policy.ts",
+      "consumer": "apps/api/src/features/lms/native-session-policy.ts",
+      "symbols": [
+        "nativeSessionInputAllowed",
+        "nativeSessionMatches"
+      ],
+      "tests": [
+        "test/persistence/native-session.d1.integration.test.ts",
+        "test/persistence/native-session.postgres.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-39",
+      "issue": 1725,
+      "owner": "apps/api/src/domain/operations/job-execution.ts",
+      "consumer": "apps/api/src/persistence/d1/job-repository.ts",
+      "symbols": [
+        "jobReclaimAllowed",
+        "jobClaimRefusal",
+        "jobClaimDecision",
+        "jobLeaseMutationAllowed"
+      ],
+      "tests": [
+        "test/persistence/jobs.d1.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-40",
+      "issue": 1725,
+      "owner": "apps/api/src/domain/operations/job-execution.ts",
+      "consumer": "apps/api/src/persistence/postgres/job-repository.ts",
+      "symbols": [
+        "jobReclaimAllowed",
+        "jobClaimRefusal",
+        "jobClaimDecision",
+        "jobLeaseMutationAllowed"
+      ],
+      "tests": [
+        "test/persistence/jobs.postgres.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-41",
+      "issue": 1726,
+      "owner": "apps/api/src/domain/operations/reindex-job.ts",
+      "consumer": "apps/api/src/application/reindex-job.ts",
+      "symbols": [
+        "reindexAllEmbeddingsMessage"
+      ],
+      "tests": [
+        "test/reindex-job.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-42",
+      "issue": 1726,
+      "owner": "apps/api/src/domain/search/search-scene-splitting.ts",
+      "consumer": "apps/api/src/application/scene-splitting.ts",
+      "symbols": [
+        "planSearchScenes"
+      ],
+      "tests": [
+        "test/search-worker-core.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-43",
+      "issue": 1726,
+      "owner": "apps/api/src/domain/search/streaming-otsu.ts",
+      "consumer": "apps/api/src/application/streaming-otsu.ts",
+      "symbols": [
+        "normalizedOtsuVector",
+        "accumulateOtsuBoundary"
+      ],
+      "tests": [
+        "test/streaming-otsu.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-44",
+      "issue": 1728,
+      "owner": "apps/api/src/domain/lms/lms-owner.ts",
+      "consumer": "apps/api/src/persistence/d1/lms-owner-policy.ts",
+      "symbols": [
+        "lmsOwnerAvailable",
+        "materialTeacherConnectionAccess"
+      ],
+      "tests": [
+        "test/persistence/lms-resource-read.d1.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-45",
+      "issue": 1728,
+      "owner": "apps/api/src/domain/lms/lms-owner.ts",
+      "consumer": "apps/api/src/persistence/postgres/lms-owner-policy.ts",
+      "symbols": [
+        "lmsOwnerAvailable",
+        "materialTeacherConnectionAccess"
+      ],
+      "tests": [
+        "test/persistence/lms-resource-read.postgres.integration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-46",
+      "issue": 1729,
+      "owner": "apps/api/src/domain/operations/throttle-policy.ts",
+      "consumer": "apps/api/src/lib/rate-limit.ts",
+      "symbols": [
+        "THROTTLE_RATES",
+        "throttleConsumption",
+        "chatThrottlePolicy"
+      ],
+      "tests": [
+        "test/rate-limit.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-47",
+      "issue": 1739,
+      "owner": "apps/api/src/domain/identity/username.ts",
+      "consumer": "apps/api/src/application/identity/username.ts",
+      "symbols": [
+        "usernameSeed",
+        "usernameCandidate",
+        "fallbackUsername"
+      ],
+      "tests": [
+        "test/username-policy.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-48",
+      "issue": 1739,
+      "owner": "apps/api/src/domain/identity/account-registration.ts",
+      "consumer": "apps/api/src/application/identity/account-registration.ts",
+      "symbols": [
+        "registrationUsername",
+        "accountWithDefaults"
+      ],
+      "tests": [
+        "test/account-registration.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-49",
+      "issue": 1739,
+      "owner": "apps/api/src/domain/identity/google-account.ts",
+      "consumer": "apps/api/src/application/identity/google-account.ts",
+      "symbols": [
+        "googleAccountFacts",
+        "googleAccountProfile"
+      ],
+      "tests": [
+        "test/google-account-policy.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    },
+    {
+      "id": "ts-50",
+      "issue": 1739,
+      "owner": "apps/api/src/domain/identity/oauth-consent.ts",
+      "consumer": "apps/api/src/application/identity/oauth-consent.ts",
+      "symbols": [
+        "consentAllows",
+        "refreshConsentPlan"
+      ],
+      "tests": [
+        "test/oauth-consent-policy.test.ts"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "Not generalized: no historical implementation is assumed equivalent. Explicit old-validation-copy control remains in ownership-negative-controls.test.ts for course service."
+    }
+  ],
+  "pythonControls": [
+    {
+      "id": "py-01",
+      "issue": 1722,
+      "owner": "apps/worker/worker_python/domain/visual_checkpoints.py",
+      "consumer": "apps/worker/worker_python/use_cases/visual_preparation.py",
+      "symbols": [
+        "visual_plan",
+        "validate_visual_duration"
+      ],
+      "tests": [
+        "tests/test_prepare_visual_frames.py"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+    },
+    {
+      "id": "py-02",
+      "issue": 1723,
+      "owner": "apps/worker/worker_python/domain/video_processing.py",
+      "consumer": "apps/worker/worker_python/use_cases/transcription.py",
+      "symbols": [
+        "transcription_admission",
+        "transcription_failure_retry",
+        "prepared_transcription_content"
+      ],
+      "tests": [
+        "tests/test_transcription_use_case.py"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+    },
+    {
+      "id": "py-03",
+      "issue": 1723,
+      "owner": "apps/worker/worker_python/domain/video_processing.py",
+      "consumer": "apps/worker/worker_python/use_cases/cloud_transcription.py",
+      "symbols": [
+        "transcription_admission",
+        "transcription_failure_retry",
+        "prepared_transcription_content"
+      ],
+      "tests": [
+        "tests/test_cloud_transcription_use_case.py"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+    },
+    {
+      "id": "py-04",
+      "issue": 1723,
+      "owner": "apps/worker/worker_python/domain/video_processing.py",
+      "consumer": "apps/worker/worker_python/tasks/segmented_transcription.py",
+      "symbols": [
+        "transcription_admission",
+        "transcription_failure_retry",
+        "prepared_transcription_content"
+      ],
+      "tests": [
+        "tests/test_segmented_transcription.py"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+    },
+    {
+      "id": "py-05",
+      "issue": 1724,
+      "owner": "apps/worker/worker_python/domain/caption_selection.py",
+      "consumer": "apps/worker/worker_python/pipeline/transcription.py",
+      "symbols": [
+        "caption_track_candidates"
+      ],
+      "tests": [
+        "tests/test_youtube_transcript.py"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+    },
+    {
+      "id": "py-06",
+      "issue": 1725,
+      "owner": "apps/worker/worker_python/domain/jobs.py",
+      "consumer": "apps/worker/worker_python/job_execution.py",
+      "symbols": [
+        "job_claim_decision",
+        "job_lease_mutation_allowed"
+      ],
+      "tests": [
+        "tests/test_job_execution.py",
+        "tests/test_job_execution_integration.py"
+      ],
+      "modes": [
+        "bypass",
+        "ignore-result"
+      ],
+      "legacyCopy": "No generalized historical implementation assumed; only explicit consumer bypass/ignored-result controls."
+    }
+  ]
+}

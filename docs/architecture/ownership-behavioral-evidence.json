@@ -1,0 +1,3743 @@
+{
+  "checkedAt": "2026-11-27T05:57:25.242581+00:00",
+  "trackingIssue": 1750,
+  "scope": "Registered consumer/owner pairs only; two representative mutations per pair, not every symbol/callsite or arbitrary semantic copies.",
+  "summary": {
+    "typescriptPairs": 50,
+    "pythonPairs": 6,
+    "baselinePassed": 56,
+    "mutationsDetected": 112,
+    "baselineSkipped": 0
+  },
+  "results": [
+    {
+      "id": "ts-01",
+      "issue": 1703,
+      "owner": "packages/domain/src/course-name.ts",
+      "consumer": "apps/api/src/features/courses/service.ts",
+      "symbols": [
+        "normalizeCourseName"
+      ],
+      "tests": [
+        "test/course-name-contract.test.ts"
+      ],
+      "sourceSha256": "420256fbbb49e65cdc1bf69167479ca21849d75662a3344deb1d7cb5b09114d7",
+      "ownerSha256": "ac533a9eef1658e34192c721fe160d62ee8c4672a5c1677d06b4bd535f17bea3",
+      "testsSha256": {
+        "test/course-name-contract.test.ts": "fef2b413652ebfe11be8a8e7e8e721da8e21e21cb930ecbadaabdf8a8a924306"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/courses/service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 0,
+          "failed": 9,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/courses/service.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "rejects invalid course names consistently: \"\"",
+            "rejects invalid course names consistently: \"   \"",
+            "rejects invalid course names consistently: \"Course\\u0000suffix\""
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 0,
+          "failed": 9,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/courses/service.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "rejects invalid course names consistently: \"\"",
+            "rejects invalid course names consistently: \"   \"",
+            "rejects invalid course names consistently: \"Course\\u0000suffix\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-02",
+      "issue": 1703,
+      "owner": "packages/domain/src/course-name.ts",
+      "consumer": "packages/trpc/src/course-name.ts",
+      "symbols": [
+        "normalizeCourseName"
+      ],
+      "tests": [
+        "test/course-name-contract.test.ts"
+      ],
+      "sourceSha256": "49876e83a8524c49cc6edde8b1f2994666fa291741fcda2cb9949d8e2daa68c5",
+      "ownerSha256": "ac533a9eef1658e34192c721fe160d62ee8c4672a5c1677d06b4bd535f17bea3",
+      "testsSha256": {
+        "test/course-name-contract.test.ts": "fef2b413652ebfe11be8a8e7e8e721da8e21e21cb930ecbadaabdf8a8a924306"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "packages/trpc/src/course-name.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 1,
+          "failed": 8,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "packages/trpc/src/course-name.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "rejects invalid course names consistently: \"\"",
+            "rejects invalid course names consistently: \"   \"",
+            "rejects invalid course names consistently: \"Course\\u0000suffix\""
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 1,
+          "failed": 8,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "packages/trpc/src/course-name.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "rejects invalid course names consistently: \"\"",
+            "rejects invalid course names consistently: \"   \"",
+            "rejects invalid course names consistently: \"Course\\u0000suffix\""
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-03",
+      "issue": 1704,
+      "owner": "packages/domain/src/video-upload.ts",
+      "consumer": "apps/api/src/features/videos/upload-service.ts",
+      "symbols": [
+        "videoTitleFailure",
+        "uploadFilenameFailure",
+        "uploadContentTypeFailure",
+        "uploadSizeFailure",
+        "transcriptionLanguageFailure"
+      ],
+      "tests": [
+        "test/video-metadata-contract.test.ts",
+        "test/video-upload-service.test.ts"
+      ],
+      "sourceSha256": "df098bbc065bc170f542fa215a8f8ed126ba45c51219000bbeaf2d012c4d686c",
+      "ownerSha256": "c574512d7fba60bc6667d3e4055e29b80b3ce795b407435f29bf1604d2cb5ed5",
+      "testsSha256": {
+        "test/video-metadata-contract.test.ts": "949c684face93baac1eebb9ce1c8655bee8bce0896bde93e5104f64fc43b7fbe",
+        "test/video-upload-service.test.ts": "d017dc2bd2e8b5a5ba85f6b1421ae69b1f90acc214b923fdc880a209b7436c62"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/videos/upload-service.ts",
+            "mode": "baseline",
+            "sites": 10
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 22,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/videos/upload-service.ts",
+            "mode": "bypass",
+            "sites": 10
+          },
+          "failedTestExamples": [
+            "upload lifecycle without a runtime environment rejects invalid input and quota failures before issuing storage access",
+            "direct upload application failures validates plain file metadata before reserving storage",
+            "rejects NUL upload title before reservation or storage"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 22,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/videos/upload-service.ts",
+            "mode": "ignore-result",
+            "sites": 10
+          },
+          "failedTestExamples": [
+            "upload lifecycle without a runtime environment rejects invalid input and quota failures before issuing storage access",
+            "direct upload application failures validates plain file metadata before reserving storage",
+            "rejects NUL upload title before reservation or storage"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-04",
+      "issue": 1704,
+      "owner": "packages/domain/src/video-upload.ts",
+      "consumer": "packages/trpc/src/video-upload.ts",
+      "symbols": [
+        "videoTitleFailure",
+        "uploadFilenameFailure",
+        "uploadContentTypeFailure",
+        "uploadSizeFailure",
+        "transcriptionLanguageFailure"
+      ],
+      "tests": [
+        "test/video-metadata-contract.test.ts",
+        "test/video-upload-service.test.ts"
+      ],
+      "sourceSha256": "ecef3cf5e197a625834cb681fcf0dc27ed6193fff9003b0e5290b5db3cbd83ec",
+      "ownerSha256": "c574512d7fba60bc6667d3e4055e29b80b3ce795b407435f29bf1604d2cb5ed5",
+      "testsSha256": {
+        "test/video-metadata-contract.test.ts": "949c684face93baac1eebb9ce1c8655bee8bce0896bde93e5104f64fc43b7fbe",
+        "test/video-upload-service.test.ts": "d017dc2bd2e8b5a5ba85f6b1421ae69b1f90acc214b923fdc880a209b7436c62"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "packages/trpc/src/video-upload.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 25,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "packages/trpc/src/video-upload.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "normalizes metadata identically and preserves the explicit single PUT boundary"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 25,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "packages/trpc/src/video-upload.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "normalizes metadata identically and preserves the explicit single PUT boundary"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-05",
+      "issue": 1705,
+      "owner": "apps/api/src/domain/billing/ai-consumption.ts",
+      "consumer": "apps/api/src/features/chat/generation-service.ts",
+      "symbols": [
+        "aiQuotaConsumed"
+      ],
+      "tests": [
+        "test/chat-generation-service.test.ts"
+      ],
+      "sourceSha256": "fb5f9b90b96e65c4b138e03a4618cffb2d0cd8cf7e8f9fbd964128f532b6cac4",
+      "ownerSha256": "12666c4e1ae085740998ddad5ca4685bb36af342bc94d625f3f6b6d42866ce1d",
+      "testsSha256": {
+        "test/chat-generation-service.test.ts": "f9325fa82898c8b985b88ffcfc8569ee708d2ad14ec5b789ead9fc4d122b1610"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/chat/generation-service.ts",
+            "mode": "baseline",
+            "sites": 6
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 8,
+          "failed": 8,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/chat/generation-service.ts",
+            "mode": "bypass",
+            "sites": 6
+          },
+          "failedTestExamples": [
+            "answer application lifecycle without runtime adapters authorizes the course before reserving quota and supplies an atomic conversation log callback",
+            "answer application lifecycle without runtime adapters refunds a failed nonstream answer only before the commit boundary: consumed=false",
+            "answer application lifecycle without runtime adapters refunds a failed nonstream answer only before the commit boundary: consumed=true"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 8,
+          "failed": 8,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/chat/generation-service.ts",
+            "mode": "ignore-result",
+            "sites": 6
+          },
+          "failedTestExamples": [
+            "answer application lifecycle without runtime adapters authorizes the course before reserving quota and supplies an atomic conversation log callback",
+            "answer application lifecycle without runtime adapters refunds a failed nonstream answer only before the commit boundary: consumed=false",
+            "answer application lifecycle without runtime adapters refunds a failed nonstream answer only before the commit boundary: consumed=true"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-06",
+      "issue": 1705,
+      "owner": "apps/api/src/domain/billing/ai-consumption.ts",
+      "consumer": "apps/api/src/features/evidence/external-service.ts",
+      "symbols": [
+        "aiQuotaConsumed"
+      ],
+      "tests": [
+        "test/external-evidence-service.test.ts"
+      ],
+      "sourceSha256": "e12f219e8c4b15f163b2f1c72b61c350d120e9ca886a2fa9bfe8ffaba9a7bf87",
+      "ownerSha256": "12666c4e1ae085740998ddad5ca4685bb36af342bc94d625f3f6b6d42866ce1d",
+      "testsSha256": {
+        "test/external-evidence-service.test.ts": "b85f99c420af078cf4e7054d0e869cee6f1fa0fefe230fa2d364fc5742264d05"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/external-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 17,
+          "failed": 8,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/external-service.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "reserves the authorized owner before execution, closes before refund and records non-consuming completion",
+            "retains the account unit once any provider work completed, even when the tool subsequently fails",
+            "cleanup cancellation does not turn an execution failure into interruption"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 17,
+          "failed": 8,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/external-service.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "reserves the authorized owner before execution, closes before refund and records non-consuming completion",
+            "retains the account unit once any provider work completed, even when the tool subsequently fails",
+            "cleanup cancellation does not turn an execution failure into interruption"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-07",
+      "issue": 1706,
+      "owner": "apps/api/src/domain/billing/subscription-policy.ts",
+      "consumer": "apps/api/src/features/billing/service.ts",
+      "symbols": [
+        "selectBillingSubscription",
+        "subscriptionEntitlementPatch",
+        "billingCheckoutAlreadySubscribed",
+        "usableBillingPriceAmount"
+      ],
+      "tests": [
+        "test/billing-subscription-policy.test.ts",
+        "test/billing-webhook.integration.test.ts"
+      ],
+      "sourceSha256": "4f318d6ec7c7770d3e6e4a6821a3f6896df3155ba20fec4168f02af689ccf26f",
+      "ownerSha256": "11b2cab6ac4419a42f57172014bb41fbe673ef3db547c0322d2feed388f64f04",
+      "testsSha256": {
+        "test/billing-subscription-policy.test.ts": "fab1e11a3f769ba9fe7e995befa1118185e70a385435c57804c3751f3645a622",
+        "test/billing-webhook.integration.test.ts": "f3ea9f76c1e25b6882c496cc2e8a904dc8dc3fd48f1caae6da83194ea1e3ca8e"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 44,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/billing/service.ts",
+            "mode": "baseline",
+            "sites": 4
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 17,
+          "failed": 27,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/billing/service.ts",
+            "mode": "bypass",
+            "sites": 4
+          },
+          "failedTestExamples": [
+            "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for jpy",
+            "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for usd",
+            "billing webhook on PostgreSQL retries the same event after a Stripe lookup failure without keeping a receipt"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 17,
+          "failed": 27,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/billing/service.ts",
+            "mode": "ignore-result",
+            "sites": 4
+          },
+          "failedTestExamples": [
+            "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for jpy",
+            "billing webhook on PostgreSQL verifies the untouched body and grants the same entitlements for usd",
+            "billing webhook on PostgreSQL retries the same event after a Stripe lookup failure without keeping a receipt"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-08",
+      "issue": 1707,
+      "owner": "apps/api/src/domain/operations/worker-account-deletion.ts",
+      "consumer": "apps/api/src/persistence/d1/worker-account-deletion.ts",
+      "symbols": [
+        "accountDeletionForbidden"
+      ],
+      "tests": [
+        "test/persistence/worker-account-deletion.d1.integration.test.ts"
+      ],
+      "sourceSha256": "28f62259346e7ab0f55566a78b7dadef36032229e8de9f95ef86d1b768a0a2b7",
+      "ownerSha256": "1cccde4797cc8a1f56cbf6b37180c78ed6cf959c2f921ecb6656984b2c676219",
+      "testsSha256": {
+        "test/persistence/worker-account-deletion.d1.integration.test.ts": "a20c14e0bd3dacef078d86c7f5f662fe8cc26d1bba0c332d93fcd3d977ebb581"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/worker-account-deletion.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 9,
+          "failed": 7,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/worker-account-deletion.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "D1 cloud account deletion deletes media pointers with durable storage/vector cleanup before removing the user, preserving other owners",
+            "D1 cloud account deletion purges NO ACTION business ownership and cascades native auth and conversation memory",
+            "D1 cloud account deletion rolls back final business cleanup if deleting the user root fails"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 9,
+          "failed": 7,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/worker-account-deletion.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "D1 cloud account deletion deletes media pointers with durable storage/vector cleanup before removing the user, preserving other owners",
+            "D1 cloud account deletion purges NO ACTION business ownership and cascades native auth and conversation memory",
+            "D1 cloud account deletion rolls back final business cleanup if deleting the user root fails"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-09",
+      "issue": 1707,
+      "owner": "apps/api/src/domain/operations/worker-account-deletion.ts",
+      "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+      "symbols": [
+        "accountDeletionForbidden"
+      ],
+      "tests": [
+        "test/persistence/worker-account-deletion.postgres.integration.test.ts"
+      ],
+      "sourceSha256": "b6242f9567ee7d1384cc29c18c03192b41d2c7cbdfe8f622792888b8fd759042",
+      "ownerSha256": "1cccde4797cc8a1f56cbf6b37180c78ed6cf959c2f921ecb6656984b2c676219",
+      "testsSha256": {
+        "test/persistence/worker-account-deletion.postgres.integration.test.ts": "958b03917088bba868a74f2bb00f22784375e66075a9cb624a509772e48e1e7e"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 5,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET banned=false WHERE id='owner'",
+            "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'",
+            "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET ban_expires=now()+interval '1 day' WHERE id='owner'"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 5,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET banned=false WHERE id='owner'",
+            "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'",
+            "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET ban_expires=now()+interval '1 day' WHERE id='owner'"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-10",
+      "issue": 1708,
+      "owner": "apps/api/src/domain/identity/admin.ts",
+      "consumer": "apps/api/src/application/account-summary.ts",
+      "symbols": [
+        "adminRoleIncludes"
+      ],
+      "tests": [
+        "test/account-summary-policy.test.ts"
+      ],
+      "sourceSha256": "16ea47e8e307ce910348d28e65417cece534ff12957a86d639f53f5d8460d832",
+      "ownerSha256": "58a754c8e186848c68178f0c0d077ab34c3f999469225a81a945900c63987900",
+      "testsSha256": {
+        "test/account-summary-policy.test.ts": "14bdb78f1b7511dbb4547ce0cd6ff2381f944e1b64501c4a197e5b84011e708d"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/account-summary.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 1,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/account-summary.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "preserves exact role and plan projection: user,admin/pro/admin",
+            "preserves exact role and plan projection: administrator/basic/plan",
+            "preserves exact role and plan projection: user, admin/PRO/onprem"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 1,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/account-summary.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "preserves exact role and plan projection: user,admin/pro/admin",
+            "preserves exact role and plan projection: administrator/basic/plan",
+            "preserves exact role and plan projection: user, admin/PRO/onprem"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-11",
+      "issue": 1708,
+      "owner": "apps/api/src/domain/identity/admin.ts",
+      "consumer": "apps/api/src/lib/auth-security.ts",
+      "symbols": [
+        "adminRoleIncludes"
+      ],
+      "tests": [
+        "test/auth-security.test.ts"
+      ],
+      "sourceSha256": "bb8c003997635d979b24f8c310e0c4eb327f7d4af9426d2f4fa596bd570470f9",
+      "ownerSha256": "58a754c8e186848c68178f0c0d077ab34c3f999469225a81a945900c63987900",
+      "testsSha256": {
+        "test/auth-security.test.ts": "b93d042f3faa4cb1fdfdf578cde8d58c7579a62c2ce9dedae9727aa54f5a49f4"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 77,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/lib/auth-security.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 68,
+          "failed": 9,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/lib/auth-security.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=10000000-0000-4000-8000-000000000001",
+            "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=[ …(1) ]",
+            "account suspension across Better Auth endpoints prevents self-demotion through /admin/update-user with userId=10000000-0000-4000-8000-000000000001"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 68,
+          "failed": 9,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/lib/auth-security.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=10000000-0000-4000-8000-000000000001",
+            "account suspension across Better Auth endpoints prevents self-demotion through /admin/set-role with userId=[ …(1) ]",
+            "account suspension across Better Auth endpoints prevents self-demotion through /admin/update-user with userId=10000000-0000-4000-8000-000000000001"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-12",
+      "issue": 1708,
+      "owner": "apps/api/src/domain/identity/admin.ts",
+      "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+      "symbols": [
+        "adminRoleIncludes"
+      ],
+      "tests": [
+        "test/persistence/worker-account-deletion.postgres.integration.test.ts"
+      ],
+      "sourceSha256": "b6242f9567ee7d1384cc29c18c03192b41d2c7cbdfe8f622792888b8fd759042",
+      "ownerSha256": "58a754c8e186848c68178f0c0d077ab34c3f999469225a81a945900c63987900",
+      "testsSha256": {
+        "test/persistence/worker-account-deletion.postgres.integration.test.ts": "958b03917088bba868a74f2bb00f22784375e66075a9cb624a509772e48e1e7e"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 7,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 7,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/worker-account-deletion.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "PostgreSQL leased account deletion rejects revoked authorization or job identity: UPDATE users SET role='user,admin' WHERE id='owner'"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-13",
+      "issue": 1709,
+      "owner": "apps/api/src/domain/lms/learning-features.ts",
+      "consumer": "apps/api/src/features/lti/session-service.ts",
+      "symbols": [
+        "learningFeatures",
+        "classroomLearningPermissions",
+        "classroomOwnerHistory"
+      ],
+      "tests": [
+        "test/lti-session-service.test.ts"
+      ],
+      "sourceSha256": "11dea53acad90ec02233c5856f1e6ea444b12b4348434fa7561b5b7d04405113",
+      "ownerSha256": "12915fc46ae7d95c76cdfc3106fbcfc46e134d7fca6f389addd1a2c789eab48a",
+      "testsSha256": {
+        "test/lti-session-service.test.ts": "74dbd466bae7fb9ee7b757e81be20efed38b9efe8c951a1b561ee14c0bc7c018"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/session-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 3,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/session-service.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "returns the feature projection when a verified login issues a session"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 3,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/session-service.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "returns the feature projection when a verified login issues a session"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-14",
+      "issue": 1709,
+      "owner": "apps/api/src/domain/lms/learning-features.ts",
+      "consumer": "apps/api/src/features/lti/operation-policy.ts",
+      "symbols": [
+        "canUseLearningConversations",
+        "canUseLearningTags",
+        "canChangeLearningTags",
+        "canManageLearningMaterials",
+        "canReadLearningReports"
+      ],
+      "tests": [
+        "test/learning-operation-policy.test.ts"
+      ],
+      "sourceSha256": "91f7170d3ac07215fa643e8bcd3e2c1c75bfa7dc8094b0f059e01fa22616a6e1",
+      "ownerSha256": "12915fc46ae7d95c76cdfc3106fbcfc46e134d7fca6f389addd1a2c789eab48a",
+      "testsSha256": {
+        "test/learning-operation-policy.test.ts": "5f0e928e06a3f42336c91513f63328fd3f12fcbeebc2460e7ec2b64e4368ccd6"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/operation-policy.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 4,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/operation-policy.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "exposes current capability decisions through the operation adapter"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 4,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/operation-policy.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "exposes current capability decisions through the operation adapter"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-15",
+      "issue": 1709,
+      "owner": "apps/api/src/domain/lms/learning-features.ts",
+      "consumer": "apps/api/src/features/classroom/authorization-service.ts",
+      "symbols": [
+        "learningFeatures",
+        "classroomLearningPermissions",
+        "classroomOwnerHistory"
+      ],
+      "tests": [
+        "test/classroom-authorization-service.test.ts"
+      ],
+      "sourceSha256": "4e87b7d907f1472ccea799df54921b3725aeba86765b59e2168f52a7bd09c271",
+      "ownerSha256": "12915fc46ae7d95c76cdfc3106fbcfc46e134d7fca6f389addd1a2c789eab48a",
+      "testsSha256": {
+        "test/classroom-authorization-service.test.ts": "adef957634bd00089f0544902090730bd925ff724d2c91a60c6aa51c06a75570"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/classroom/authorization-service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 3,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/classroom/authorization-service.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "distinguishes a co-teacher moderation grant from the owner history grant"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 3,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/classroom/authorization-service.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "distinguishes a co-teacher moderation grant from the owner history grant"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-16",
+      "issue": 1710,
+      "owner": "apps/api/src/domain/lms/registration-policy.ts",
+      "consumer": "apps/api/src/integrations/lti-registrations.ts",
+      "symbols": [
+        "mergeLtiRegistrations"
+      ],
+      "tests": [
+        "test/lms-sync.integration.test.ts"
+      ],
+      "sourceSha256": "ca20d414ff994b7d14ceb96ec22575afe9b938445bbe9dccd3ed66fffedb99ad",
+      "ownerSha256": "96794af5e8e5e26316673fc958e5e8cd1618b20341d4945f2ed007f7452aca9e",
+      "testsSha256": {
+        "test/lms-sync.integration.test.ts": "d3a92b00a007c2c2adc922a560270606b7949125e90c786bf6745700f09d181b"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 59,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/integrations/lti-registrations.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 46,
+          "failed": 13,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/integrations/lti-registrations.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "Moodle synchronization using existing VideoQ accounts needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance",
+            "Moodle synchronization using existing VideoQ accounts disconnects only a teacher's course while retaining the school installation and all learning data",
+            "Moodle synchronization using existing VideoQ accounts uses the native deployment policy and removes YouTube grants when that feature is unavailable"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 46,
+          "failed": 13,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/integrations/lti-registrations.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "Moodle synchronization using existing VideoQ accounts needs no LTI-specific settings and initializes encrypted keys only on authenticated code issuance",
+            "Moodle synchronization using existing VideoQ accounts disconnects only a teacher's course while retaining the school installation and all learning data",
+            "Moodle synchronization using existing VideoQ accounts uses the native deployment policy and removes YouTube grants when that feature is unavailable"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-17",
+      "issue": 1710,
+      "owner": "apps/api/src/domain/lms/course-binding.ts",
+      "consumer": "apps/api/src/features/lti/course-access-service.ts",
+      "symbols": [
+        "boundCourseAccess",
+        "linkedCourseBinding"
+      ],
+      "tests": [
+        "test/lti-course-access-service.test.ts"
+      ],
+      "sourceSha256": "dfd01347080839b47084e03d01a6d35784cd8fea579426e88432c165c259b545",
+      "ownerSha256": "2897ce762f001901e42479e5ec8c6814b49368f8bba47f20067d617016115cd2",
+      "testsSha256": {
+        "test/lti-course-access-service.test.ts": "24b59e70d8af3bb7efa14f27c78df775ba11f67c5cef0dcc8d5951cde03553e9"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/course-access-service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 0,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/course-access-service.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "requires a fresh course entry even when visible videos are returned",
+            "intersects current authority generations with local bindings and keeps management separate",
+            "uses the linked teacher-owned course and removes remote management/report privileges"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 1,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/course-access-service.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "intersects current authority generations with local bindings and keeps management separate",
+            "uses the linked teacher-owned course and removes remote management/report privileges"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-18",
+      "issue": 1711,
+      "owner": "apps/api/src/domain/qa/policy.ts",
+      "consumer": "apps/api/src/features/lti/operation-policy.ts",
+      "symbols": [
+        "qaOperationPrecheck",
+        "qaMutationAllowed"
+      ],
+      "tests": [
+        "test/learning-operation-policy.test.ts"
+      ],
+      "sourceSha256": "91f7170d3ac07215fa643e8bcd3e2c1c75bfa7dc8094b0f059e01fa22616a6e1",
+      "ownerSha256": "83165cd19ccb3ab4aed33633551cafb98657dc2ef0afb560719d9c05a465ba0a",
+      "testsSha256": {
+        "test/learning-operation-policy.test.ts": "5f0e928e06a3f42336c91513f63328fd3f12fcbeebc2460e7ec2b64e4368ccd6"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/operation-policy.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 4,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/operation-policy.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "keeps Q&A viewing, posting and moderation capabilities separate"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 4,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lti/operation-policy.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "keeps Q&A viewing, posting and moderation capabilities separate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-19",
+      "issue": 1711,
+      "owner": "apps/api/src/domain/qa/policy.ts",
+      "consumer": "apps/api/src/persistence/d1/qa-repository.ts",
+      "symbols": [
+        "qaOperationPrecheck",
+        "qaMutationAllowed"
+      ],
+      "tests": [
+        "test/persistence/qa.integration.test.ts"
+      ],
+      "sourceSha256": "dcece0e95419c9d0779464f1b75d8de933751238c28097fb5701ba98fea21fa7",
+      "ownerSha256": "83165cd19ccb3ab4aed33633551cafb98657dc2ef0afb560719d9c05a465ba0a",
+      "testsSha256": {
+        "test/persistence/qa.integration.test.ts": "c5112adf83f418735dd524fb274b771a21276a3ac68a30a0180bd1116c24d210"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 58,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/qa-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 28,
+          "failed": 30,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/qa-repository.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "d1 Q&A persistence contract keeps Moodle authority across disconnects and blocks native invitations and public shares",
+            "d1 Q&A persistence contract uses separate course pseudonyms without creating users or impersonating the owner",
+            "d1 Q&A persistence contract keeps native and Moodle identities separate even when their identifier strings coincide"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 28,
+          "failed": 30,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/qa-repository.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "d1 Q&A persistence contract keeps Moodle authority across disconnects and blocks native invitations and public shares",
+            "d1 Q&A persistence contract uses separate course pseudonyms without creating users or impersonating the owner",
+            "d1 Q&A persistence contract keeps native and Moodle identities separate even when their identifier strings coincide"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-20",
+      "issue": 1711,
+      "owner": "apps/api/src/domain/qa/policy.ts",
+      "consumer": "apps/api/src/persistence/postgres/qa-repository.ts",
+      "symbols": [
+        "qaOperationPrecheck",
+        "qaMutationAllowed"
+      ],
+      "tests": [
+        "test/persistence/qa.integration.test.ts"
+      ],
+      "sourceSha256": "5fc93ea86fc0ea9ba701060a787d3ad7ea7e945fad96d70ddc854be96bbc25c1",
+      "ownerSha256": "83165cd19ccb3ab4aed33633551cafb98657dc2ef0afb560719d9c05a465ba0a",
+      "testsSha256": {
+        "test/persistence/qa.integration.test.ts": "c5112adf83f418735dd524fb274b771a21276a3ac68a30a0180bd1116c24d210"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 58,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/qa-repository.ts",
+            "mode": "baseline",
+            "sites": 8
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 32,
+          "failed": 26,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/qa-repository.ts",
+            "mode": "bypass",
+            "sites": 8
+          },
+          "failedTestExamples": [
+            "postgres Q&A persistence contract keeps Moodle authority across disconnects and blocks native invitations and public shares",
+            "postgres Q&A persistence contract uses separate course pseudonyms without creating users or impersonating the owner",
+            "postgres Q&A persistence contract keeps native and Moodle identities separate even when their identifier strings coincide"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 32,
+          "failed": 26,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/qa-repository.ts",
+            "mode": "ignore-result",
+            "sites": 8
+          },
+          "failedTestExamples": [
+            "postgres Q&A persistence contract keeps Moodle authority across disconnects and blocks native invitations and public shares",
+            "postgres Q&A persistence contract uses separate course pseudonyms without creating users or impersonating the owner",
+            "postgres Q&A persistence contract keeps native and Moodle identities separate even when their identifier strings coincide"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-21",
+      "issue": 1714,
+      "owner": "apps/api/src/domain/search/index-lifecycle.ts",
+      "consumer": "apps/api/src/application/scene-index-execution.ts",
+      "symbols": [
+        "sceneIndexAdmission",
+        "sceneTranscriptState",
+        "sceneIndexFinishDecision"
+      ],
+      "tests": [
+        "test/scene-index-execution.test.ts"
+      ],
+      "sourceSha256": "cfdd49222628bade4318ed6cc06d6c104ac7816ed34661f82833066f34cd7bb3",
+      "ownerSha256": "14743a38c0dbb2a39afa6d48b3de5b389b7b40c857349840790f1770cb3a0b95",
+      "testsSha256": {
+        "test/scene-index-execution.test.ts": "5bfdf061485634ea761563e5b3fc8ee9cf1edf6476d2d12d4d120260934163ac"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/scene-index-execution.ts",
+            "mode": "baseline",
+            "sites": 5
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 12,
+          "failed": 10,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/scene-index-execution.ts",
+            "mode": "bypass",
+            "sites": 5
+          },
+          "failedTestExamples": [
+            "returns a typed pending state before any provider work",
+            "returns a typed stale state before any provider work",
+            "returns a completed count only after publication and readiness"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 13,
+          "failed": 9,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/scene-index-execution.ts",
+            "mode": "ignore-result",
+            "sites": 5
+          },
+          "failedTestExamples": [
+            "returns a typed pending state before any provider work",
+            "returns a typed stale state before any provider work",
+            "returns a completed count only after publication and readiness"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-22",
+      "issue": 1714,
+      "owner": "apps/api/src/domain/search/index-lifecycle.ts",
+      "consumer": "apps/api/src/integrations/search-index/index-transcript.ts",
+      "symbols": [
+        "sceneIndexAdmission",
+        "sceneTranscriptState",
+        "sceneIndexFinishDecision"
+      ],
+      "tests": [
+        "test/index-transcript-admission.test.ts"
+      ],
+      "sourceSha256": "f1fd54e3dcc90725425651ad538264954ac50ec1b490143877d2b4686e964614",
+      "ownerSha256": "14743a38c0dbb2a39afa6d48b3de5b389b7b40c857349840790f1770cb3a0b95",
+      "testsSha256": {
+        "test/index-transcript-admission.test.ts": "18134ab01b0b4645c12795ead66234aca451bccb55f1de4c858e911684b937f1"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/integrations/search-index/index-transcript.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 0,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/integrations/search-index/index-transcript.ts",
+            "mode": "bypass",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "refuses pending media before splitting or embedding",
+            "refuses transcribing media before splitting or embedding",
+            "refuses error media before splitting or embedding"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 0,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/integrations/search-index/index-transcript.ts",
+            "mode": "ignore-result",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "refuses pending media before splitting or embedding",
+            "refuses transcribing media before splitting or embedding",
+            "refuses error media before splitting or embedding"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-23",
+      "issue": 1714,
+      "owner": "apps/api/src/domain/search/index-lifecycle.ts",
+      "consumer": "apps/api/src/workflows/search-index.ts",
+      "symbols": [
+        "sceneIndexAdmission",
+        "sceneTranscriptState",
+        "sceneIndexFinishDecision"
+      ],
+      "tests": [
+        "test/persistence/search-workflow.d1.integration.test.ts"
+      ],
+      "sourceSha256": "7b209643f12f0658d407e5616033399c53d616d58195ae41b43323eeb1b52e3d",
+      "ownerSha256": "14743a38c0dbb2a39afa6d48b3de5b389b7b40c857349840790f1770cb3a0b95",
+      "testsSha256": {
+        "test/persistence/search-workflow.d1.integration.test.ts": "a1c4614ae571d74dcdccdcf0200c589105f0a47ef59d1eaae1f66bcaee26cb18"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/workflows/search-index.ts",
+            "mode": "baseline",
+            "sites": 5
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 14,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/workflows/search-index.ts",
+            "mode": "bypass",
+            "sites": 5
+          },
+          "failedTestExamples": [
+            "resumable search workflow with actual D1 persistence hands propagation to durable tasks and completes the video from their acknowledgement without embedding again",
+            "resumable search workflow with actual D1 persistence completes and cleans artifacts when the video is deleted before the finish step"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 14,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/workflows/search-index.ts",
+            "mode": "ignore-result",
+            "sites": 5
+          },
+          "failedTestExamples": [
+            "resumable search workflow with actual D1 persistence hands propagation to durable tasks and completes the video from their acknowledgement without embedding again",
+            "resumable search workflow with actual D1 persistence completes and cleans artifacts when the video is deleted before the finish step"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-24",
+      "issue": 1715,
+      "owner": "apps/api/src/domain/lms/lms-upload.ts",
+      "consumer": "apps/api/src/features/lms/upload-service.ts",
+      "symbols": [
+        "lmsUploadMaterialAllowed",
+        "currentLmsUploadSource",
+        "planLmsUploadSnapshot"
+      ],
+      "tests": [
+        "test/lms-upload-service.test.ts"
+      ],
+      "sourceSha256": "bc862b765d35a53e3cc76f93972150226ef363d2285d4944b36b6c358be3c373",
+      "ownerSha256": "5304c238c6816e505b942bbba328853c206b5186a534c4743ddfcd3076b9ffd8",
+      "testsSha256": {
+        "test/lms-upload-service.test.ts": "596d410f238a1fe26ed494480ecee9c881fc626691af0d8a2997d4c08d3555bf"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lms/upload-service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 18,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lms/upload-service.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "LMS upload snapshot policy projects the current generation into the upload capability",
+            "LMS upload generation before transport validation preserves content generation checks before metadata/header validation",
+            "LMS upload generation before transport validation preserves confirm generation checks before metadata/header validation"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 18,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lms/upload-service.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "LMS upload snapshot policy projects the current generation into the upload capability",
+            "LMS upload generation before transport validation preserves content generation checks before metadata/header validation",
+            "LMS upload generation before transport validation preserves confirm generation checks before metadata/header validation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-25",
+      "issue": 1715,
+      "owner": "apps/api/src/domain/lms/lms-upload.ts",
+      "consumer": "apps/api/src/domain/lms/resource-state.ts",
+      "symbols": [
+        "lmsUploadMaterialAllowed",
+        "currentLmsUploadSource",
+        "planLmsUploadSnapshot"
+      ],
+      "tests": [
+        "test/lms-resource-service.test.ts"
+      ],
+      "sourceSha256": "4238dc71d61f10fe148e7b07ae38f97b0463406638feec6b2f6bced267f27ecd",
+      "ownerSha256": "5304c238c6816e505b942bbba328853c206b5186a534c4743ddfcd3076b9ffd8",
+      "testsSha256": {
+        "test/lms-resource-service.test.ts": "826bc24a89f4d69e59030e85fcc2017f227f7afcf5553e33374e21a00ace8e34"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/domain/lms/resource-state.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 18,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/domain/lms/resource-state.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "selects upload eligibility for video enabled=true status=uploading"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 18,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/domain/lms/resource-state.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "selects upload eligibility for video enabled=true status=uploading"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-26",
+      "issue": 1716,
+      "owner": "apps/api/src/domain/learning/course-history.ts",
+      "consumer": "apps/api/src/persistence/d1/course-history-repository.ts",
+      "symbols": [
+        "retainedCourseHistory",
+        "courseHistoryAttribution"
+      ],
+      "tests": [
+        "test/persistence/course-history.d1.integration.test.ts"
+      ],
+      "sourceSha256": "1cc7e9b8e80b545f60ec2141901f741cc8d28fca37444c660ed4f747dbbdde14",
+      "ownerSha256": "3e6b4094df690c1c7651c6080f36ab2883b477acb8dc6b77c7709a21f06ef7f6",
+      "testsSha256": {
+        "test/persistence/course-history.d1.integration.test.ts": "43f35b6c1ffb422c6c46600382710ea81f5a63d53470b7d24df9ce79091128c8"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/course-history-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 1,
+          "failed": 15,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/course-history-repository.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "D1 workerd course history contract atomically appends concurrent completed turns and retains attribution",
+            "D1 workerd course history contract isolates learners, schools, courses, owners and the whole saved scope",
+            "D1 workerd course history contract hydrates only valid owned answers whose entire source set remains readable"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 1,
+          "failed": 15,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/course-history-repository.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "D1 workerd course history contract atomically appends concurrent completed turns and retains attribution",
+            "D1 workerd course history contract isolates learners, schools, courses, owners and the whole saved scope",
+            "D1 workerd course history contract hydrates only valid owned answers whose entire source set remains readable"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-27",
+      "issue": 1716,
+      "owner": "apps/api/src/domain/learning/course-history.ts",
+      "consumer": "apps/api/src/persistence/postgres/course-history-repository.ts",
+      "symbols": [
+        "retainedCourseHistory",
+        "courseHistoryAttribution"
+      ],
+      "tests": [
+        "test/persistence/course-history.postgres.integration.test.ts"
+      ],
+      "sourceSha256": "d23bf4c44d23bf09bc2323197ab9744dda8f744a6e739bfd99534b582ad6c3b2",
+      "ownerSha256": "3e6b4094df690c1c7651c6080f36ab2883b477acb8dc6b77c7709a21f06ef7f6",
+      "testsSha256": {
+        "test/persistence/course-history.postgres.integration.test.ts": "848eab528edee913962f75db2a780342a284e38b19c495d55f8763ac140b92b5"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/course-history-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 1,
+          "failed": 15,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/course-history-repository.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "PostgreSQL learning history PostgreSQL course history contract atomically appends concurrent completed turns and retains attribution",
+            "PostgreSQL learning history PostgreSQL course history contract isolates learners, schools, courses, owners and the whole saved scope",
+            "PostgreSQL learning history PostgreSQL course history contract hydrates only valid owned answers whose entire source set remains readable"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 1,
+          "failed": 15,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/course-history-repository.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "PostgreSQL learning history PostgreSQL course history contract atomically appends concurrent completed turns and retains attribution",
+            "PostgreSQL learning history PostgreSQL course history contract isolates learners, schools, courses, owners and the whole saved scope",
+            "PostgreSQL learning history PostgreSQL course history contract hydrates only valid owned answers whose entire source set remains readable"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-28",
+      "issue": 1717,
+      "owner": "apps/api/src/domain/lms/teaching.ts",
+      "consumer": "apps/api/src/persistence/d1/teaching-repository.ts",
+      "symbols": [
+        "teachingConnectionConflicts",
+        "selectTeachingCourse"
+      ],
+      "tests": [
+        "test/persistence/teaching.d1.integration.test.ts"
+      ],
+      "sourceSha256": "8200fcce954f6c2c2f82eb77d85b36d6b3f7998caadfc46221db2f927ee0f139",
+      "ownerSha256": "0efe7d01b89e8fa19d30a26d759b16e956ab03746e71b98ac52afc3da0bb3de9",
+      "testsSha256": {
+        "test/persistence/teaching.d1.integration.test.ts": "a576c2bdf46fada963907f44636644ea7ebea0e1dd1e7e8e9f1aca6bf65114a8"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/teaching-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 3,
+          "failed": 10,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/teaching-repository.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "D1 workerd teaching contract connects an existing owned course without creating or taking installer courses",
+            "D1 workerd teaching contract refuses missing, foreign or externally restricted selected course undefined without consuming the ticket",
+            "D1 workerd teaching contract refuses missing, foreign or externally restricted selected course 2 without consuming the ticket"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 3,
+          "failed": 10,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/teaching-repository.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "D1 workerd teaching contract connects an existing owned course without creating or taking installer courses",
+            "D1 workerd teaching contract refuses missing, foreign or externally restricted selected course undefined without consuming the ticket",
+            "D1 workerd teaching contract refuses missing, foreign or externally restricted selected course 2 without consuming the ticket"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-29",
+      "issue": 1717,
+      "owner": "apps/api/src/domain/lms/teaching.ts",
+      "consumer": "apps/api/src/persistence/postgres/teaching-repository.ts",
+      "symbols": [
+        "teachingConnectionConflicts",
+        "selectTeachingCourse"
+      ],
+      "tests": [
+        "test/persistence/teaching.postgres.integration.test.ts"
+      ],
+      "sourceSha256": "6a376ec6f0e02c8cc752384490c148e6720a1602f7f81d6fd4447b165e219cbc",
+      "ownerSha256": "0efe7d01b89e8fa19d30a26d759b16e956ab03746e71b98ac52afc3da0bb3de9",
+      "testsSha256": {
+        "test/persistence/teaching.postgres.integration.test.ts": "e85648a46ca14f91d261857e347860fe654e02355fa08b8ea619854390386dd0"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/teaching-repository.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 7,
+          "failed": 6,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/teaching-repository.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "PostgreSQL teaching PostgreSQL teaching contract connects an existing owned course without creating or taking installer courses",
+            "PostgreSQL teaching PostgreSQL teaching contract consumes a ticket at most once under concurrent requests",
+            "PostgreSQL teaching PostgreSQL teaching contract allows one teacher to reserve a context and preserves the losing ticket"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 7,
+          "failed": 6,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/teaching-repository.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "PostgreSQL teaching PostgreSQL teaching contract connects an existing owned course without creating or taking installer courses",
+            "PostgreSQL teaching PostgreSQL teaching contract consumes a ticket at most once under concurrent requests",
+            "PostgreSQL teaching PostgreSQL teaching contract allows one teacher to reserve a context and preserves the losing ticket"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-30",
+      "issue": 1718,
+      "owner": "apps/api/src/domain/search/scene-retrieval.ts",
+      "consumer": "apps/api/src/persistence/d1/scene-search.ts",
+      "symbols": [
+        "sceneCandidateCurrent",
+        "sceneOwnerVisible",
+        "sceneSearchSelection"
+      ],
+      "tests": [
+        "test/persistence/scene-search.d1.integration.test.ts"
+      ],
+      "sourceSha256": "7b9cdd7cfb6c17e91b83ee566a92a12de79567f79c2d1a226ae89849c65a82c9",
+      "ownerSha256": "c608a3b6f64cecfd5036b0576d8535261274d134de4843a2e1e863061b621a72",
+      "testsSha256": {
+        "test/persistence/scene-search.d1.integration.test.ts": "7232c5beb3c6609d3628ae15085f502b881c36966d39ddcbfee28215cad003ac"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/scene-search.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 5,
+          "failed": 10,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/scene-search.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "D1 + LangChain Vectorize scene search revalidates owner, selection, revision, existence and visibility against D1",
+            "D1 + LangChain Vectorize scene search splits large selections within filter limits and merges cosine scores",
+            "D1 + LangChain Vectorize scene search searches all 100 selected videos within the provider's list limit"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 5,
+          "failed": 10,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/scene-search.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "D1 + LangChain Vectorize scene search revalidates owner, selection, revision, existence and visibility against D1",
+            "D1 + LangChain Vectorize scene search splits large selections within filter limits and merges cosine scores",
+            "D1 + LangChain Vectorize scene search searches all 100 selected videos within the provider's list limit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-31",
+      "issue": 1718,
+      "owner": "apps/api/src/domain/search/scene-retrieval.ts",
+      "consumer": "apps/api/src/persistence/postgres/scene-search.ts",
+      "symbols": [
+        "sceneCandidateCurrent",
+        "sceneOwnerVisible",
+        "sceneSearchSelection"
+      ],
+      "tests": [
+        "test/embedding-store.integration.test.ts"
+      ],
+      "sourceSha256": "d84597f34411306d3a4608f9441ab5e908df626d2ed3944d24795e52da11f0c5",
+      "ownerSha256": "c608a3b6f64cecfd5036b0576d8535261274d134de4843a2e1e863061b621a72",
+      "testsSha256": {
+        "test/embedding-store.integration.test.ts": "9650cebe6c4176988ec1ee760d721ad7228d74b5cdc52bc521419df240699442"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/scene-search.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 0,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/scene-search.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "openai shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index",
+            "embeddinggemma2 shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 0,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/scene-search.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "openai shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index",
+            "embeddinggemma2 shared TypeScript storage migrates an empty DB, writes through the TypeScript worker, searches through the API and builds the HNSW index"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-32",
+      "issue": 1719,
+      "owner": "apps/api/src/domain/conversation/scope-identity.ts",
+      "consumer": "apps/api/src/application/conversation-scope.ts",
+      "symbols": [
+        "conversationIdentityInput"
+      ],
+      "tests": [
+        "test/conversation-scope-policy.test.ts",
+        "test/privacy-recovery-policy.test.ts"
+      ],
+      "sourceSha256": "29255e53af40a52053fd6bfac9610a1bf7f54acbf661a5f03be060446989e1c2",
+      "ownerSha256": "96df4513c314bbfefcd2d069b9c2205299a45d54ee0a56aae64d14f33e3564dc",
+      "testsSha256": {
+        "test/conversation-scope-policy.test.ts": "3ea7d4026c33c7fa8273797ad897924a92b2de5f395e70148d425d73a081980d",
+        "test/privacy-recovery-policy.test.ts": "33b4e740f512253af3b640116be0fdb34395f75253aebc3ac59671c876eef945"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/conversation-scope.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 6,
+          "failed": 9,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/conversation-scope.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "preserves the persisted conversation namespace: 6982549d152f1d4146c6a380e4e09b5322b39a2…",
+            "preserves the persisted conversation namespace: efc8974cd65d430cc556ffa1131750f5553c28f…",
+            "preserves the persisted conversation namespace: 94fe38fbe5a7af20945da8e245e2fba0f83abc2…"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 11,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/conversation-scope.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "preserves the persisted conversation namespace: 6982549d152f1d4146c6a380e4e09b5322b39a2…",
+            "preserves the persisted conversation namespace: efc8974cd65d430cc556ffa1131750f5553c28f…",
+            "preserves the persisted conversation namespace: 94fe38fbe5a7af20945da8e245e2fba0f83abc2…"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-33",
+      "issue": 1719,
+      "owner": "apps/api/src/domain/lms/subject-identity.ts",
+      "consumer": "apps/api/src/application/subject-identity.ts",
+      "symbols": [
+        "checkedLtiSubjectIdentity",
+        "courseQaAuthorInput",
+        "courseHistoryIdentityInput"
+      ],
+      "tests": [
+        "test/conversation-scope-policy.test.ts",
+        "test/privacy-recovery-policy.test.ts"
+      ],
+      "sourceSha256": "11f006f81c0b7d7c770bd63a5366c506eac1f22f739486bc377cd8e853134009",
+      "ownerSha256": "c0ef7475aca398625d8d081b8aec845b11f04197a5981cd6a65c3a1357c0072b",
+      "testsSha256": {
+        "test/conversation-scope-policy.test.ts": "3ea7d4026c33c7fa8273797ad897924a92b2de5f395e70148d425d73a081980d",
+        "test/privacy-recovery-policy.test.ts": "33b4e740f512253af3b640116be0fdb34395f75253aebc3ac59671c876eef945"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/subject-identity.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 9,
+          "failed": 6,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/subject-identity.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "preserves the persisted conversation namespace: 0c842b736eaae53c783f73ccce7fe7084a096bb…",
+            "rejects mixed or invalid LTI identity scopes",
+            "rejects mixed or invalid LTI identity scopes"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 9,
+          "failed": 6,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/subject-identity.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "preserves the persisted conversation namespace: 0c842b736eaae53c783f73ccce7fe7084a096bb…",
+            "rejects mixed or invalid LTI identity scopes",
+            "rejects mixed or invalid LTI identity scopes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-34",
+      "issue": 1720,
+      "owner": "apps/api/src/domain/conversation/evidence-budget.ts",
+      "consumer": "apps/api/src/features/evidence/video-evidence-service.ts",
+      "symbols": [
+        "EvidenceBudget",
+        "externalEvidencePlan"
+      ],
+      "tests": [
+        "test/video-evidence-service.test.ts"
+      ],
+      "sourceSha256": "f3a750a19df5d8e31f9bdc1178f98a5510acdd190f40e58ee71a5258c6b2ad5f",
+      "ownerSha256": "cb864e16483331b98076a5eb8e8c2073ea3665b59d78a3dc1bc7457077ddef63",
+      "testsSha256": {
+        "test/video-evidence-service.test.ts": "56dfc60b571f404c17882ca9cc69eef2d2186b459095d07cb05bd81f9e00c3d9"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/video-evidence-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 2,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/video-evidence-service.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "releases serialized execution after a provider failure so the next inspection can run",
+            "shares call reservations across tool types and serializes in-flight model payloads"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 2,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/video-evidence-service.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "releases serialized execution after a provider failure so the next inspection can run",
+            "shares call reservations across tool types and serializes in-flight model payloads"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-35",
+      "issue": 1720,
+      "owner": "apps/api/src/domain/conversation/evidence-budget.ts",
+      "consumer": "apps/api/src/features/evidence/scene-search-service.ts",
+      "symbols": [
+        "EvidenceBudget",
+        "externalEvidencePlan"
+      ],
+      "tests": [
+        "test/evidence-text-service.test.ts"
+      ],
+      "sourceSha256": "c86f1c406ccec5ef7442616a24f350b222c7e16c33b7995acc68983775b7e38f",
+      "ownerSha256": "cb864e16483331b98076a5eb8e8c2073ea3665b59d78a3dc1bc7457077ddef63",
+      "testsSha256": {
+        "test/evidence-text-service.test.ts": "41d5c05cec72eb0426ff557013da380631cad6a081989d4e7610d1b644f848e9"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/scene-search-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 1,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/scene-search-service.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "reserves concurrent search calls before awaiting providers and ignores invalid scope selections",
+            "checks cancellation after the provider returns before publishing completed-search progress"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 1,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/scene-search-service.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "reserves concurrent search calls before awaiting providers and ignores invalid scope selections",
+            "checks cancellation after the provider returns before publishing completed-search progress"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-36",
+      "issue": 1720,
+      "owner": "apps/api/src/domain/conversation/evidence-budget.ts",
+      "consumer": "apps/api/src/features/evidence/course-info-service.ts",
+      "symbols": [
+        "EvidenceBudget",
+        "externalEvidencePlan"
+      ],
+      "tests": [
+        "test/evidence-text-service.test.ts"
+      ],
+      "sourceSha256": "61eb1a4555b06c5af3c592c61d9b90be5b7346ea09bd6026f7f039822ba83ee6",
+      "ownerSha256": "cb864e16483331b98076a5eb8e8c2073ea3665b59d78a3dc1bc7457077ddef63",
+      "testsSha256": {
+        "test/evidence-text-service.test.ts": "41d5c05cec72eb0426ff557013da380631cad6a081989d4e7610d1b644f848e9"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/course-info-service.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 2,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/course-info-service.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "projects only public course metadata and does not offer a continuation after an empty page"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 2,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/course-info-service.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "projects only public course metadata and does not offer a continuation after an empty page"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-37",
+      "issue": 1720,
+      "owner": "apps/api/src/domain/conversation/evidence-budget.ts",
+      "consumer": "apps/api/src/features/evidence/external-service.ts",
+      "symbols": [
+        "EvidenceBudget",
+        "externalEvidencePlan"
+      ],
+      "tests": [
+        "test/external-evidence-service.test.ts"
+      ],
+      "sourceSha256": "e12f219e8c4b15f163b2f1c72b61c350d120e9ca886a2fa9bfe8ffaba9a7bf87",
+      "ownerSha256": "cb864e16483331b98076a5eb8e8c2073ea3665b59d78a3dc1bc7457077ddef63",
+      "testsSha256": {
+        "test/external-evidence-service.test.ts": "b85f99c420af078cf4e7054d0e869cee6f1fa0fefe230fa2d364fc5742264d05"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/external-service.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 3,
+          "failed": 22,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/external-service.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "keeps external account cost for read_video_window (false, 1)",
+            "keeps external account cost for search_scenes (true, 1)",
+            "keeps external account cost for inspect_clip (true, 8)"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 3,
+          "failed": 22,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/evidence/external-service.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "keeps external account cost for read_video_window (false, 1)",
+            "keeps external account cost for search_scenes (true, 1)",
+            "keeps external account cost for inspect_clip (true, 8)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-38",
+      "issue": 1721,
+      "owner": "apps/api/src/domain/lms/native-session-policy.ts",
+      "consumer": "apps/api/src/features/lms/native-session-policy.ts",
+      "symbols": [
+        "nativeSessionInputAllowed",
+        "nativeSessionMatches"
+      ],
+      "tests": [
+        "test/persistence/native-session.d1.integration.test.ts",
+        "test/persistence/native-session.postgres.integration.test.ts"
+      ],
+      "sourceSha256": "36ac6b1ab0ec847fdf07a9ac90248c2f2fc56e9ec61e4a324ebc5658b1e68dac",
+      "ownerSha256": "0811fd636183456a452acc433baa0c9c62fc003ad362fb5ce8353cd3bd969aad",
+      "testsSha256": {
+        "test/persistence/native-session.d1.integration.test.ts": "be0c9d287e1cbadd2b5a6ee6e7dbf119e95910b6ddca2c9a12d5a3e118118a2f",
+        "test/persistence/native-session.postgres.integration.test.ts": "fca7a07b15c0af25a2381492d5cc4e1b27d6cde4887df07933b23cae959fc1bf"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lms/native-session-policy.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 4,
+          "failed": 35,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lms/native-session-policy.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "D1 workerd native learning session contract creates one session across concurrent requests with metadata-free markers and nonces",
+            "D1 workerd native learning session contract rejects concurrent reuse of the same signed request",
+            "D1 workerd native learning session contract preserves accumulated scopes without replacing mutable session metadata"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 4,
+          "failed": 35,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/features/lms/native-session-policy.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "D1 workerd native learning session contract creates one session across concurrent requests with metadata-free markers and nonces",
+            "D1 workerd native learning session contract rejects concurrent reuse of the same signed request",
+            "D1 workerd native learning session contract preserves accumulated scopes without replacing mutable session metadata"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-39",
+      "issue": 1725,
+      "owner": "apps/api/src/domain/operations/job-execution.ts",
+      "consumer": "apps/api/src/persistence/d1/job-repository.ts",
+      "symbols": [
+        "jobReclaimAllowed",
+        "jobClaimRefusal",
+        "jobClaimDecision",
+        "jobLeaseMutationAllowed"
+      ],
+      "tests": [
+        "test/persistence/jobs.d1.integration.test.ts"
+      ],
+      "sourceSha256": "288dabb97f17887b87592dd2a4bc66b1b1226ab0c88c6c078061e19dfc0ef9a3",
+      "ownerSha256": "a41fb7d621c768026b2d3f732af0fb91e23eb9e06db9ce6653636602ba8d378d",
+      "testsSha256": {
+        "test/persistence/jobs.d1.integration.test.ts": "c22c236487d992936e588c74d5856f2c4aebc0f4e894023ec17a2d68cc824b78"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/job-repository.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 2,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/job-repository.ts",
+            "mode": "bypass",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "D1 (workerd): JobRepository contract gives exactly one concurrent delivery a lease",
+            "D1 (workerd): JobRepository contract preserves identity and completed replay barriers",
+            "D1 (workerd): JobRepository contract reclaims expired leases and fences out the old delivery"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 2,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/job-repository.ts",
+            "mode": "ignore-result",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "D1 (workerd): JobRepository contract gives exactly one concurrent delivery a lease",
+            "D1 (workerd): JobRepository contract preserves identity and completed replay barriers",
+            "D1 (workerd): JobRepository contract reclaims expired leases and fences out the old delivery"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-40",
+      "issue": 1725,
+      "owner": "apps/api/src/domain/operations/job-execution.ts",
+      "consumer": "apps/api/src/persistence/postgres/job-repository.ts",
+      "symbols": [
+        "jobReclaimAllowed",
+        "jobClaimRefusal",
+        "jobClaimDecision",
+        "jobLeaseMutationAllowed"
+      ],
+      "tests": [
+        "test/persistence/jobs.postgres.integration.test.ts"
+      ],
+      "sourceSha256": "1579a5e508b4cdbcbcdbd9bd0892f0ee26a37279e6a2e5fde6b173c994a53474",
+      "ownerSha256": "a41fb7d621c768026b2d3f732af0fb91e23eb9e06db9ce6653636602ba8d378d",
+      "testsSha256": {
+        "test/persistence/jobs.postgres.integration.test.ts": "e13340fcbf53fd7514f317ed265729198995500dd2da7dbcaee34ce2910ff5dc"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/job-repository.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 3,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/job-repository.ts",
+            "mode": "bypass",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "PostgreSQL jobs postgres: JobRepository contract gives exactly one concurrent delivery a lease",
+            "PostgreSQL jobs postgres: JobRepository contract preserves identity and completed replay barriers",
+            "PostgreSQL jobs postgres: JobRepository contract reclaims expired leases and fences out the old delivery"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 3,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/job-repository.ts",
+            "mode": "ignore-result",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "PostgreSQL jobs postgres: JobRepository contract gives exactly one concurrent delivery a lease",
+            "PostgreSQL jobs postgres: JobRepository contract preserves identity and completed replay barriers",
+            "PostgreSQL jobs postgres: JobRepository contract reclaims expired leases and fences out the old delivery"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-41",
+      "issue": 1726,
+      "owner": "apps/api/src/domain/operations/reindex-job.ts",
+      "consumer": "apps/api/src/application/reindex-job.ts",
+      "symbols": [
+        "reindexAllEmbeddingsMessage"
+      ],
+      "tests": [
+        "test/reindex-job.test.ts"
+      ],
+      "sourceSha256": "bde9a89fb4c19826e537c662e5cfd9e2369cf123621256533967a7598fef5bb8",
+      "ownerSha256": "de36be96dc0c85cc65744070ed705d9f03002b7475773a1e2e1e420d132b4f86",
+      "testsSha256": {
+        "test/reindex-job.test.ts": "bf3b9e0025c43073ec3518a857fb6abc7dd9c092cc12fcff181a670350f35430"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/reindex-job.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 2,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/reindex-job.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "delivers only after persistence commits and returns the persisted identity when delivery is delayed"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 2,
+          "failed": 1,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/reindex-job.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "delivers only after persistence commits and returns the persisted identity when delivery is delayed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-42",
+      "issue": 1726,
+      "owner": "apps/api/src/domain/search/search-scene-splitting.ts",
+      "consumer": "apps/api/src/application/scene-splitting.ts",
+      "symbols": [
+        "planSearchScenes"
+      ],
+      "tests": [
+        "test/search-worker-core.test.ts"
+      ],
+      "sourceSha256": "537ec60308d8c49f45ff064fb8b1bb6d01eae9f899c7f0df4e987046008445de",
+      "ownerSha256": "b9b5c589a453f72b2ced9e0335a49077b7d9b862f13fb710e38f6a3d3d94f9ed",
+      "testsSha256": {
+        "test/search-worker-core.test.ts": "346dd7c8ff20a3af5fd3c58eebac804ee58b17ba76f9d41a5de383f27c6131be"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/scene-splitting.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 9,
+          "failed": 13,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/scene-splitting.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "Python scene splitting parity short",
+            "Python scene splitting parity otsu",
+            "Python scene splitting parity unicode"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 9,
+          "failed": 13,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/scene-splitting.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "Python scene splitting parity short",
+            "Python scene splitting parity otsu",
+            "Python scene splitting parity unicode"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-43",
+      "issue": 1726,
+      "owner": "apps/api/src/domain/search/streaming-otsu.ts",
+      "consumer": "apps/api/src/application/streaming-otsu.ts",
+      "symbols": [
+        "normalizedOtsuVector",
+        "accumulateOtsuBoundary"
+      ],
+      "tests": [
+        "test/streaming-otsu.test.ts"
+      ],
+      "sourceSha256": "6e23a50ea384e6f76c26e3be7f5c13ca02ea18f1da5a30c0cf5efc667ed7d68c",
+      "ownerSha256": "4ba6f2457d173b5d61db1de8f879ace4732cd9c0ec5fd7075a1e96540fc6dfe8",
+      "testsSha256": {
+        "test/streaming-otsu.test.ts": "2158ec46a2471e2742c5af7c922dabc547efd264ad12eca617d787e385f4e765"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/streaming-otsu.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 0,
+          "failed": 6,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/streaming-otsu.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "bounded-memory durable Otsu kernel matches the in-memory kernel for range 0..120",
+            "bounded-memory durable Otsu kernel matches the in-memory kernel for range 5..88",
+            "bounded-memory durable Otsu kernel matches the in-memory kernel for range 16..33"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 0,
+          "failed": 6,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/streaming-otsu.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "bounded-memory durable Otsu kernel matches the in-memory kernel for range 0..120",
+            "bounded-memory durable Otsu kernel matches the in-memory kernel for range 5..88",
+            "bounded-memory durable Otsu kernel matches the in-memory kernel for range 16..33"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-44",
+      "issue": 1728,
+      "owner": "apps/api/src/domain/lms/lms-owner.ts",
+      "consumer": "apps/api/src/persistence/d1/lms-owner-policy.ts",
+      "symbols": [
+        "lmsOwnerAvailable",
+        "materialTeacherConnectionAccess"
+      ],
+      "tests": [
+        "test/persistence/lms-resource-read.d1.integration.test.ts"
+      ],
+      "sourceSha256": "3e8593978cadfc59d59bab64896dd3eaf39a2ce599585ea83ebbe7b0dc9290c7",
+      "ownerSha256": "fd0ba0ebd8e7b276cc621b12387aafe8e2d7f63cacd2f3dd7c5de5a76dc7bf7a",
+      "testsSha256": {
+        "test/persistence/lms-resource-read.d1.integration.test.ts": "8312ca05e96cd78d381a40ae860d2527d1d09e0a6f0d9f8761de174911d4de93"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/lms-owner-policy.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 6,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/lms-owner-policy.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "D1 workerd LMS resource read contract rechecks connection and account revocation on every request",
+            "D1 workerd LMS resource read contract preserves nullable ban semantics while refusing an indefinite ban"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 6,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/d1/lms-owner-policy.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "D1 workerd LMS resource read contract rechecks connection and account revocation on every request",
+            "D1 workerd LMS resource read contract preserves nullable ban semantics while refusing an indefinite ban"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-45",
+      "issue": 1728,
+      "owner": "apps/api/src/domain/lms/lms-owner.ts",
+      "consumer": "apps/api/src/persistence/postgres/lms-owner-policy.ts",
+      "symbols": [
+        "lmsOwnerAvailable",
+        "materialTeacherConnectionAccess"
+      ],
+      "tests": [
+        "test/persistence/lms-resource-read.postgres.integration.test.ts"
+      ],
+      "sourceSha256": "102ad66b9098eecec9d1e6c2eb7fa81c0ab06f49ca90c78c4480d5ff120e7320",
+      "ownerSha256": "fd0ba0ebd8e7b276cc621b12387aafe8e2d7f63cacd2f3dd7c5de5a76dc7bf7a",
+      "testsSha256": {
+        "test/persistence/lms-resource-read.postgres.integration.test.ts": "676ca47d1951590cc7247f5988c7f8dd6be4e47b5a85413eaec3348f85b2cad5"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/lms-owner-policy.ts",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 6,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/lms-owner-policy.ts",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract rechecks connection and account revocation on every request",
+            "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract preserves nullable ban semantics while refusing an indefinite ban"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 6,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/persistence/postgres/lms-owner-policy.ts",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract rechecks connection and account revocation on every request",
+            "PostgreSQL LMS resource reads PostgreSQL LMS resource read contract preserves nullable ban semantics while refusing an indefinite ban"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-46",
+      "issue": 1729,
+      "owner": "apps/api/src/domain/operations/throttle-policy.ts",
+      "consumer": "apps/api/src/lib/rate-limit.ts",
+      "symbols": [
+        "THROTTLE_RATES",
+        "throttleConsumption",
+        "chatThrottlePolicy"
+      ],
+      "tests": [
+        "test/rate-limit.test.ts"
+      ],
+      "sourceSha256": "2f050c42789a5c8b2ce9a01df83db4e8581e93130ba071c19aa60219746ccc03",
+      "ownerSha256": "4ca98c697463e595eda2742fa20e0bea2586bf89fb22e4f2ee035cfad67c5c89",
+      "testsSha256": {
+        "test/rate-limit.test.ts": "8f5af39c2be73269e1035f1ccf4dbea63437a536655562b13295027c5d6f0485"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/lib/rate-limit.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 3,
+          "failed": 7,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/lib/rate-limit.ts",
+            "mode": "bypass",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "chatThrottleChecks 公開デモだけ狭い IP 枠を消費し、上限で止める",
+            "chatThrottleChecks 通常の共有リンクには公開デモの枠を掛けない",
+            "enforceThrottles (memory backend) allows under the limit and blocks at the limit"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 3,
+          "failed": 7,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/lib/rate-limit.ts",
+            "mode": "ignore-result",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "chatThrottleChecks 公開デモだけ狭い IP 枠を消費し、上限で止める",
+            "chatThrottleChecks 通常の共有リンクには公開デモの枠を掛けない",
+            "enforceThrottles (memory backend) allows under the limit and blocks at the limit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-47",
+      "issue": 1739,
+      "owner": "apps/api/src/domain/identity/username.ts",
+      "consumer": "apps/api/src/application/identity/username.ts",
+      "symbols": [
+        "usernameSeed",
+        "usernameCandidate",
+        "fallbackUsername"
+      ],
+      "tests": [
+        "test/username-policy.test.ts"
+      ],
+      "sourceSha256": "ead4b4d7352933920c18fdac6cd577e4402e02240e5584a598c83e073c9b7364",
+      "ownerSha256": "4a39b470ebc6f09917cfa07aeaae4ef8ccfbea02e58eb8c7a2375fa271065042",
+      "testsSha256": {
+        "test/username-policy.test.ts": "5b89e7a1a579937b372ae1af1f8402a1aa3b2a1b8757b3a424becbc1121e6c63"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/username.ts",
+            "mode": "baseline",
+            "sites": 3
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 0,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/username.ts",
+            "mode": "bypass",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "keeps a collision suffix within the username limit",
+            "tries at most fifty stable candidates before using the injected fallback identity",
+            "propagates lookup failure without creating a fallback identity"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 0,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/username.ts",
+            "mode": "ignore-result",
+            "sites": 3
+          },
+          "failedTestExamples": [
+            "keeps a collision suffix within the username limit",
+            "tries at most fifty stable candidates before using the injected fallback identity",
+            "propagates lookup failure without creating a fallback identity"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-48",
+      "issue": 1739,
+      "owner": "apps/api/src/domain/identity/account-registration.ts",
+      "consumer": "apps/api/src/application/identity/account-registration.ts",
+      "symbols": [
+        "registrationUsername",
+        "accountWithDefaults"
+      ],
+      "tests": [
+        "test/account-registration.test.ts"
+      ],
+      "sourceSha256": "aab8c84b5a428255f592b507aa110d5984a7f8d549b73aeac5cb8231940c9bf2",
+      "ownerSha256": "c65d3181603e48b223a952983148b2aaef92b177766fea1dccc2c9e4fe2b4735",
+      "testsSha256": {
+        "test/account-registration.test.ts": "4c9aa7dfd88e9dbc6ce5466304c355464eeeb05be1fec058c92582319815d932"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/account-registration.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 1,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/account-registration.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "preserves supplied identity fields while enforcing fresh usage and configured quotas",
+            "uses the allocated username for missing display identity without consuming a random ID"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 1,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/account-registration.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "preserves supplied identity fields while enforcing fresh usage and configured quotas",
+            "uses the allocated username for missing display identity without consuming a random ID"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-49",
+      "issue": 1739,
+      "owner": "apps/api/src/domain/identity/google-account.ts",
+      "consumer": "apps/api/src/application/identity/google-account.ts",
+      "symbols": [
+        "googleAccountFacts",
+        "googleAccountProfile"
+      ],
+      "tests": [
+        "test/google-account-policy.test.ts"
+      ],
+      "sourceSha256": "c3ddb8209f9f9600aba72e906a41ba0ce27f037e352c8a8dc8f85df7aa5973e4",
+      "ownerSha256": "3ed2aff9cbcf6efcfc693205c0351766d24bbb0d347fcf3280a7804dfe9a558f",
+      "testsSha256": {
+        "test/google-account-policy.test.ts": "4b64498445ca76aebd1809ad037556aeb85269aba7d798a7e9c087dc4e7f09b1"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/google-account.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 0,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/google-account.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "trusts only a true verification claim with current Google mailbox authority",
+            "preserves email and image bytes while trimming a display name and allocating a separate unique username",
+            "uses the allocated identity when both profile email and name are absent"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 0,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/google-account.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "trusts only a true verification claim with current Google mailbox authority",
+            "preserves email and image bytes while trimming a display name and allocating a separate unique username",
+            "uses the allocated identity when both profile email and name are absent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ts-50",
+      "issue": 1739,
+      "owner": "apps/api/src/domain/identity/oauth-consent.ts",
+      "consumer": "apps/api/src/application/identity/oauth-consent.ts",
+      "symbols": [
+        "consentAllows",
+        "refreshConsentPlan"
+      ],
+      "tests": [
+        "test/oauth-consent-policy.test.ts"
+      ],
+      "sourceSha256": "ce994f642ace05938ffd794dc6ab7f47741689b4506b0bfe70d400ca6d0a6562",
+      "ownerSha256": "ed8e70ecc8efe6c4d588236b9ffa4ad856ca3fe63d4d492a7e5c5467cfe7e865",
+      "testsSha256": {
+        "test/oauth-consent-policy.test.ts": "b32390c9693f5883f88b4af71cd7f9faaf44b114f2bf23f236b7e26aac5e2737"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/oauth-consent.ts",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 0,
+          "failed": 9,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/oauth-consent.ts",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "defers missing or consumed credentials to native rotation handling",
+            "defers missing or consumed credentials to native rotation handling",
+            "rejects incomplete grant identities before looking up consent"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 0,
+          "failed": 9,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/api/src/application/identity/oauth-consent.ts",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "defers missing or consumed credentials to native rotation handling",
+            "defers missing or consumed credentials to native rotation handling",
+            "rejects incomplete grant identities before looking up consent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-01",
+      "issue": 1722,
+      "owner": "apps/worker/worker_python/domain/visual_checkpoints.py",
+      "consumer": "apps/worker/worker_python/use_cases/visual_preparation.py",
+      "symbols": [
+        "visual_plan",
+        "validate_visual_duration"
+      ],
+      "tests": [
+        "tests/test_prepare_visual_frames.py"
+      ],
+      "sourceSha256": "a50907ccbaa6503ffa56c00cfb08af8203fee799ae98f96f252475d19d03be99",
+      "ownerSha256": "eb4fa1412cd238362d412b9a950c52805cecd88a179bc138442ae843f2736a2a",
+      "testsSha256": {
+        "tests/test_prepare_visual_frames.py": "6ef3088272ecefaed741fa074e394ded74192fffb12f5a3ef682fbd73c06fd50"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/visual_preparation.py",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 5,
+          "failed": 5,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/visual_preparation.py",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "test_cloud_backfill_queues_only_visual_work",
+            "test_cloud_backfill_can_complete_synchronously",
+            "test_source_change_cannot_be_reported_ready"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 5,
+          "failed": 5,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/visual_preparation.py",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "test_cloud_backfill_queues_only_visual_work",
+            "test_cloud_backfill_can_complete_synchronously",
+            "test_source_change_cannot_be_reported_ready"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-02",
+      "issue": 1723,
+      "owner": "apps/worker/worker_python/domain/video_processing.py",
+      "consumer": "apps/worker/worker_python/use_cases/transcription.py",
+      "symbols": [
+        "transcription_admission",
+        "transcription_failure_retry",
+        "prepared_transcription_content"
+      ],
+      "tests": [
+        "tests/test_transcription_use_case.py"
+      ],
+      "sourceSha256": "cf9ee26be2779a8ecdd4c4df260ce763602aa73db42030449a4f0b5682e4b9ed",
+      "ownerSha256": "04496de59b5a0b4a744c38959bfa8a4c229084c89e70b62f539125e97bb8f30d",
+      "testsSha256": {
+        "tests/test_transcription_use_case.py": "a7e95e6d26b8f2aaa8bf6ff879589a5d7a0a480849eb579234ba9794aa557b7e"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/transcription.py",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 6,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/transcription.py",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
+            "test_queue_failure_retries_only_handoff_after_successful_save"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 6,
+          "failed": 2,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/transcription.py",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "test_save_precedes_retry_and_quota_failures_do_not_retry[False]",
+            "test_queue_failure_retries_only_handoff_after_successful_save"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-03",
+      "issue": 1723,
+      "owner": "apps/worker/worker_python/domain/video_processing.py",
+      "consumer": "apps/worker/worker_python/use_cases/cloud_transcription.py",
+      "symbols": [
+        "transcription_admission",
+        "transcription_failure_retry",
+        "prepared_transcription_content"
+      ],
+      "tests": [
+        "tests/test_cloud_transcription_use_case.py"
+      ],
+      "sourceSha256": "51cc91001a1fb9e2069dc5ddc5be8e020ea5a0cc3d555403e92e4c50404d37c1",
+      "ownerSha256": "04496de59b5a0b4a744c38959bfa8a4c229084c89e70b62f539125e97bb8f30d",
+      "testsSha256": {
+        "tests/test_cloud_transcription_use_case.py": "991e848013226ab4a808a906aba791104e2937dca0f5588487c01cd38e44fb56"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/cloud_transcription.py",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 3,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/cloud_transcription.py",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "test_committed_source_never_restarts_provider_or_queues_again[indexing]",
+            "test_committed_source_never_restarts_provider_or_queues_again[completed]",
+            "test_failure_save_contains_only_safe_code_and_retries_only_provider_error[failure1-TRANSCRIPTION_FAILED-True]"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 3,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/use_cases/cloud_transcription.py",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "test_committed_source_never_restarts_provider_or_queues_again[indexing]",
+            "test_committed_source_never_restarts_provider_or_queues_again[completed]",
+            "test_failure_save_contains_only_safe_code_and_retries_only_provider_error[failure1-TRANSCRIPTION_FAILED-True]"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-04",
+      "issue": 1723,
+      "owner": "apps/worker/worker_python/domain/video_processing.py",
+      "consumer": "apps/worker/worker_python/tasks/segmented_transcription.py",
+      "symbols": [
+        "transcription_admission",
+        "transcription_failure_retry",
+        "prepared_transcription_content"
+      ],
+      "tests": [
+        "tests/test_segmented_transcription.py"
+      ],
+      "sourceSha256": "19155dee02d687618973e65e75bf9dfc131a9fd6862b3bc607c5b343428f7546",
+      "ownerSha256": "04496de59b5a0b4a744c38959bfa8a4c229084c89e70b62f539125e97bb8f30d",
+      "testsSha256": {
+        "tests/test_segmented_transcription.py": "514c795dd54a755a02e41e834f64152e8c3ee86ad626f7cc64f00192fdac39d9"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/tasks/segmented_transcription.py",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 20,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/tasks/segmented_transcription.py",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
+            "test_failed_chunk_resumes_and_silent_chunk_is_a_completed_checkpoint",
+            "test_all_silent_plan_ends_in_error_and_user_retry_can_start_again"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 20,
+          "failed": 3,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/tasks/segmented_transcription.py",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "test_out_of_order_chunks_join_once_and_final_handoff_can_retry",
+            "test_failed_chunk_resumes_and_silent_chunk_is_a_completed_checkpoint",
+            "test_all_silent_plan_ends_in_error_and_user_retry_can_start_again"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-05",
+      "issue": 1724,
+      "owner": "apps/worker/worker_python/domain/caption_selection.py",
+      "consumer": "apps/worker/worker_python/pipeline/transcription.py",
+      "symbols": [
+        "caption_track_candidates"
+      ],
+      "tests": [
+        "tests/test_youtube_transcript.py"
+      ],
+      "sourceSha256": "b44c63b8788b1ea5bcd8475179a1bbad3c171cd409da5a363e4ba9b880cbc374",
+      "ownerSha256": "3e75acff2d17edc64cbbaf55e61f69fd926b255edf9ec2f32ead972350ccd979",
+      "testsSha256": {
+        "tests/test_youtube_transcript.py": "1439b550165191706570a72edd5f84b29a48d34398660642ffae2dcf08d7ec1c"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/pipeline/transcription.py",
+            "mode": "baseline",
+            "sites": 1
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 9,
+          "failed": 12,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/pipeline/transcription.py",
+            "mode": "bypass",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "test_manual_transcript_http_error_closes_before_automatic_fallback",
+            "test_retry_after_is_honored_before_repeating_the_same_caption_request[None-1]",
+            "test_retry_after_is_honored_before_repeating_the_same_caption_request[5-5]"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 9,
+          "failed": 12,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/pipeline/transcription.py",
+            "mode": "ignore-result",
+            "sites": 1
+          },
+          "failedTestExamples": [
+            "test_manual_transcript_http_error_closes_before_automatic_fallback",
+            "test_retry_after_is_honored_before_repeating_the_same_caption_request[None-1]",
+            "test_retry_after_is_honored_before_repeating_the_same_caption_request[5-5]"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-06",
+      "issue": 1725,
+      "owner": "apps/worker/worker_python/domain/jobs.py",
+      "consumer": "apps/worker/worker_python/job_execution.py",
+      "symbols": [
+        "job_claim_decision",
+        "job_lease_mutation_allowed"
+      ],
+      "tests": [
+        "tests/test_job_execution.py",
+        "tests/test_job_execution_integration.py"
+      ],
+      "sourceSha256": "7c174f5eec630329bd1041ec15ff291483975efba5de932deba262745929236b",
+      "ownerSha256": "a83e09be1fa3a6e6bc210a43eadfb4e20c8283d4b259a81b6f5892d01faefc64",
+      "testsSha256": {
+        "tests/test_job_execution.py": "e45b3c9caac20e8474e606f1585c446c9b9ea381b1e879dce1c2faf5ae8362a7",
+        "tests/test_job_execution_integration.py": "eba247f707951eaa74bb13225c25eaf63670d71731a690250eab3a0f2a5a7328"
+      },
+      "runs": [
+        {
+          "mode": "baseline",
+          "status": "passed",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/job_execution.py",
+            "mode": "baseline",
+            "sites": 2
+          },
+          "failedTestExamples": []
+        },
+        {
+          "mode": "bypass",
+          "status": "detected",
+          "passed": 2,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/job_execution.py",
+            "mode": "bypass",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "test_completed_duplicate_is_not_claimed",
+            "test_active_duplicate_is_retried_instead_of_acknowledged",
+            "test_reused_job_id_with_different_payload_is_rejected"
+          ]
+        },
+        {
+          "mode": "ignore-result",
+          "status": "detected",
+          "passed": 2,
+          "failed": 4,
+          "skipped": 0,
+          "transformed": {
+            "consumer": "apps/worker/worker_python/job_execution.py",
+            "mode": "ignore-result",
+            "sites": 2
+          },
+          "failedTestExamples": [
+            "test_completed_duplicate_is_not_claimed",
+            "test_active_duplicate_is_retried_instead_of_acknowledged",
+            "test_reused_job_id_with_different_payload_is_rejected"
+          ]
+        }
+      ]
+    }
+  ]
+}

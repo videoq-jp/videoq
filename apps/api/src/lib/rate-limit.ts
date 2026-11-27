@@ -1,4 +1,4 @@
-import { consumptionTime, consumptionEntries, refundReservation, validateRateLimit, pruneExpiredHistory, type RateLimitEntry } from './rate-limit-history';
+import { consumptionRetryAfter, consumptionTime, consumptionEntries, refundReservation, validateRateLimit, pruneExpiredHistory, type RateLimitEntry } from './rate-limit-history';
 export { pruneExpiredHistory } from './rate-limit-history';
 import type { Context } from "hono";
 import { PUBLIC_DEMO_SHARE_SLUG } from "@videoq/trpc/public-demo";
@@ -43,14 +43,7 @@ export function createMemoryRateLimitBackend(): RateLimitBackend {
       const now = Date.now() / 1000;
       const history = prune(key, now, windowSec);
       if (history.length + cost > limit) {
-        const oldest = history[history.length - 1];
-        return {
-          allowed: false,
-          retryAfterSec:
-            oldest === undefined
-              ? windowSec
-              : Math.max(1, Math.ceil(windowSec - (now - consumptionTime(oldest)))),
-        };
+        return { allowed: false, retryAfterSec: consumptionRetryAfter(history, now, windowSec, limit, cost) };
       }
       history.unshift(...consumptionEntries(now, cost, reservationId));
       store.set(key, { history, windowSec });

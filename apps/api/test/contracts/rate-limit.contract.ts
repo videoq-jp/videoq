@@ -61,6 +61,38 @@ export function rateLimitContract(name: string, setup: () => Promise<{
       await f.backend.release('shared', 3600, 'expired');
       expect(await f.backend.snapshot('shared')).toMatchObject({count:1});
     });
+    it('waits until the requested weighted capacity is available, not just the oldest unit', async () => {
+      await f.backend.consume('shared', 10, 60, 1, 'old');
+      await f.age(10);
+      await f.backend.consume('shared', 10, 60, 9, 'new');
+      await f.age(10);
+      expect(await f.backend.consume('shared', 10, 60, 5)).toEqual({allowed:false,retryAfterSec:50});
+      await f.age(40);
+      expect(await f.backend.consume('shared', 10, 60, 5)).toEqual({allowed:false,retryAfterSec:10});
+      await f.age(10);
+      expect(await f.backend.consume('shared', 10, 60, 5)).toEqual({allowed:true,retryAfterSec:0});
+    });
+    it('recalculates weighted availability after a refund and at each expiry boundary', async () => {
+      await f.backend.consume('shared', 6, 60, 2, 'old');
+      await f.age(10);
+      await f.backend.consume('shared', 6, 60, 2, 'middle');
+      await f.age(10);
+      await f.backend.consume('shared', 6, 60, 2, 'new');
+      expect(await f.backend.consume('shared', 6, 60, 3)).toEqual({allowed:false,retryAfterSec:50});
+      await f.backend.release('shared',60,'middle');
+      expect(await f.backend.consume('shared', 6, 60, 3)).toEqual({allowed:false,retryAfterSec:40});
+      await f.age(40);
+      expect(await f.backend.consume('shared', 6, 60, 3)).toEqual({allowed:true,retryAfterSec:0});
+    });
+    it('keeps unit-cost and impossible-cost rejection hints bounded', async () => {
+      await f.backend.consume('shared', 2, 60, 1);
+      await f.age(10);
+      await f.backend.consume('shared', 2, 60, 1);
+      expect(await f.backend.consume('shared',2,60)).toEqual({allowed:false,retryAfterSec:50});
+      expect(await f.backend.consume('shared',2,60,3)).toEqual({allowed:false,retryAfterSec:60});
+      await f.age(60);
+      expect(await f.backend.consume('shared',2,60,3)).toEqual({allowed:false,retryAfterSec:60});
+    });
     it('keeps pre-upgrade numeric history charged and expires it normally', async () => {
       await f.seedLegacy();
       await f.backend.consume('shared', 3, 3600, 1, 'new');

@@ -17,3 +17,14 @@ export function consumptionEntries(now: number, cost: number, reservationId?: st
 export function validateRateLimit(limit: number, windowSec: number, cost: number): void {
   if (![limit, windowSec, cost].every(value => Number.isSafeInteger(value) && value > 0)) throw new Error('Invalid rate limit');
 }
+
+/** For a denied request, wait until enough units expire (history is newest-first).
+ * A cost larger than the limit can never fit; retain the bounded rejection hint.
+ * Concurrent consumption can of course move availability after this snapshot.
+ */
+export function consumptionRetryAfter(history: readonly RateLimitEntry[], now: number, windowSec: number, limit: number, cost: number): number {
+  if (cost > limit) return windowSec;
+  const lastRequiredExpiry = history[limit - cost];
+  return lastRequiredExpiry === undefined ? windowSec
+    : Math.max(1, Math.ceil(consumptionTime(lastRequiredExpiry) + windowSec - now));
+}

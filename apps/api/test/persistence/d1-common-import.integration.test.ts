@@ -179,12 +179,13 @@ describe.skipIf(!url)('offline common table imports',()=>{
   const visualRun='00000000-0000-4000-8000-000000000010';await source.pool.query("INSERT INTO video_visual_runs(video_id,run_id,file_key,duration_ms,chunk_count,status) VALUES(1,$1,$2,1000,1,'ready')",[visualRun,kind==='stale-file'?'other-file':'private-file']);if(kind!=='missing-grid')await source.pool.query('INSERT INTO video_visual_chunks(run_id,chunk_index,frame_count) VALUES($1,0,$2)',[visualRun,kind==='empty-ready'?0:1]);await reexport();await expect(run()).rejects.toThrow();expect(await rows('users')).toEqual([]);expect(await rows('migration_imports')).toEqual([]);
  });
 
+ // Includes a Python export subprocess, real PG/D1 and R2 publication.
  it('connects real PostgreSQL visual export to D1 publication and R2 copy',async()=>{
   await target.dispose();target=await createD1Fixture({r2:true});const visualRun='00000000-0000-4000-8000-000000000010';await source.pool.query("INSERT INTO video_visual_runs(video_id,run_id,file_key,duration_ms,chunk_count,status) VALUES(1,$1,'private-file',1000,1,'ready')",[visualRun]);await source.pool.query('INSERT INTO video_visual_chunks(run_id,chunk_index,frame_count) VALUES($1,0,1)',[visualRun]);await reexport();
   const image=Buffer.from([255,216,255,224,0,255,217]),metadata=Buffer.from(JSON.stringify({version:1,video_id:1,duration_seconds:1,sampling_interval_seconds:1,frames:[[0,0,image.length]]})),header=Buffer.alloc(12);header.write('VQFOC001');header.writeUInt32LE(metadata.length,8);
   await target.bucket!.put(`media/private-file.visual-v2/${visualRun}/0.bin`,Buffer.concat([header,metadata,image]));await target.bucket!.put(`media/private-file.visual-v2/${visualRun}/0.json`,JSON.stringify([{timestamp_seconds:0,jpeg_base64:image.toString('base64'),offset:12+metadata.length,length:image.length}]));
   const storage=r2VisualMigrationStorage(target.bucket as unknown as R2Bucket);expect(await importCommonTables(target.database,path,manifest,{offlineStaging:true,visualStorage:{source:storage,destination:storage}})).toMatchObject({common_import_complete:true,scene_import_complete:true,visual_objects_migrated:true,pending_visual_runs:'0',execution_complete:false});expect((await rows('video_visual_runs'))[0].publication_version).toBeTruthy();expect((await rows('video_visual_chunks'))[0].object_version).toBeTruthy();
- });
+ },30000);
 
  it('runs separate CLI-engine import, delivery and archive verification phases',async()=>{
   type Vector={id:string;values:number[];metadata:Record<string,string|number>};const vectors=new Map<string,Vector>();let connects=0,disposed=0;

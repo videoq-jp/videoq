@@ -1,3 +1,4 @@
+import { textValueSchema } from '@videoq/trpc/text-value';
 import {z} from 'zod';
 import { asApiError } from './errors';
 import * as policy from '../features/material-management/policy';
@@ -9,7 +10,7 @@ const mutation = { ...identity, operationId: z.uuid(), revision: z.string().rege
 export const materialManagementInput = z.discriminatedUnion('action', [
   z.object({ action: z.literal('get'), ...identity }).strict(),
   z.object({ action: z.literal('update'), ...mutation,
-    fields: z.object({ description: z.string().max(20000).optional(), transcript: z.string().max(2*1024*1024).optional() })
+    fields: z.object({ description: textValueSchema.max(20000).optional(), transcript: textValueSchema.max(2*1024*1024).optional() })
       .strict().refine(fields => Object.keys(fields).length > 0),
   }).strict(),
   z.object({ action: z.literal('reindex'), ...mutation }).strict(),

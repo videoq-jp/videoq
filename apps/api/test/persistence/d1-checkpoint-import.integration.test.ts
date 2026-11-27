@@ -37,6 +37,7 @@ describe.skipIf(!url)('PostgreSQL checkpoint archives on D1',()=>{
  const migrate=async(database=target.database)=>{await exportSource();return importCommonTables(database,path,manifest,{offlineStaging:true,batchRows:2});};
  const targetSaver=()=>new D1CheckpointSaver(target.database,{threadId:thread,leaseId:lease});
  const graph=(storage:BaseCheckpointSaver)=>new StateGraph(new StateSchema({messages:MessagesValue,question:z.string()})).addNode('answer',state=>({messages:[new AIMessage(`seen:${state.messages.length}:${state.question}`)]})).addEdge(START,'answer').addEdge('answer',END).compile({checkpointer:storage});
+ // Multiple real graph executions and a PG-to-D1 archive migration.
  it('continues a real graph and forks an archived parent with typed messages',async()=>{
   const first=await graph(saver).invoke({question:'one',messages:[new HumanMessage('最初')]},config);expect(first.messages).toHaveLength(2);
   const parent=(await saver.getTuple(config))!.checkpoint.id;
@@ -47,7 +48,7 @@ describe.skipIf(!url)('PostgreSQL checkpoint archives on D1',()=>{
   expect(actual.checkpoint.channel_values.messages).toEqual(expected.checkpoint.channel_values.messages);
   const continued=await graph(targetSaver()).invoke({question:'three',messages:[new HumanMessage('third')]},config);expect(continued.messages).toHaveLength(6);
   const fork=await graph(targetSaver()).invoke({question:'branch',messages:[new HumanMessage('branch')]},{configurable:{thread_id:thread,checkpoint_id:parent}});expect(fork.messages).toHaveLength(4);expect(fork.messages.some(message=>message.content==='second')).toBe(false);
- });
+ },30000);
  it('resumes an archived interrupt rather than rebuilding from chat logs',async()=>{
   const build=(storage:BaseCheckpointSaver)=>new StateGraph(new StateSchema({value:z.string().default('')})).addNode('pause',()=>({value:interrupt<string,string>('choose')})).addEdge(START,'pause').addEdge('pause',END).compile({checkpointer:storage});
   expect(await build(saver).invoke({value:''},config)).toHaveProperty('__interrupt__');await migrate();

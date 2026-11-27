@@ -1,3 +1,4 @@
+import { textValueFailure } from '@videoq/domain/text-value';
 import { materialCapabilities } from '../../domain/media/material-management';
 import { MAX_INLINE_TRANSCRIPT_BYTES, MAX_MATERIAL_DESCRIPTION_BYTES } from '../../domain/media/content-read';
 import { conflict, notFound, tooLarge, validationFailure } from '../../application/errors';
@@ -26,6 +27,12 @@ export async function materialView(scope:ManagedMaterialScope,video:ManagedVideo
 export function checkMaterialManagement(scope:ManagedMaterialScope,input:MaterialCommand,deps:MaterialPolicyDependencies):void{
   if (!/^[a-f0-9]{64}$/.test(scope.actorKey) || input.videoId !== scope.videoId) throw notFound('Material not found.');
   if (input.action==='update') {
+    for (const value of Object.values(input.fields)) {
+      if (value !== undefined) {
+        const error = textValueFailure(value);
+        if (error) throw validationFailure(error);
+      }
+    }
     if (input.fields.description !== undefined && deps.byteLength(input.fields.description)>MAX_MATERIAL_DESCRIPTION_BYTES)
       throw tooLarge('Description is too large.');
     if (input.fields.transcript !== undefined) {
