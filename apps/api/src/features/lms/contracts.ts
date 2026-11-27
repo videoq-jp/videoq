@@ -1,7 +1,8 @@
+import { textValueSchema } from '@videoq/trpc/text-value';
 import { z } from 'zod';
 
 /** Connector identities are opaque. Never coerce, trim or case-fold a subject. */
-export const lmsIdentity = z.string().min(1).max(255);
+export const lmsIdentity = textValueSchema.min(1).max(255);
 // SHA-1 remains a supported revision identifier for existing Moodle exports.
 // Other connectors can supply a SHA-256 file digest without translating it.
 export const sourceRevision = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);

@@ -1,5 +1,5 @@
 import { ApplicationError } from '../../application/errors';
-import type { ResourceManifest } from '../../domain/lms/lms-resource';
+import { resourceManifestTextFailure, type ResourceManifest } from '../../domain/lms/lms-resource';
 import type { LmsGrant, LmsResourceSyncRepository } from '../../persistence/contracts/lms-resource-repository';
 
 export function createLmsResourceService(deps: {
@@ -13,7 +13,7 @@ export function createLmsResourceService(deps: {
       if (manifest.kind === 'youtube' && manifest.enabled && !deps.youtube()) {
         throw new ApplicationError('forbidden', 'YOUTUBE_DISABLED', 'YOUTUBE_DISABLED');
       }
-      if (!deps.validExternalId(externalId)) {
+      if (!deps.validExternalId(externalId) || resourceManifestTextFailure(manifest)) {
         throw new ApplicationError('validation', 'INVALID_MANIFEST', 'INVALID_MANIFEST');
       }
       const manifestHash = await deps.digest(JSON.stringify(manifest));

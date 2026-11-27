@@ -59,3 +59,11 @@ course serviceの「呼ばない」「返却値を使わない」「旧検証へ
 | oauth-consent: 現在同意の照合、照会plan | currentConsentAllows / refreshConsentDecision: 現在の同意を毎回読み直す | Better Auth consent store |
 
 usernameの事前存在照会は競合時の一意性を保証しない。DBのunique制約と既存の競合時処理を維持する。現在同意の再照会をcacheへ置き換えず、失効を即時反映する。domainの非同期serviceを例外として残す方式は今回は採用しない。4つのdomain/application間の対応と契約は `domain-rule-ownership.json` の `followUps` に登録し、元の27件とともに機械的に検査する。
+
+## 再調査 #1748: LMSの新規入力と既存データ
+
+LMS教材のdescription/transcript更新にも共通の`textValueFailure`を適用し、HTTP schemaと直接サービス呼出しの両方でNULを拒否する。LMS同期のtitle/courseTitle/contextId/resourceLinkId/filenameとexternalIdも、保存・hash・quota予約の前に拒否する。opaqueな識別子をtrimしたり、自由文の改行・空白・Unicodeを置換したりしない。既存の正常なサイズ・SRT・権限・revisionの契約は維持する。
+
+これは新しく指定された値の検証であり、既存D1データを読み出す際の拒否や一括書換えではない。未指定の既存フィールドは維持する。全機能のテキスト入力を網羅したという保証ではない。
+
+`persistence/contracts/material-management.contract`はdescriptionと有効SRT本文中のNULをschema/直接サービスで拒否し、教材・監査・予約・receipt・outboxが不変であることを実PG/D1で検証する。`lms-resource-sync.contract`は上記6フィールドを拒否し、リソース・動画・quota・outboxが変わらないことを同じ2方式で検証する。`lms-material-text`は認可成功後の実HTTPルートが400を返すことを確認する。

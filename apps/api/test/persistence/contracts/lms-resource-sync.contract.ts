@@ -37,6 +37,14 @@ export function lmsResourceSyncContract(name:string,setup:()=>Promise<Fixture>){
    const m=manifest();await expect(syncLmsResource(f.env,grant,'invalid',{...m,file:{...m.file!,size:-1}})).rejects.toThrow('positive safe integer');
    expect(await f.count('videos')).toBe(0);expect(await f.count('lms_resources')).toBe(0);expect(await f.quota()).toEqual({storage:0,upload:0});
   });
+  it.each(['title','courseTitle','contextId','resourceLinkId','filename','externalId'] as const)('rejects NUL %s before allocating resources or reserving quota',async field=>{
+   const nul='Bad'+String.fromCharCode(0)+'text',m=manifest();
+   const invalid=field==='filename'?{...m,file:{...m.file!,filename:nul+'.mp4'}}:field==='externalId'?m:{...m,[field]:nul};
+   if(field!=='externalId')expect(resourceManifestSchema.safeParse(invalid).success).toBe(false);
+   await expect(sync(invalid,field==='externalId'?nul:'source')).rejects.toMatchObject({status:400,code:'INVALID_MANIFEST'});
+   expect(await f.count('videos')).toBe(0);expect(await f.count('lms_resources')).toBe(0);
+   expect(await f.quota()).toEqual({storage:0,upload:0});expect(await f.tasks()).toHaveLength(0);
+  });
   it('replays identical generations concurrently without allocating twice',async()=>{
    const results=await Promise.all([sync(),sync()]);expect(results[0]).toEqual(results[1]);expect(await sync()).toEqual(results[0]);
    expect(await f.count('videos')).toBe(1);expect(await f.quota()).toEqual({storage:100,upload:100});

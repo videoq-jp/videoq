@@ -1,3 +1,4 @@
+import { textValueFailure } from '@videoq/domain/text-value';
 import type { TranscriptionLanguage } from '@videoq/domain/video-upload';
 
 export type LmsResource = {
@@ -22,4 +23,15 @@ export function validResourceManifestSource(value: Pick<ResourceManifest,
     : value.kind === 'youtube'
       ? value.file === undefined && value.transcriptionLanguage === undefined && (!value.enabled || value.youtubeVideoId !== undefined)
       : value.youtubeVideoId === undefined && (!value.enabled || value.file !== undefined));
+}
+
+/** Validate newly supplied persisted text without normalizing opaque identities or free text. */
+export function resourceManifestTextFailure(value: ResourceManifest): string | null {
+  for (const text of [value.contextId, value.resourceLinkId, value.title, value.courseTitle, value.file?.filename]) {
+    if (text !== undefined) {
+      const failure = textValueFailure(text);
+      if (failure) return failure;
+    }
+  }
+  return null;
 }

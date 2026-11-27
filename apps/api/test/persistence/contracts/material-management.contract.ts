@@ -34,6 +34,15 @@ export function materialManagementContract(name:string,setup:()=>Promise<Materia
    const first=await update(fields,revision,id),again=await update(fields,revision,id);expect(again).toMatchObject({reused:true,externalTaskId:first.externalTaskId});expect(await f.tasks()).toHaveLength(1);
    await expect(update(fields,revision,id,{...scope,actorKey:'a'.repeat(64)})).rejects.toMatchObject({status:409});await expect(update({description:'Forged'},revision,id)).rejects.toMatchObject({status:409});
   });
+  it.each(['description','transcript'] as const)('rejects NUL %s through both schema and direct service without mutation',async field=>{
+   const before=(await get()).material,fields={[field]:field==='transcript'?materialSrt.replace('Original','Bad'+String.fromCharCode(0)+'text'):'Bad'+String.fromCharCode(0)+'text'};
+   const command={action:'update' as const,videoId:scope.videoId,operationId:crypto.randomUUID(),revision:before.revision,fields};
+   expect(materialManagementInput.safeParse(command).success).toBe(false);
+   await expect(manageLtiMaterial(f.env,scope,command)).rejects.toMatchObject({status:400});
+   expect((await get()).material).toEqual(before);
+   expect(await f.count('lti_material_operations')).toBe(0);expect(await f.count('lti_operation_reservations')).toBe(0);
+   expect(await f.count('mutation_receipts')).toBe(0);expect(await f.tasks()).toHaveLength(0);
+  });
   it('rejects invalid SRT and oversized multibyte descriptions before mutation',async()=>{
    await expect(update({transcript:'not srt'})).rejects.toMatchObject({status:400});await expect(update({description:'あ'.repeat(15000)})).rejects.toMatchObject({status:413});expect(await f.count('lti_material_operations')).toBe(0);expect(await f.tasks()).toHaveLength(0);
   });
