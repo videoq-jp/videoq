@@ -210,6 +210,11 @@ const historicalAssess = historicalMaskedEvaluator();
 
 function exactMaskedFixture(historical = true) {
   const policy = structuredClone(require('../../apps/inference/vllm/security/runtime-assessment.json'));
+  // Historical cases exercise only the policy evidence available at that time.
+  if (historical) {
+    delete policy.additionalKernelAffectedFileReview;
+    delete policy.additionalMaskedFfmpegReview;
+  }
   const evidence = historical
     ? JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,
       'fixtures/vllm-historical/masked-ffmpeg-eec22a49-review.json.txt'), 'utf8'))
@@ -308,7 +313,7 @@ test('active production evaluator still rejects historical proof after explicit 
   assert.notEqual(activeSourceHash, oldSourceHash);
   const current = require('../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
   assert.throws(() => assess(f.report, f.policy, f.native, f.profiles,
-    new Date('2026-11-26T00:00:00Z'), f.runtime), error => error.code === 'ERR_ASSERTION'
+    new Date('2026-11-27T10:00:00Z'), f.runtime), error => error.code === 'ERR_ASSERTION'
       && error.actual === f.runtime.checks
       && hash(JSON.stringify(error.expected)) === hash(JSON.stringify(current.requiredRuntimeChecks)));
 });
@@ -329,7 +334,7 @@ test('current policy guard identity matches production source, locked adapter an
 
 test('active exact 9.1 proof accepts only the reviewed masked-image tuples and rejects mutated evidence', () => {
   const evaluate = f => assess(f.report, f.policy, f.native, f.profiles,
-    new Date('2026-11-26T00:00:00Z'), f.runtime);
+    new Date('2026-11-27T10:00:00Z'), f.runtime);
   assert.equal(evaluate(exactMaskedFixture(false)).accepted.length, 11);
   const current = require('../../apps/inference/vllm/security/masked-ffmpeg-20261126-review.json');
   const historical = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,
@@ -360,4 +365,95 @@ test('active exact 9.1 proof accepts only the reviewed masked-image tuples and r
     f => f.report.Results[0].Vulnerabilities[0].InstalledVersion = '9.1',
     f => f.report.Results[0].Vulnerabilities[0].PkgIdentifier.PURL = 'pkg:generic/ffmpeg@9.1',
   ]) { const f = exactMaskedFixture(false); mutate(f); assert.equal(evaluate(f).blocking.length, 1); }
+});
+
+function additionalFindingFixture() {
+  const f = exactMaskedFixture(false);
+  const kernel = require('../../apps/inference/vllm/security/kernel-20261127-additional-review.json');
+  const masked = require('../../apps/inference/vllm/security/masked-ffmpeg-20261127-additional-review.json');
+  f.report.Results = [
+    {Type: 'ubuntu', Vulnerabilities: kernel.rows.map(row => ({Severity: 'HIGH', VulnerabilityID: row.cve,
+      PkgName: row.package, InstalledVersion: row.version, PkgIdentifier: {PURL: row.normalizedPurl}, Locations: [...row.locations]}))},
+    {Type: 'binary', Vulnerabilities: masked.rows.map(row => ({Severity: 'HIGH', VulnerabilityID: row.cve,
+      PkgName: row.package, InstalledVersion: row.version, PkgIdentifier: {PURL: row.purl}, Locations: [...row.locations]}))},
+  ];
+  return f;
+}
+const runAdditional = f => assess(f.report, f.policy, f.native, f.profiles,
+  new Date('2026-11-27T10:00:00Z'), f.runtime);
+
+test('34 additional kernel records and two masked FFmpeg findings require their exact separate reviews', () => {
+  const f = additionalFindingFixture();
+  const result = runAdditional(f);
+  assert.equal(result.accepted.length, 36);
+  assert.equal(result.blocking.length, 0);
+  assert.equal(new Set(result.accepted.map(v => v.VulnerabilityID)).size, 36);
+  const kernel = require('../../apps/inference/vllm/security/kernel-20261127-additional-review.json');
+  assert.deepEqual(kernel.rows.find(row => row.cve === 'CVE-2026-99804').affectedFiles, ['io_uring/io-wq.c']);
+  assert.equal(kernel.rows.length, 34);
+  assert.equal(kernel.sourceCommit, 'b0cd7b5412b9aa02e40e3ab97d536b87dc57f8bc');
+  const masked = require('../../apps/inference/vllm/security/masked-ffmpeg-20261127-additional-review.json');
+  assert.equal(masked.workflowRunId, 45966108942);
+  assert.equal(masked.workflowJobId, 140395168535);
+  assert.equal(masked.artifactId, 15183042431);
+  assert.equal(masked.nativeStepConclusion, 'success');
+  assert.equal(masked.rawAudioMatches, 0);
+  assert.equal(masked.rawAudioIgnoredMatches, 0);
+  assert.deepEqual(masked.requiredRuntimeChecks, f.runtime.checks);
+  // Preserve both older reviews rather than broadening their original tuples.
+  assert.equal(f.policy.kernelAffectedFileReview.count, 75);
+  assert.equal(f.policy.maskedFfmpegReview.count, 11);
+});
+
+test('new CVEs, versions and PURLs cannot inherit either additional review', () => {
+  for (const index of [0, 1]) {
+    for (const mutate of [v => v.VulnerabilityID = 'CVE-unreviewed', v => v.InstalledVersion = 'unreviewed',
+      v => v.PkgIdentifier.PURL = 'pkg:generic/unreviewed@1']) {
+      const f = additionalFindingFixture(); mutate(f.report.Results[index].Vulnerabilities[0]);
+      assert.equal(runAdditional(f).blocking.length, 1);
+    }
+    const f = additionalFindingFixture(), finding = f.report.Results[index].Vulnerabilities[0];
+    finding.Aliases = [finding.VulnerabilityID]; finding.VulnerabilityID = 'forged-alias';
+    assert.throws(() => runAdditional(f));
+  }
+});
+
+test('additional reviews reject missing proof, changed native mappings, unsafe workloads and altered references', () => {
+  for (const mutate of [
+    f => delete f.policy.additionalKernelAffectedFileReview,
+    f => delete f.policy.kernelAffectedFileReview,
+    f => delete f.policy.additionalMaskedFfmpegReview,
+    f => f.policy.additionalKernelAffectedFileReview.sha256 = '0'.repeat(64),
+    f => f.policy.additionalKernelAffectedFileReview.count = 35,
+    f => f.policy.additionalKernelAffectedFileReview.file = '../runtime-assessment.json',
+    f => f.policy.additionalMaskedFfmpegReview.sha256 = '0'.repeat(64),
+    f => f.policy.additionalMaskedFfmpegReview.count = 3,
+    f => f.policy.additionalMaskedFfmpegReview.file = '../runtime-assessment.json',
+    f => f.native.inventory.kernelHeaders.files[0].path = '/usr/include/asm-generic/tlb.h',
+    f => f.native.inventory.kernelHeaders.kernelBinariesOrModules = true,
+    f => f.report.Results[0].Vulnerabilities[0].Locations.push('/tmp/injected'),
+    f => f.report.Results[1].Vulnerabilities[0].Locations.push('/opt/videoq-audio/unmasked.so'),
+    f => f.report.Metadata.ImageConfig.architecture = 'arm64',
+    f => f.runtime = undefined,
+    f => f.runtime.checks['security.maskedNativeDenial'].details.absoluteLoadsDenied.pop(),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.loadedFfmpegLibraries.push('/usr/lib/libavformat.so'),
+    f => f.profiles[0][1].spec.template.spec.containers[0].volumeMounts.at(-1).readOnly = false,
+    f => f.report.Results[0].ModifiedFindings = [{id: 'suppressed'}],
+    f => f.policy.expiresAt = '2026-12-11T00:00:00Z',
+  ]) { const f = additionalFindingFixture(); mutate(f); assert.throws(() => runAdditional(f)); }
+  const f = additionalFindingFixture();
+  assert.throws(() => assess(f.report, f.policy, f.native, f.profiles,
+    new Date('2026-11-27T08:59:59Z'), f.runtime), /not yet valid/);
+  assert.throws(() => assess(f.report, f.policy, f.native, f.profiles,
+    new Date(f.policy.expiresAt), f.runtime), /expired/);
+});
+
+test('the two additional masked image CVEs never waive findings in the loaded audio overlay', () => {
+  const f = additionalFindingFixture();
+  const findings = f.report.Results[1].Vulnerabilities.map(v => ({...v, InstalledVersion: '9.1',
+    PkgIdentifier: {PURL: 'pkg:generic/ffmpeg@9.1'},
+    Locations: f.runtime.checks['security.servingAudioBoundary'].details.loadedFfmpegLibraries}));
+  const result = require('./check-vllm-scan.cjs').assessAudioRuntime({blocking: findings}, f.policy, f.runtime);
+  assert.equal(result.accepted.length, 0);
+  assert.equal(result.blocking.length, 2);
 });

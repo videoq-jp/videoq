@@ -335,7 +335,7 @@
             "transcript": {
               "duration": 10.44,
               "language": "ja",
-              "text": "\u30a4\u30f3\u30bf\u30fc\u30cd\u30c3\u30c8\u3067\u6575\u5bfe\u7684\u74b0\u5883\u30b3\u30fc\u30b9\u306b\u3064\u3044\u3066\u691c\u7d22\u3059\u308b\u3068\u3001\u304a\u305d\u3089\u304f\u73fe\u5730\u4f01\u696d\u306e\u4f4f\u6240\u304c\u51fa\u3066\u304f\u308b\u3067\u3057\u3087\u3046",
+              "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう",
               "segments": [
                 {
                   "id": 0,
@@ -346,7 +346,7 @@
                   "seek": 0,
                   "start": 0.0,
                   "temperature": 0.0,
-                  "text": "\u30a4\u30f3\u30bf\u30fc\u30cd\u30c3\u30c8\u3067\u6575\u5bfe\u7684\u74b0\u5883\u30b3\u30fc\u30b9\u306b\u3064\u3044\u3066\u691c\u7d22\u3059\u308b\u3068\u3001\u304a\u305d\u3089\u304f\u73fe\u5730\u4f01\u696d\u306e\u4f4f\u6240\u304c\u51fa\u3066\u304f\u308b\u3067\u3057\u3087\u3046",
+                  "text": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう",
                   "tokens": [
                     8040,
                     34337,
@@ -443,7 +443,7 @@
             "mode": "embedding",
             "checks": [
               {
-                "query": "\u30d0\u30c3\u30af\u30a2\u30c3\u30d7\u306f\u4f55\u65e5\u9593\u4fdd\u5b58\u3055\u308c\u307e\u3059\u304b\uff1f",
+                "query": "バックアップは何日間保存されますか？",
                 "dimensions": 768,
                 "norm": 0.999999986563796,
                 "similarity": [
@@ -496,5 +496,35 @@
       "https://docs.vllm.ai/en/stable/deployment/docker/",
       "https://github.com/vllm-project/vllm/blob/v0.33.0/setup.py"
     ]
+  },
+  "additionalFindingReview20261127": {
+    "status": "retained_native_artifact_replayed_pending_fresh_signed_release",
+    "reviewedAt": "2026-11-27T09:12:08.234790+00:00",
+    "issue": 1754,
+    "sourceCommit": "6ea74c9b41b7e7322ea942f81a790626c501bd40",
+    "workflowRun": "https://github.com/videoq-jp/videoq/actions/runs/45966108942",
+    "workflowRunAttempt": 1,
+    "jobId": 140395168535,
+    "nativeStepConclusion": "success",
+    "assessmentStepConclusion": "failure_36_unassessed_findings",
+    "artifactId": 15183042431,
+    "artifactDigest": "sha256:23d2e89ed0c1e3067562b17ee49b98560a14aaea391175ce50f6c29ea272e112",
+    "primarySourceCommit": "b0cd7b5412b9aa02e40e3ab97d536b87dc57f8bc",
+    "newKernelFindings": 34,
+    "newMaskedFfmpegFindings": 2,
+    "rawImageMatches": 7597,
+    "rawImageIgnoredMatches": 0,
+    "rawImageHighCriticalUnknown": 1015,
+    "retainedArtifactReassessmentAccepted": 1015,
+    "retainedArtifactReassessmentBlocking": 0,
+    "rawAudioMatches": 0,
+    "rawAudioIgnoredMatches": 0,
+    "retainedArtifactAudioBlocking": 0,
+    "renderedWorkloadConfigurations": 10,
+    "kernelInventoryFiles": 990,
+    "nativeInventoryAndRuntimeChecksUnchanged": true,
+    "expiresAt": "2026-12-10T21:05:42.246607+00:00",
+    "imageMutation": "none",
+    "scope": "Exact constrained serving workload only. Not a host-kernel, GPU/full-model or upstream patch claim. Artifact digest and every downloaded file verified. Fresh normal signed release, staging and CPU acceptance remain to be checked in issue1754."
   }
 }
