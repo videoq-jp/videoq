@@ -58,9 +58,9 @@
     "test:ownership-controls": "node scripts/ownership/run-controls.mjs"
   },
   "dependencies": {
-    "@better-auth/api-key": "^1.7.25",
+    "@better-auth/api-key": "^1.7.27",
     "@better-auth/drizzle-adapter": "^1.7.18",
-    "@better-auth/oauth-provider": "^1.7.25",
+    "@better-auth/oauth-provider": "^1.7.27",
     "@hono/mcp": "^0.3.5",
     "@hono/node-server": "^2.1.8",
     "@hono/trpc-server": "^0.4.2",
