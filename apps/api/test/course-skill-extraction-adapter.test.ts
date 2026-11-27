@@ -27,7 +27,7 @@ describe('source-derived subtitle quotations', () => {
     generate.mockImplementation(async (_env, _owner, options) => options.schema.parse({ verificationFacts: [], facts: [fact] }));
     await extractCourseSkillKnowledge(env, input);
     const saved = repository.save.mock.calls[0][2] as SkillKnowledgeChunk;
-    expect(saved.promptVersion).toBe('course-knowledge-v9');
+    expect(saved.promptVersion).toBe('course-knowledge-v10');
     expect(saved.facts[0].evidence).toEqual([{ cueId: 'cue-0', quote: 'テストを書く前に' }, { cueId: 'cue-1', quote: '依存する時刻を固定する' }]);
     expect(saved.cues).toHaveLength(2);
     expect(saved.facts[0].versionContext).toEqual({ language: null, framework: null, version: null });
@@ -76,6 +76,14 @@ describe('source-derived subtitle quotations', () => {
   it('rejects an oversized fact batch instead of accepting truncated output', async () => {
     prepare();
     generate.mockImplementation(async (_env, _owner, options) => options.schema.parse({ verificationFacts: [], facts: Array.from({ length: 5 }, () => fact) }));
+    await expect(extractCourseSkillKnowledge(env, input)).rejects.toThrow();
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+  it.each(['exceptions', 'requiresVisualEvidence', 'versionContext'] as const)('rejects missing %s rather than silently defaulting source metadata', async field => {
+    prepare();
+    const partial: Partial<typeof fact> = { ...fact };
+    delete partial[field];
+    generate.mockImplementation(async (_env, _owner, options) => options.schema.parse({ verificationFacts: [], facts: [partial] }));
     await expect(extractCourseSkillKnowledge(env, input)).rejects.toThrow();
     expect(repository.save).not.toHaveBeenCalled();
   });

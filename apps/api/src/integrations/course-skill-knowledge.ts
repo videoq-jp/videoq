@@ -10,7 +10,7 @@ import { extractSkillKnowledge } from '../features/course-skills/knowledge-servi
 import type { SkillBuildLease } from '../persistence/contracts/course-skill-knowledge-repository';
 import type { CourseSkillSource } from '../persistence/contracts/course-skill-input-repository';
 
-export const COURSE_SKILL_KNOWLEDGE_PROMPT_VERSION = 'course-knowledge-v9';
+export const COURSE_SKILL_KNOWLEDGE_PROMPT_VERSION = 'course-knowledge-v10';
 export const COURSE_SKILL_KNOWLEDGE_CHUNK_CHARACTERS = 3000;
 
 const factSchema = z.object({
@@ -44,6 +44,7 @@ const prompt = `Extract reusable engineering knowledge from the supplied subtitl
 Preserve applicability and exceptions. Classify each fact by its primary role: principle explains a general invariant; criterion states when to choose an approach; procedure gives implementation actions; verification gives tests or assertions of expected behavior. Explicit testing instructions must use verification, even when phrased as actions. Do not invent numbers, APIs, versions, code, or unseen visual content. Each claim needs the provided cue IDs for all subtitle segments supporting it. Select multiple IDs when a sentence spans segments. The server attaches the original segment text as the quotation; do not generate or paraphrase quotations.
 If understanding a diagram, screen, or code demonstration is necessary to support a claim, set requiresVisualEvidence=true. Such claims will not be usable until reviewed with visual evidence.
 For versionContext, use the programming language, framework and exact version only when the source states them; use empty strings for unknown values. This is not the requested output language. Never guess missing version information.
+Every fact must include all of claim, appliesWhen, exceptions, evidence, requiresVisualEvidence, and versionContext. General facts must also include kind; verificationFacts must not include kind. Never omit exceptions: use [] when none are stated. Always explicitly decide requiresVisualEvidence from the source. Put versionContext inside each fact, never at the root, with language, framework and version present even when all are empty strings. Include both root arrays even when empty. Before answering, check every fact against these required fields; unknown metadata does not make a field optional.
 Return at most four concise general facts in facts, and at most two explicit verification facts in verificationFacts (their kind is assigned by the server). Actively look for source-stated assertions, expected outcomes, or demonstrations that a test fails for the expected reason and subsequently passes. Put these in verificationFacts instead of omitting them in favor of general principles. Return an empty verificationFacts array when no explicit verification evidence exists; never invent checks from a mere recommendation to write tests. If the material is insufficient, return fewer facts or an empty list. Return only the requested structured output in the specified language.`;
 
 export async function createCourseSkillKnowledgeRepository(env: Bindings) {

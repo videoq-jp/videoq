@@ -1,0 +1,86 @@
+{
+  "courseId": 51,
+  "sourceVideoIds": [
+    578
+  ],
+  "originalReportSha256": "60428cb9a033ddbda7f19033d91d6f98556beb62840c416c09c264b61a46949d",
+  "ownerApproved": false,
+  "published": false,
+  "modelReauditCompleted": true,
+  "packages": [
+    {
+      "name": "videoq-c51-deterministic-test-seam",
+      "changes": [
+        "Remove interface/DI-specific requirement and cite the fixed-value function excerpt; narrow the overstated intermediate fact summary."
+      ],
+      "domainValidationPassed": true,
+      "sourceQuoteMatches": true,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "d36368e90cde83230f7b26e73a88bc234de1f2d769ad54c77c793aa843b492ed"
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "7a1194559f9ea64013448ff3b0a2f0674af2db1f4bd4f2c687ae8995688024df"
+        }
+      ]
+    },
+    {
+      "name": "videoq-c51-decoupled-domain-design",
+      "changes": [
+        "Replace inferred mock-count criterion with the source-stated SDK independence and unit-testability."
+      ],
+      "domainValidationPassed": true,
+      "sourceQuoteMatches": true,
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "a5562587ccb094111500c0c16c93e5b5b71fdd4779e00a19038da525cd2430b8"
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "d9775ac52ddb76cb45a47222b0ebb09b4dcdbb35e0b75504d803519c881f966e"
+        }
+      ]
+    }
+  ],
+  "date": "2026-11-27",
+  "scope": "private-corrected-review-artifacts-only",
+  "modelReaudit": {
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "reportSha256": "b0ce3cec2ded0c82c8ff6eeb1f5c24db47aec023be5c31b3888de70b42a2d02e",
+    "results": [
+      {
+        "name": "videoq-c51-decoupled-domain-design",
+        "supported": true,
+        "issueCount": 0,
+        "usage": {
+          "prompt_tokens": 6092,
+          "completion_tokens": 9,
+          "total_tokens": 6101,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "neurons": 55.62726974487305
+        }
+      },
+      {
+        "name": "videoq-c51-deterministic-test-seam",
+        "supported": true,
+        "issueCount": 0,
+        "usage": {
+          "prompt_tokens": 3312,
+          "completion_tokens": 9,
+          "total_tokens": 3321,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "neurons": 30.35454559326172
+        }
+      }
+    ]
+  },
+  "serviceUpdateOrPublicationTest": false,
+  "formatValidationPassed": true
+}
