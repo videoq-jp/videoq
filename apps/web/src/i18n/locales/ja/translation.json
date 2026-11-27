@@ -1549,6 +1549,8 @@
       "SKILL_INSUFFICIENT_TASK_KNOWLEDGE": "判断・手順・検証に必要な説明がそろっていません。",
       "SKILL_TASK_REQUIRES_SPLITTING": "タスクが大きいため、分割が必要です。",
       "SKILL_SEMANTIC_REVIEW_REQUIRED": "説明と根拠の対応や適用条件に確認が必要です。",
+      "SKILL_INVALID_VISUAL_EVIDENCE": "画像の参照先か字幕の時刻範囲が一致しません。根拠を確認して再生成してください。",
+      "SKILL_CANDIDATE_REVALIDATION_REQUIRED": "現在の検査に適合しない候補です。本文と根拠を確認して再生成してください。",
       "SKILL_QUOTA_EXCEEDED": "AI利用枠が不足しています。",
       "SKILL_BUILD_BUDGET_EXHAUSTED": "今回の生成の利用上限に達しました。",
       "SKILL_GENERATION_FAILED": "生成に失敗しました。更新案を作り直すと再試行できます。",

@@ -1551,6 +1551,8 @@
       "SKILL_INSUFFICIENT_TASK_KNOWLEDGE": "Supporting decisions, procedures, or verification are missing.",
       "SKILL_TASK_REQUIRES_SPLITTING": "This task needs to be split into smaller tasks.",
       "SKILL_SEMANTIC_REVIEW_REQUIRED": "Check the evidence and applicability of the proposed instructions.",
+      "SKILL_INVALID_VISUAL_EVIDENCE": "An image reference or its subtitle time range does not match. Check the sources and regenerate the proposal.",
+      "SKILL_CANDIDATE_REVALIDATION_REQUIRED": "This proposal does not pass the current checks. Review its content and sources, then regenerate it.",
       "SKILL_QUOTA_EXCEEDED": "Your AI quota is insufficient.",
       "SKILL_BUILD_BUDGET_EXHAUSTED": "This build reached its generation budget.",
       "SKILL_GENERATION_FAILED": "Generation failed. Rebuild candidates to retry.",

@@ -46,7 +46,7 @@ function SkillEditor({ detail, busy, editable, canPublish, onSave, onPublish, on
     <details className="rounded border border-solid-gray-300 p-3" open><summary className="cursor-pointer font-bold">{t('courseSkills.sources')}</summary><ul className="mt-3 space-y-4">{detail.sources.map((source, i) => <li key={`${source.factId}-${i}`} className="border-l-2 border-solid-gray-300 pl-3"><p className="font-bold">{source.claim}</p><p>{t('courseSkills.video', { id: source.videoId })} · {timestamp(source.startMs)}–{timestamp(source.endMs)}{source.kind === 'image' ? ` · ${t('courseSkills.imageSource')}` : ''}</p><blockquote className="whitespace-pre-wrap text-solid-gray-700">{source.quote}</blockquote>{onPlay ? <Button variant="text" size="sm" onClick={() => onPlay(source.videoId, String(source.startMs / 1000))} disabled={busy}>{t('courseSkills.playSource')}</Button> : null}</li>)}</ul></details>
     <div className="flex flex-wrap gap-3">
       {draft && !published ? <Button variant="outline" disabled={busy || !edited || !editable} onClick={() => onSave(draft)}>{t('courseSkills.save')}</Button> : null}
-      {!published ? <Button disabled={busy || edited || !canPublish} onClick={onPublish}>{t('courseSkills.publish')}</Button> : null}
+      {!published ? <Button disabled={busy || edited || !canPublish || detail.issues.length > 0} onClick={onPublish}>{t('courseSkills.publish')}</Button> : null}
       {!published ? <Button variant="text" disabled={busy || !editable} onClick={onReject}>{t('courseSkills.reject')}</Button> : null}
     </div>
     {edited ? <p role="status" className="text-solid-gray-700">{t('courseSkills.saveBeforePublish')}</p> : null}

@@ -24,6 +24,16 @@ beforeEach(() => {
 });
 
 describe('course skill owner review', () => {
+  it('shows review evidence and disables publication when details fail current checks despite a stale list', async () => {
+    detail.issues = ['SKILL_INVALID_VISUAL_EVIDENCE'];
+    render(<CourseSkillsDialog {...props()} />);
+    await review();
+    expect(screen.getByText('Shown code')).toBeInTheDocument();
+    expect(button('publish')).toBeDisabled();
+    fireEvent.click(button('reject'));
+    await waitFor(() => expect(handlers.reject).toHaveBeenCalledWith(expect.objectContaining({ candidateId: 'candidate', expectedHash: detail.contentHash })));
+    expect(handlers.publish).not.toHaveBeenCalled();
+  });
   it('detects background builds after completed jobs and stops polling when closed', async () => {
     const read = vi.fn(async () => structuredClone(list));
     globalThis.__setTrpcHandler('courseSkills.list', read);
