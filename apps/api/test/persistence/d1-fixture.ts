@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs";
+import { URL } from "node:url";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 
 /** Local workerd D1 binding, with the actual independent migration chain. */

@@ -4,14 +4,15 @@ import { readFile, writeFile, stat, rename, unlink } from 'node:fs/promises';
 import { createD1Fixture } from '../test/persistence/d1-fixture';
 import { courseSkillManagement } from '../src/integrations/course-skill-management';
 import { executeNextCourseSkillBuild } from '../src/integrations/course-skill-execution';
-import { createCourseSkillInputRepository } from '../src/integrations/course-skill-inputs';
+import { createCourseSkillInputs } from '../src/integrations/course-skill-inputs';
 import { COURSE_SKILL_KNOWLEDGE_PROMPT_VERSION, COURSE_SKILL_KNOWLEDGE_CHUNK_CHARACTERS } from '../src/integrations/course-skill-knowledge';
 import { skillTranscriptChunks, verifySkillKnowledge, type SkillKnowledgeChunk } from '../src/domain/learning/skill-knowledge';
 import type { Bindings } from '../src/types/bindings';
 
-const { values } = parseArgs({ options: { 'account-id': { type: 'string' }, 'wrangler-auth-file': { type: 'string' }, output: { type: 'string' }, 'source-file': { type: 'string' }, 'resume-file': { type: 'string' }, 'stop-file': { type: 'string' }, 'max-calls': { type: 'string' }, 'capture-output': { type: 'boolean', default: false }, run: { type: 'boolean', default: false } } });
+const { values } = parseArgs({ options: { 'account-id': { type: 'string' }, 'wrangler-auth-file': { type: 'string' }, output: { type: 'string' }, 'source-file': { type: 'string' }, 'resume-file': { type: 'string' }, 'stop-file': { type: 'string' }, 'max-calls': { type: 'string' }, 'lifecycle-video-id': { type: 'string' }, 'capture-output': { type: 'boolean', default: false }, run: { type: 'boolean', default: false } } });
 if (!values.run) {
   console.info('Use --run --account-id <id> --output <path>, with LLM_API_KEY or --wrangler-auth-file <path>. Use --source-file for a private bounded snapshot (at most 3 videos), --max-calls 1..100 (default 12). Use --resume-file to reuse verified subtitle knowledge from a prior private report; planning steps are regenerated. Create --stop-file to stop after a completed tick. Each tick checkpoints private subtitle knowledge. Use --capture-output only for private diagnostics. Only the model endpoint is contacted; no remote DB or media storage is used.');
+  console.info('--lifecycle-video-id <id> defers one snapshot video, then adds, removes and re-adds it after completed builds in the same local DB. Tests stale candidate edit rejection without publishing or approving real course knowledge.');
 } else {
   if (!values['account-id'] || !/^[a-f0-9]{32}$/.test(values['account-id']) || !values.output) throw new Error('Account ID and output path are required');
   const outputPath = values.output;
@@ -31,6 +32,8 @@ if (!values.run) {
   if (!Number.isSafeInteger(maxCalls) || maxCalls < 1 || maxCalls > 100) throw new Error('max-calls must be between 1 and 100');
   const source = values['source-file'] ? JSON.parse(await readFile(values['source-file'], 'utf8')) as { courseId: number; courseName: string; videos: { id: number; title: string; transcript: string }[] } : undefined;
   if (source && (!Number.isSafeInteger(source.courseId) || !source.courseName || !Array.isArray(source.videos) || !source.videos.length || source.videos.length > 3 || source.videos.some(v => !Number.isSafeInteger(v.id) || typeof v.title !== 'string' || typeof v.transcript !== 'string'))) throw new Error('Invalid bounded local source snapshot');
+  const lifecycleVideoId = values['lifecycle-video-id'] === undefined ? undefined : Number(values['lifecycle-video-id']);
+  if (lifecycleVideoId !== undefined && (!Number.isSafeInteger(lifecycleVideoId) || !source || source.videos.length < 2 || !source.videos.some(v => v.id === lifecycleVideoId))) throw new Error('Lifecycle video must belong to a snapshot with at least two videos');
   let modelCalls = 0;
   let stopping = false;
   let stopReason: string | undefined;
@@ -59,7 +62,7 @@ if (!values.run) {
     TASK_SCHEDULER: { getByName: () => ({ armAt: () => Promise.resolve() }) },
     LLM_MODEL: '@cf/google/gemma-4-26b-a4b-it', LLM_MAX_TOKENS: '4096', LLM_API_KEY: token,
     LLM_BASE_URL: `https://api.cloudflare.com/client/v4/accounts/${values['account-id']}/ai/v1`,
-  } as Bindings;
+  } as unknown as Bindings; // Isolated fixture supplies only bindings used by this pilot.
   const lecture = [
     '1\n00:00:01,000 --> 00:00:20,000\n再試行を追加する前に、同じ要求が二回届いた場合に副作用が重複するか確認します。要求を識別する冪等性キーは、再試行のたびに作り直さず、同じ論理要求では同じキーを使います。',
     '2\n00:00:21,000 --> 00:00:40,000\nデータベース内で完結する処理では、キーの一意制約、業務上の変更、処理結果の保存を同じトランザクションで行います。処理済みなら保存した結果を返します。外部の決済やメール送信は、そのDBトランザクションだけでは一度の実行を保証できません。外部サービスの冪等性キーや、永続アウトボックスなどを別に検討します。',
@@ -77,17 +80,18 @@ if (!values.run) {
       const revision = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(video.transcript)))].map(n => n.toString(16).padStart(2, '0')).join('');
       await sql('INSERT INTO video_index_versions(video_id,revision) VALUES(?,?) ON CONFLICT(video_id) DO UPDATE SET revision=excluded.revision', [video.id, revision]);
       if (order === 0) await sql("INSERT INTO video_courses(id,user_id,name,description,created_at,updated_at,display_order) VALUES(?,'pilot',?,'','2026-11-27','2026-11-27',0)", [courseId, source?.courseName ?? 'Skill generation pilot']);
-      await sql('INSERT INTO video_course_members(course_id,video_id,added_at,"order") VALUES(?,?,?,?)', [courseId, video.id, '2026-11-27', order]);
+      if (video.id !== lifecycleVideoId) await sql('INSERT INTO video_course_members(course_id,video_id,added_at,"order") VALUES(?,?,?,?)', [courseId, video.id, '2026-11-27', order]);
     }
     const owner = courseSkillManagement(env, 'pilot');
     await owner.configure(courseId, { generationEnabled: true, distributionEnabled: false, language: 'ja', policyVersion: '1' });
     if (values['resume-file']) {
       const previous = JSON.parse(await readFile(values['resume-file'], 'utf8')) as { knowledge?: { key: string; content: SkillKnowledgeChunk }[] };
       if (!Array.isArray(previous.knowledge) || previous.knowledge.length > 1000) throw new Error('INVALID_PILOT_RESUME');
-      const snapshot = await (await createCourseSkillInputRepository(env)).snapshot(courseId, 'pilot');
       const expected = new Map<string, { cues: SkillKnowledgeChunk['cues']; revision: string }>();
       for (const video of source?.videos ?? [{ id: 1, title: 'Retry lecture', transcript: lecture }]) {
-        const revision = snapshot?.sources.find(s => s.videoId === video.id)?.analysisRevision;
+        // Deferred videos are seeded locally but are not course members yet.
+        // Cache validation still uses their actual local analysis revision and all original cues.
+        const revision = (await fixture.database.prepare('SELECT revision FROM video_index_versions WHERE video_id=?').bind(video.id).first<{ revision: string }>())?.revision;
         if (!revision) throw new Error('INVALID_PILOT_RESUME');
         const chars = [...video.transcript];
         for await (const chunk of skillTranscriptChunks(offset => Promise.resolve({ text: chars.slice(offset, offset + 12000).join(''), nextOffset: Math.min(offset + 12000, chars.length), done: offset + 12000 >= chars.length }), COURSE_SKILL_KNOWLEDGE_CHUNK_CHARACTERS)) expected.set(`${video.id}:${chunk.index}`, { cues: chunk.cues, revision });
@@ -109,18 +113,47 @@ if (!values.run) {
       report.resumedKnowledgeChunks = seen.size;
     }
     if (values['stop-file'] && await stat(values['stop-file']).then(() => true, () => false)) { stopping = true; stopReason = 'stop_file'; }
-    for (let tick = 0; tick < maxCalls + 8 && !stopping; tick++) {
+    let lifecycleStage: 'initial' | 'added' | 'removed' | 'readded' = 'initial';
+    const lifecycle: unknown[] = [];
+    report.lifecycle = lifecycle;
+    for (let tick = 0; tick < maxCalls + 32 && !stopping; tick++) {
       await executeNextCourseSkillBuild(env);
       const state = await owner.list(courseId);
       const chunks = await fixture.database.prepare('SELECT count(*) AS count FROM course_skill_knowledge_chunks').first<{ count: number }>();
-      await writeReport({ ...report, partial: true, state, modelCalls, knowledgeChunks: chunks?.count ?? 0, knowledge: await readKnowledge(), requests: [...requests], ...(values['capture-output'] ? { modelResponses: [...modelResponses] } : {}) });
+      report = { ...report, partial: true, state, modelCalls, knowledgeChunks: chunks?.count ?? 0, knowledge: await readKnowledge(), requests: [...requests], ...(values['capture-output'] ? { modelResponses: [...modelResponses] } : {}) };
+      await writeReport(report);
       console.info(JSON.stringify({ tick, state: state.jobs[0]?.state, phase: state.jobs[0]?.phase, candidates: state.candidates.length, knowledgeChunks: chunks?.count ?? 0, modelCalls }));
       if (values['stop-file'] && await stat(values['stop-file']).then(() => true, () => false)) { stopping = true; stopReason = 'stop_file'; }
-      if (['completed', 'failed'].includes(state.jobs[0]?.state) || modelCalls >= maxCalls || stopping) break;
+      if (state.jobs[0]?.state === 'completed' && lifecycleVideoId !== undefined && !stopping) {
+        const details = await Promise.all(state.candidates.map(c => owner.get(courseId, c.id)));
+        if (lifecycleStage === 'removed' && details.some(d => d.sources.some(s => s.videoId === lifecycleVideoId))) throw new Error('PILOT_REMOVED_KNOWLEDGE_RETAINED');
+        lifecycle.push({ stage: lifecycleStage, modelCalls, state, details, memberships: (await fixture.database.prepare('SELECT id,video_id FROM video_course_members WHERE course_id=? ORDER BY id').bind(courseId).all()).results });
+        if (lifecycleStage === 'readded' || modelCalls >= maxCalls) break;
+        if (lifecycleStage === 'added') {
+          await sql('DELETE FROM video_course_members WHERE course_id=? AND video_id=?', [courseId, lifecycleVideoId]);
+          lifecycleStage = 'removed';
+        } else {
+          await sql('INSERT INTO video_course_members(course_id,video_id,added_at,"order") VALUES(?,?,?,?)', [courseId, lifecycleVideoId, new Date().toISOString(), source!.videos.findIndex(v => v.id === lifecycleVideoId)]);
+          lifecycleStage = lifecycleStage === 'initial' ? 'added' : 'readded';
+        }
+        const callsBeforeFenceCheck = modelCalls;
+        const changed = await owner.list(courseId);
+        if (changed.candidates.some(c => c.canPublish || c.editable)) throw new Error('PILOT_STALE_CANDIDATE_EDITABLE');
+        const draft = details.find(d => d.draft);
+        let staleEditRejected: boolean | null = null;
+        if (draft?.draft) {
+          try { await owner.update(courseId, draft.id, draft.contentHash, draft.draft); staleEditRejected = false; }
+          catch (error) { if (!(error instanceof Error && 'kind' in error && error.kind === 'conflict')) throw error; staleEditRejected = true; }
+          if (!staleEditRejected || modelCalls !== callsBeforeFenceCheck) throw new Error('PILOT_STALE_EDIT_FENCE_FAILED');
+        }
+        lifecycle.push({ transitionTo: lifecycleStage, staleCandidatesBlocked: true, staleEditRejected, modelCallsUnchanged: modelCalls === callsBeforeFenceCheck });
+        await (await createCourseSkillInputs(env)).reconcile(courseId, 'pilot');
+      } else if (['completed', 'failed'].includes(state.jobs[0]?.state)) break;
+      if (modelCalls >= maxCalls || stopping) break;
       await sql('UPDATE course_skill_builds SET lease_until=0');
     }
     const state = await owner.list(courseId);
-    report = { ...report, elapsedMs: Date.now() - started, state, details: await Promise.all(state.candidates.map(c => owner.get(courseId, c.id))),
+    report = { ...report, partial: false, elapsedMs: Date.now() - started, state, details: await Promise.all(state.candidates.map(c => owner.get(courseId, c.id))),
       knowledge: await readKnowledge(),
       candidates: (await fixture.database.prepare('SELECT content FROM course_skill_candidates').all()).results.map(row => JSON.parse(String(row.content)) as unknown),
       quota: await fixture.database.prepare("SELECT used_ai_answers FROM users WHERE id='pilot'").first(),

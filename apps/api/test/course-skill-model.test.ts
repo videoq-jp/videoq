@@ -52,7 +52,9 @@ describe('metered course skill model boundary', () => {
     await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', { ...options, schema })).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
     expect(mocks.invoke.mock.calls[0][1].response_format).toEqual({ type: 'json_object' });
     const system = mocks.invoke.mock.calls[0][0][0].content;
-    expect(system).toContain(JSON.stringify(z.toJSONSchema(schema)));
+    const { $schema: _dialect, ...validationRules } = z.toJSONSchema(schema);
+    expect(system).toContain(JSON.stringify(validationRules));
+    expect(system).not.toContain('"$schema"');
     expect(system).toContain('all required fields and no extra keys');
     expect(schema.safeParse({ slug: 'validtoolong', notes: [] }).success).toBe(false);
   });
@@ -60,6 +62,12 @@ describe('metered course skill model boundary', () => {
     mocks.invoke.mockResolvedValue(new AIMessage({ content: '{"supported":true,"extra":"private source"}', response_metadata: { finish_reason: 'stop' } }));
     await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', options)).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
     expect(mocks.finish).toHaveBeenCalledWith(expect.anything(), expect.anything(), { status: 'failed', quotaConsumed: true });
+  });
+  it.each([JSON.stringify(z.toJSONSchema(options.schema)), '{"supported":true,"$schema":"https://json-schema.org/draft/2020-12/schema"}'])('rejects schema metadata in returned data and accounts for the attempted call', async content => {
+    mocks.invoke.mockResolvedValue(new AIMessage({ content, response_metadata: { finish_reason: 'stop' } }));
+    await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', options)).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
+    expect(mocks.finish).toHaveBeenCalledWith(expect.anything(), expect.anything(), { status: 'failed', quotaConsumed: true });
+    expect(mocks.release).not.toHaveBeenCalled();
   });
 
 });

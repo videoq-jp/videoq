@@ -99,6 +99,32 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         expect((await f.jobs()).map(j => j.id)).not.toContain('stale');
       } finally { await f.dispose(); }
     });
+    it('creates a new build when sources return to a previously completed projection', async () => {
+      const f = await setup();
+      try {
+        await f.add(); await f.ready(); await f.service.configure(1, 'owner', enabledSkillSettings);
+        const [original] = await f.jobs();
+        const initial = await f.repository.claim(original.id, 'owner', 'initial', f.now(), 1000);
+        expect(initial).not.toBeNull();
+        expect(await f.repository.checkpoint(original.id, 'owner', 'initial', initial!.generation, 'original-checkpoint', f.now())).toBe(true);
+        expect(await f.repository.complete(original.id, 'owner', 'initial', initial!.generation, f.now())).toBe(true);
+        await f.execute('DELETE FROM video_course_members WHERE course_id=1 AND video_id=1');
+        await f.service.reconcile(1, 'owner');
+        // Restore the exact source projection, including the membership ID.
+        await f.execute(`INSERT INTO video_course_members(id,course_id,video_id,added_at,"order") VALUES(1,1,1,'2026-11-27',0)`);
+        await f.service.reconcile(1, 'owner');
+        await f.service.reconcile(1, 'owner');
+        const jobs = await f.jobs();
+        expect(jobs).toHaveLength(2);
+        const restored = jobs.find(j => j.id !== original.id)!;
+        const claimed = await f.repository.claim(restored.id, 'owner', 'restored', f.now(), 1000);
+        expect(claimed).not.toBeNull();
+        expect(claimed!.revision).toBeGreaterThan(initial!.revision);
+        expect(claimed!.checkpoint).toBe('');
+        const history = await f.execution.progress(1, 'owner');
+        expect(history.find(b => b.id === original.id)).toMatchObject({ revision: initial!.revision, state: 'completed', checkpoint: 'original-checkpoint' });
+      } finally { await f.dispose(); }
+    });
     it('fences expired leases and preserves checkpoints across takeover', async () => {
       const f = await setup();
       try {

@@ -107,14 +107,13 @@ export function createSqlCourseSkillInputRepository(driver: SkillSqlDriver): Cou
           AND s.policy_version=? AND s.language=? AND s.distribution_enabled=? AND ${source}=? RETURNING revision`,
         snapshot.sourceState, snapshot.sourceState, now + 60_000, snapshot.courseId, snapshot.revision, snapshot.ownerId,
         settings.policyVersion, settings.language, Number(settings.distributionEnabled), snapshot.sourceState)];
+      // Deduplicate within one revision without promoting an old completed build
+      // when a later membership change returns to the same source projection.
       if (build) statements.push(stmt(`INSERT INTO course_skill_builds(id,course_id,revision,input_key,input,created_at)
-          SELECT ?,s.course_id,s.revision,?,?,? FROM course_skill_inputs s
+          SELECT ?,s.course_id,s.revision,CAST(? AS TEXT)||':'||CAST(s.revision AS TEXT),?,? FROM course_skill_inputs s
           WHERE s.course_id=? AND s.revision BETWEEN ? AND ? AND s.observed_input=? AND s.generation_enabled=1
           AND s.policy_version=? AND s.language=? AND s.distribution_enabled=? AND ${managed} AND ${source}=?
-          ON CONFLICT(course_id,input_key) DO UPDATE SET revision=excluded.revision,
-            state=CASE WHEN course_skill_builds.state='completed' THEN 'completed' ELSE 'queued' END,
-            lease_token=NULL,lease_until=0,generation=course_skill_builds.generation+1,checkpoint=''
-          WHERE course_skill_builds.revision<>excluded.revision`,
+          ON CONFLICT(course_id,input_key) DO NOTHING`,
         build.id, build.inputKey, build.input, now, snapshot.courseId, snapshot.revision, snapshot.revision + 1,
         snapshot.sourceState, settings.policyVersion, settings.language, Number(settings.distributionEnabled), snapshot.ownerId, snapshot.sourceState));
       const result = await driver.batch(statements);

@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-27",
+  "client": "codex-cli 0.160.0 app-server stdio",
+  "scope": "preflight-only-not-an-effect-benchmark",
+  "reportSha256": "b148b429029bbacc81a82e1c59d4a1041f754d70bb2df60dcdc584f95c334fd2",
+  "discoveredSkillCount": 76,
+  "disabledUniqueNames": 68,
+  "remainingEnabledCount": 0,
+  "discoveryErrors": 0,
+  "settingsWritten": false,
+  "modelCalls": 0,
+  "processOverrides": [
+    "features.apps=false",
+    "features.plugins=false",
+    "skills.bundled.enabled=false",
+    "skills.config (disabled by discovered name)"
+  ],
+  "officialReference": "https://learn.chatgpt.com/docs/build-skills",
+  "effectComparisonCompleted": false
+}

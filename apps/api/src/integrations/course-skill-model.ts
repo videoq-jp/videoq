@@ -13,9 +13,12 @@ export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bin
 }): Promise<z.output<Schema>> {
   const input = JSON.stringify(options.input);
   const schema = z.toJSONSchema(options.schema);
-  const schemaText = JSON.stringify(schema);
   const workersAi = env.LLM_MODEL?.startsWith('@cf/');
-  const system = workersAi ? `${options.system}\nReturn one complete JSON object, with all required fields and no extra keys, matching this JSON Schema. Do not use Markdown or trailing commentary. JSON Schema: ${schemaText}` : options.system;
+  // The dialect URI is validator metadata, not an output field. Including it in
+  // the JSON-mode prompt caused real models to copy $schema into otherwise valid data.
+  const { $schema: _dialect, ...promptSchema } = schema;
+  const schemaText = JSON.stringify(workersAi ? promptSchema : schema);
+  const system = workersAi ? `${options.system}\nReturn one complete JSON object, with all required fields and no extra keys, matching this JSON Schema. Do not use Markdown or trailing commentary. JSON Schema: ${schemaText}\nThe schema above describes validation rules; it is not your answer. Return a data instance populated from the supplied input, never a copy or a rewritten schema. The root data fields are: ${Object.keys('properties' in schema ? schema.properties ?? {} : {}).join(', ')}.` : options.system;
   if (input.length + schemaText.length + system.length > 200_000) throw new Error('SKILL_MODEL_INPUT_TOO_LARGE');
   if (options.images && (options.images.length > 8 || options.images.some(image => !/^\/9j\/[A-Za-z0-9+/]*={0,2}$/.test(image.jpegBase64) || image.jpegBase64.length > 349_528))) throw new Error('SKILL_INVALID_MODEL_IMAGES');
   const admitted = await reserveAiAnswerUsage(env, ownerId);

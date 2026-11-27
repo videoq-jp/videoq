@@ -5,7 +5,7 @@ import { createCourseSkillKnowledgeRepository } from './course-skill-knowledge';
 import { courseSkillDraftDependencies } from './course-skill-drafts';
 import { generateCourseSkillDrafts } from '../features/course-skills/draft-service';
 import type { SkillBuildLease } from '../persistence/contracts/course-skill-knowledge-repository';
-import type { SkillTask } from '../domain/learning/course-skill-draft';
+import { supportedSkillFacts, type SkillTask } from '../domain/learning/course-skill-draft';
 import type { SkillKnowledgeChunk } from '../domain/learning/skill-knowledge';
 import type { generateCourseSkillJson } from './course-skill-model';
 
@@ -40,12 +40,23 @@ export async function generateAndSaveCourseSkillCandidates(env: Bindings, input:
   const latest = new Map(previous.map(candidate => [candidate.skillId, candidate]));
   const force = [...latest.values()].some(c => (c.content.generation?.epoch ?? 0) < input.generationEpoch);
   const result = await generateCourseSkillDrafts(dependencies, chunks, [...existing.values()], { force });
-  for (const candidate of result.candidates) {
+  const candidates = [...result.candidates];
+  const generatedIds = new Set(candidates.map(c => c.task.skillId));
+  const currentFacts = new Map(supportedSkillFacts(chunks).map(f => [f.id, JSON.stringify(f)]));
+  // Unchanged, unpublished review work must remain reviewable after an unrelated
+  // source change. Rebind only byte-identical current evidence, retaining edits
+  // and review issues; published/rejected candidates are not revived.
+  for (const previous of latest.values()) {
+    if (generatedIds.has(previous.skillId) || !['review_required', 'approved'].includes(previous.status)) continue;
+    if (previous.content.facts.some(f => currentFacts.get(f.id) !== JSON.stringify(f))) continue;
+    candidates.push(previous.content);
+  }
+  for (const candidate of candidates) {
     const content = { ...candidate, issues: [...result.issues, ...candidate.issues], generation: {
       knowledgeModels: [...new Set(chunks.map(c => c.model))], knowledgePromptVersions: [...new Set(chunks.map(c => c.promptVersion))], draftPromptVersion: 'course-draft-v3', language: input.language, epoch: input.generationEpoch,
     } };
     const contentHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(content))))].map(n => n.toString(16).padStart(2, '0')).join('');
     if (!await repository.save(input.lease, { id: crypto.randomUUID(), content, contentHash }, Date.now())) throw new Error('SKILL_INPUT_CHANGED');
   }
-  return { candidates: result.candidates.length, heldVisualFacts: result.heldVisualFacts, issues: result.issues };
+  return { candidates: candidates.length, heldVisualFacts: result.heldVisualFacts, issues: result.issues };
 }

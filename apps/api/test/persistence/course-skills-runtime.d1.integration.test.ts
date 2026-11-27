@@ -10,6 +10,7 @@ import { courseSkillManagement } from '../../src/integrations/course-skill-manag
 import { executeNextCourseSkillBuild } from '../../src/integrations/course-skill-execution';
 import { createCourseSkillPublicationRepository } from '../../src/integrations/course-skill-publications';
 import { createMcpSkillsService } from '../../src/features/mcp/skills-service';
+import { createCourseSkillInputs } from '../../src/integrations/course-skill-inputs';
 
 const { generate } = vi.hoisted(() => ({ generate: vi.fn() }));
 vi.mock('../../src/integrations/course-skill-model', () => ({ generateCourseSkillJson: generate }));
@@ -31,7 +32,7 @@ it('integrates runtime factories, metered ticks, owner review and live MCP revoc
     const input = options.input;
     let result: unknown;
     switch (options.name) {
-      case 'course_knowledge': result = { facts: ['principle', 'procedure', 'verification'].map(kind => ({ kind, claim: 'Check retry guarantees', appliesWhen: ['Changing retries'], exceptions: [], evidence: [{ cueId: input.cues[0].id }], requiresVisualEvidence: false, versionContext: { language: '', framework: '', version: '' } })), verificationFacts: [] }; break;
+      case 'course_knowledge': result = { facts: input.cues[0].text === 'No reusable knowledge.' ? [] : ['principle', 'procedure', 'verification'].map(kind => ({ kind, claim: 'Check retry guarantees', appliesWhen: ['Changing retries'], exceptions: [], evidence: [{ cueId: input.cues[0].id }], requiresVisualEvidence: false, versionContext: { language: '', framework: '', version: '' } })), verificationFacts: [] }; break;
       case 'skill_task_plan': result = { proposals: [{ existingSkillId: input.existing[0]?.skillId ?? null, slug: 'review-retry', objective: 'Review retries', criterionFactIds: input.facts.filter((f: { kind: string }) => f.kind === 'principle').map((f: { id: string }) => f.id), procedureFactIds: input.facts.filter((f: { kind: string }) => f.kind === 'procedure').map((f: { id: string }) => f.id), verificationFactIds: input.facts.filter((f: { kind: string }) => f.kind === 'verification').map((f: { id: string }) => f.id), additionalFactIds: [] }], issues: [] }; break;
       case 'skill_draft': result = { slug: input.task.slug, title: 'Review retries', description: 'Review retry guarantees before changing code.', useWhen: ['Changing retries'], doNotUseWhen: [], criteria: [{ decision: 'Check assumptions', factIds: [input.facts[0].id] }], steps: [{ action: 'Inspect code', expectedResult: 'Known guarantees', factIds: [input.facts[1].id] }], exceptions: [], checks: [{ check: 'Repeat the request', factIds: [input.facts[2].id] }], examples: [] }; break;
       case 'skill_draft_audit': result = { supported: true, issues: [] }; break;
@@ -60,9 +61,23 @@ it('integrates runtime factories, metered ticks, owner review and live MCP revoc
       }
       throw new Error('Build failed to finish within fixture budget');
     }
-    const initial = await finish();
+    let initial = await finish();
     expect(generate).toHaveBeenCalledTimes(4);
     expect(initial.candidates[0].canPublish).toBe(true);
+    const initialSkillId = initial.candidates[0].skillId;
+    const unedited = await owner.get(1, initial.candidates[0].id);
+    await owner.update(1, unedited.id, unedited.contentHash, { ...unedited.draft!, title: 'Owner-reviewed retry guide' });
+    const originalReview = await owner.get(1, initial.candidates[0].id);
+    await sql("INSERT INTO videos(id,user_id,title,file,status,transcript,description,uploaded_at,error_message,source_type,source_url,youtube_video_id) VALUES(2,'owner','Unrelated','unrelated.mp4','completed',?,'','2026-11-27','','uploaded','','')", ['1\n00:00:01,000 --> 00:00:04,000\nNo reusable knowledge.']);
+    await sql('INSERT INTO video_course_members(course_id,video_id,added_at,"order") VALUES(1,2,?,1)', ['2026-11-27']);
+    expect((await owner.list(1)).candidates[0].canPublish).toBe(false);
+    await (await createCourseSkillInputs(env)).reconcile(1, 'owner');
+    initial = await finish();
+    // Extraction and planning only; unchanged prose and evidence need no new synthesis/audit.
+    expect(generate).toHaveBeenCalledTimes(7);
+    expect(initial.candidates[0]).toMatchObject({ skillId: initialSkillId, canPublish: true, editable: true });
+    expect(initial.candidates[0].id).not.toBe(originalReview.id);
+    expect((await owner.get(1, initial.candidates[0].id)).draft).toEqual(originalReview.draft);
     const reviewed = await owner.get(1, initial.candidates[0].id);
     expect(reviewed.sources[0].quote).toContain('same request ID');
     expect(reviewed.files[0].content).toContain('## Verification');
@@ -71,16 +86,16 @@ it('integrates runtime factories, metered ticks, owner review and live MCP revoc
     const repository = await createCourseSkillPublicationRepository(env);
     const mcp = createMcpSkillsService(repository, 'owner');
     const [entry] = (await mcp.list()).skills;
-    expect((await mcp.read(entry.uri)).contents[0].text).toContain('Review retries');
+    expect((await mcp.read(entry.uri)).contents[0].text).toContain('Owner-reviewed retry guide');
     await owner.configure(1, { ...initial.settings, distributionEnabled: false });
     expect((await mcp.list()).skills).toHaveLength(0);
     expect((await owner.list(1)).revision).toBe(initial.revision);
     await owner.configure(1, initial.settings);
     await owner.rebuild(1);
     const rebuilt = await finish();
-    expect(generate).toHaveBeenCalledTimes(7);
+    expect(generate).toHaveBeenCalledTimes(10);
     const next = await owner.get(1, rebuilt.candidates[0].id);
-    expect(next.previousDraft?.title).toBe('Review retries');
+    expect(next.previousDraft?.title).toBe('Owner-reviewed retry guide');
     await expect(owner.update(1, next.id, 'stale-hash', next.draft!)).rejects.toMatchObject({ kind: 'conflict' });
     const beforeInvalidEdit = generate.mock.calls.length;
     await expect(owner.update(1, next.id, next.contentHash, { ...next.draft!, doNotUseWhen: ['Unsourced prototype policy'] })).rejects.toMatchObject({ kind: 'invalid' });
