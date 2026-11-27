@@ -54,7 +54,7 @@ class RuntimeTests(unittest.TestCase):
         for value in ["26", "26.12.1;echo bad", "26.12.1-rc.1", "$(touch file)"]:
             with self.assertRaises(ValueError):
                 runtime.version(value)
-    def test_tool_major_updates_cannot_block_current_line_security_fixes(self):
+    def test_tool_release_channels_separate_major_lines_and_exclude_prereleases(self):
         versions = ["12.2.1", "13.0.0", "14.0.0-rc.1"]
         self.assertEqual(runtime.managers.newer("12.2.0", "npm", False, versions), "12.2.1")
         self.assertEqual(runtime.managers.newer("12.2.0", "npm", True, versions), "13.0.0")
@@ -207,3 +207,18 @@ class DependabotToolTests(unittest.TestCase):
             request = unittest.mock.Mock(return_value=metadata)
             self.assertEqual(runtime.managers.resolve(data, name, target, request), self.data)
             request.assert_called_once_with(url)
+
+    def test_pip_two_component_releases_keep_the_official_version_spelling(self):
+        self.assertTrue(runtime.managers.stable('26.3', 'pip'))
+        self.assertFalse(runtime.managers.stable('26.3', 'npm'))
+        self.assertFalse(runtime.managers.stable('0.13', 'uv'))
+        self.assertEqual(runtime.managers.newer('26.2.2', 'pip', False, ['26.3']), '26.3')
+        self.assertEqual(runtime.managers.newer('26.3', 'pip', False, ['26.3.0']), '26.3')
+        self.assertEqual(runtime.managers.newer('26.3', 'pip', True, ['27.0']), '27.0')
+        metadata = {'info': {'version': '26.3'}, 'urls': [{
+            'filename': 'pip-26.3-py3-none-any.whl',
+            'url': 'https://files.pythonhosted.org/packages/test/pip-26.3-py3-none-any.whl',
+            'digests': {'sha256': 'a' * 64}}]}
+        data = runtime.managers.resolve(copy.deepcopy(self.data), 'pip', '26.3', lambda _: metadata)
+        self.assertEqual(data['pip'], '26.3')
+        runtime.validate(data)

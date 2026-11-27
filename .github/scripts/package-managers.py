@@ -29,13 +29,14 @@ TARGETS = {
 }
 
 
-def stable(value):
-    return bool(isinstance(value, str) and re.fullmatch(r"\d+\.\d+\.\d+", value))
+def stable(value, name=None):
+    pattern = r"\d+\.\d+(?:\.\d+)?" if name == "pip" else r"\d+\.\d+\.\d+"
+    return bool(isinstance(value, str) and re.fullmatch(pattern, value))
 
 
 def validate(data):
     for name in ("npm", "pip", "uv"):
-        if not stable(data[name]):
+        if not stable(data[name], name):
             raise ValueError(f"An exact stable {name} version is required")
     downloads = data["tool_downloads"]
     npm = downloads["npm"]
@@ -53,25 +54,25 @@ def validate(data):
 
 
 def newer(current, name, upgrade, candidates):
-    parse = lambda v: tuple(map(int, v.split(".")))
+    parse = lambda v: tuple((list(map(int, v.split("."))) + [0])[:3])
     current_parts = parse(current)
     # uv is pre-1.0: a new minor is a new release line.
     width = 2 if name == "uv" and current_parts[0] == 0 else 1
     selected = []
     for candidate in candidates:
-        if not stable(candidate):
+        if not stable(candidate, name):
             continue
         parts = parse(candidate)
         if parts <= current_parts:
             continue
         if (parts[:width] > current_parts[:width]) if upgrade else (parts[:width] == current_parts[:width]):
-            selected.append(parts)
-    return ".".join(map(str, max(selected))) if selected else current
+            selected.append(candidate)
+    return max(selected, key=parse) if selected else current
 
 
 def resolve(data, name, candidate, request):
     """Resolve only a Dependabot-selected release; never enumerate versions."""
-    if not stable(candidate):
+    if not stable(candidate, name):
         raise ValueError("An exact stable tool version is required")
     if name == "npm":
         release = request(f"https://registry.npmjs.org/npm/{candidate}")

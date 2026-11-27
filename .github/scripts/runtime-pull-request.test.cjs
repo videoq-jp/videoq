@@ -189,3 +189,13 @@ test('unchanged proposals are left for the controller; superseded proposals reti
     assert.deepEqual(unknown.writes, []);
   }
 });
+
+test('pip two-component stable releases retain current/new-major review policy', () => {
+  assert.equal(sameLine({ runtime: 'pip', previous_version: '26.2.2', version: '26.3' }), true);
+  assert.equal(sameLine({ runtime: 'pip', previous_version: '26.3', version: '26.3.1' }), true);
+  assert.equal(sameLine({ runtime: 'pip', previous_version: '26.3', version: '27.0' }), false);
+  assert.equal(sameLine({ runtime: 'npm', previous_version: '12.2.3', version: '12.3' }), false);
+  assert.equal(sameLine({ runtime: 'pip', previous_version: '26.3', version: '27.0rc1' }), false);
+  assert.doesNotThrow(() => validate({ ...plan(), runtime: 'pip', version: '26.3', previous_version: '26.2.2' }));
+  assert.doesNotThrow(() => validate({ ...plan(), runtime: 'pip', channel: 'next', version: '27.0', previous_version: '26.3' }));
+});

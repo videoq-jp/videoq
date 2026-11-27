@@ -121,14 +121,15 @@ def declared_tools(root):
     for line in (folder / "requirements.txt").read_text().splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
-        match = re.fullmatch(r"(pip|uv)==(\d+\.\d+\.\d+)", line)
+        match = re.fullmatch(r"(pip|uv)==(\d+\.\d+(?:\.\d+)?)", line)
         if not match or match[1] in tools:
             raise ValueError("Expected unique exact pip and uv bootstrap pins")
         tools[match[1]] = match[2]
     if set(tools) != {"npm", "pip", "uv"}:
         raise ValueError("Missing bootstrap tool pin")
-    for value in tools.values():
-        version(value)
+    for name, value in tools.items():
+        if not managers.stable(value, name):
+            raise ValueError("An exact stable bootstrap tool version is required")
     return tools
 
 

@@ -8,9 +8,13 @@ const FILES = new Set([
 ]);
 const MARKER = '<!-- videoq-runtime-update-v1 -->';
 const sha = value => /^[a-f0-9]{40}$/.test(value || '');
+function stableVersion(runtime, value) {
+  return typeof value === 'string' && (runtime === 'pip'
+    ? /^\d+\.\d+(?:\.\d+)?$/ : /^\d+\.\d+\.\d+$/).test(value);
+}
 function sameLine(plan) {
-  if (!/^\d+\.\d+\.\d+$/.test(plan.previous_version || '') || !/^\d+\.\d+\.\d+$/.test(plan.version || '')) return false;
-  const before = plan.previous_version.split('.').map(Number), after = plan.version.split('.').map(Number);
+  if (!stableVersion(plan.runtime, plan.previous_version) || !stableVersion(plan.runtime, plan.version)) return false;
+  const before = [...plan.previous_version.split('.').map(Number), 0].slice(0, 3), after = [...plan.version.split('.').map(Number), 0].slice(0, 3);
   const width = plan.runtime === 'python' || (plan.runtime === 'uv' && before[0] === 0) ? 2 : 1;
   const comparison = after[0] - before[0] || after[1] - before[1] || after[2] - before[2];
   return comparison >= 0 && before.slice(0, width).join('.') === after.slice(0, width).join('.');
@@ -41,7 +45,7 @@ function eligible(pr, files, comments, bot, allowNext = false) {
       !files.length || files.length > FILES.size || files.some(f => f.status !== 'modified' || !FILES.has(f.filename))) return false;
   return receipts(comments, bot).some(r => r.sha === pr.head.sha && sha(r.base) &&
     (r.channel === 'current' || (allowNext && r.channel === 'next')) && ['node', 'python', 'npm', 'pip', 'uv'].includes(r.runtime) &&
-    pr.head.ref === `runtime/${r.runtime}-${r.channel}` && (r.channel === 'next' ? /^\d+\.\d+\.\d+$/.test(r.version || '') : sameLine(r)));
+    pr.head.ref === `runtime/${r.runtime}-${r.channel}` && (r.channel === 'next' ? stableVersion(r.runtime, r.version) : sameLine(r)));
 }
 
 async function scope({ context, runtime = 'all', channel = 'current' }) {
@@ -57,7 +61,7 @@ async function scope({ context, runtime = 'all', channel = 'current' }) {
 function validate(plan) {
   if (!plan || !['node', 'python', 'npm', 'pip', 'uv'].includes(plan.runtime) ||
       !['current', 'next'].includes(plan.channel) ||
-      !/^\d+\.\d+\.\d+$/.test(plan.version) ||
+      !stableVersion(plan.runtime, plan.version) ||
       !plan.files || typeof plan.files !== 'object' || Array.isArray(plan.files) ||
       Object.entries(plan.files).some(([name, content]) => !FILES.has(name) ||
         typeof content !== 'string' || NodeBuffer.byteLength(content) > 200_000) ||
@@ -119,8 +123,8 @@ async function publish({ github, context, core, plan, bot, retireSuperseded = fa
     if (!plan.changed) {
       // The official discovery result is already in main; retire only a managed,
       // unedited current-line proposal superseded by that canonical state.
-      const before = String(publication.version).split('.').map(Number), after = plan.version.split('.').map(Number);
-      const superseded = /^\d+\.\d+\.\d+$/.test(publication.version || '') &&
+      const before = [...String(publication.version).split('.').map(Number), 0].slice(0, 3), after = [...plan.version.split('.').map(Number), 0].slice(0, 3);
+      const superseded = stableVersion(publication.runtime, publication.version) &&
         (after[0] - before[0] || after[1] - before[1] || after[2] - before[2]) >= 0;
       if (superseded && existing && plan.channel === 'current' && retireSuperseded && !existing.labels?.some(l => ['no-automerge', 'no-runtime-update'].includes(l.name))) {
         const { data: current } = await github.rest.pulls.get({ ...context.repo, pull_number: existing.number });
