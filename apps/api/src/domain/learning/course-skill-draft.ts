@@ -4,6 +4,12 @@ import { verifySkillKnowledge, type SkillKnowledgeChunk } from './skill-knowledg
 export type SupportedSkillFact = SkillKnowledgeChunk['facts'][number] & { videoId: number; analysisRevision: string; cues: SkillKnowledgeChunk['cues']; frames?: SkillKnowledgeChunk['frames'] };
 export type SkillTask = { skillId: string; slug: string; objective: string; factIds: string[] };
 export type SkillTaskProposal = { existingSkillId: string | null; slug: string; objective: string; factIds: string[] };
+export type SkillDraftRepairHistory = {
+  initialAudit: { supported: boolean; issueCount: number };
+  attempts: { number: number; status: 'passed' | 'held' | 'invalid' | 'generation_failed'; issueCount: number }[];
+};
+const draftValidationErrors = new Set(['INVALID_SKILL_SLUG', 'SKILL_INCOMPLETE_TASK', 'SKILL_DESCRIPTION_TOO_LARGE', 'SKILL_UNSUPPORTED_BLOCK', 'SKILL_UNSUPPORTED_EXCLUSION', 'SKILL_UNSUPPORTED_EXCEPTION', 'SKILL_INVALID_VISUAL_EVIDENCE', 'SKILL_UNSUPPORTED_FACT', 'SKILL_INVALID_EVIDENCE']);
+export const isSkillDraftValidationError = (error: unknown): error is Error => error instanceof Error && draftValidationErrors.has(error.message);
 
 export function supportedSkillFacts(chunks: readonly SkillKnowledgeChunk[]): SupportedSkillFact[] {
   const byId = new Map<string, SupportedSkillFact>();

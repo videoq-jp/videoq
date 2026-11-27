@@ -1548,6 +1548,9 @@
       "suspended": "根拠の確認待ちで配信停止中"
     },
     "issues": {
+      "SKILL_AUTO_REPAIR_EXHAUSTED": "自動修正の上限に達しました。出典と内容を確認して修正してください。",
+      "SKILL_AUTO_REPAIR_INVALID": "自動修正案の参照または構成を確認できず、修正前の内容を残しています。",
+      "SKILL_AUTO_REPAIR_GENERATION_FAILED": "自動修正の生成に失敗しました。修正前の内容を確認してください。",
       "SKILL_INSUFFICIENT_TASK_KNOWLEDGE": "判断・手順・検証に必要な説明がそろっていません。",
       "SKILL_TASK_REQUIRES_SPLITTING": "タスクが大きいため、分割が必要です。",
       "SKILL_SEMANTIC_REVIEW_REQUIRED": "説明と根拠の対応や適用条件に確認が必要です。",

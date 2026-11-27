@@ -1,7 +1,8 @@
 import type { SkillDraft } from '@videoq/domain/agent-skills';
-import type { SkillTask, SupportedSkillFact } from '../../domain/learning/course-skill-draft';
+import type { SkillDraftRepairHistory, SkillTask, SupportedSkillFact } from '../../domain/learning/course-skill-draft';
 import type { SkillBuildLease } from './course-skill-knowledge-repository';
 export type CourseSkillCandidateContent = { task: SkillTask; draft: SkillDraft | null; facts: SupportedSkillFact[]; issues: string[];
+  generationRepair?: SkillDraftRepairHistory;
   generation?: { knowledgeModels: string[]; knowledgePromptVersions: string[]; draftPromptVersion: string; language?: 'ja' | 'en'; epoch: number } };
 export type CourseSkillCandidate = {
   id: string; courseId: number; buildId: string; skillId: string; content: CourseSkillCandidateContent;

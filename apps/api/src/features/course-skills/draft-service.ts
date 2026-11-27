@@ -1,12 +1,19 @@
 import type { SkillDraft } from '@videoq/domain/agent-skills';
 import type { SkillKnowledgeChunk } from '../../domain/learning/skill-knowledge';
-import { supportedSkillFacts, validateSkillDraft, type SkillTask, type SkillTaskProposal, type SupportedSkillFact } from '../../domain/learning/course-skill-draft';
+import { isSkillDraftValidationError, supportedSkillFacts, validateSkillDraft, type SkillDraftRepairHistory, type SkillTask, type SkillTaskProposal, type SupportedSkillFact } from '../../domain/learning/course-skill-draft';
+
+export const MAX_SKILL_DRAFT_REPAIRS = 2;
+/** A persisted unsuccessful revision step; replay must not call the provider again. */
+export class SkillDraftRepairFailed extends Error {
+  constructor(options?: ErrorOptions) { super('SKILL_AUTO_REPAIR_GENERATION_FAILED', options); }
+}
 
 export interface SkillDraftDependencies {
   id(): string;
   plan(facts: SupportedSkillFact[], existing: SkillTask[]): Promise<{ proposals: SkillTaskProposal[]; issues: string[] }>;
   synthesize(task: SkillTask, facts: SupportedSkillFact[]): Promise<SkillDraft>;
   audit(draft: SkillDraft, facts: SupportedSkillFact[]): Promise<{ supported: boolean; issues: string[] }>;
+  revise?(task: SkillTask, facts: SupportedSkillFact[], draft: SkillDraft, issues: string[], attempt: number): Promise<SkillDraft>;
 }
 
 export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, chunks: SkillKnowledgeChunk[], existing: SkillTask[] = [], options: { force?: boolean } = {}) {
@@ -32,7 +39,7 @@ export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, ch
       if (!previous || proposal.factIds.some(id => !previous.factIds.includes(id))) touched.add(skillId);
     }
   }
-  const candidates: { task: SkillTask; draft: SkillDraft | null; facts: SupportedSkillFact[]; issues: string[] }[] = [];
+  const candidates: { task: SkillTask; draft: SkillDraft | null; facts: SupportedSkillFact[]; issues: string[]; generationRepair?: SkillDraftRepairHistory }[] = [];
   for (const task of tasks.values()) {
     if (!touched.has(task.skillId)) continue;
     const taskFacts = task.factIds.map(id => byId.get(id)!).filter(Boolean);
@@ -42,11 +49,40 @@ export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, ch
     }
     // Never silently truncate applicable conditions to meet a model context budget.
     if (JSON.stringify(taskFacts).length > 100_000) { candidates.push({ task, draft: null, facts: taskFacts, issues: ['SKILL_TASK_REQUIRES_SPLITTING'] }); continue; }
-    const draft = await deps.synthesize(task, taskFacts);
+    let draft = await deps.synthesize(task, taskFacts);
     if (draft.slug !== task.slug) throw new Error('INVALID_SKILL_IDENTITY');
     validateSkillDraft(draft, taskFacts);
-    const audit = await deps.audit(draft, taskFacts);
-    candidates.push({ task, draft, facts: taskFacts, issues: audit.supported ? audit.issues : [...audit.issues, 'SKILL_SEMANTIC_REVIEW_REQUIRED'] });
+    let audit = await deps.audit(draft, taskFacts);
+    let generationRepair: SkillDraftRepairHistory | undefined;
+    let repairIssues: string[] = [];
+    if (deps.revise && (!audit.supported || audit.issues.length)) {
+      generationRepair = { initialAudit: { supported: audit.supported, issueCount: audit.issues.length }, attempts: [] };
+      while (generationRepair.attempts.length < MAX_SKILL_DRAFT_REPAIRS && (!audit.supported || audit.issues.length || repairIssues.length)) {
+        const number = generationRepair.attempts.length + 1;
+        const feedback = [...audit.issues, ...repairIssues];
+        try {
+          const revision = await deps.revise(task, taskFacts, draft, feedback.length ? feedback : ['SKILL_SEMANTIC_REVIEW_REQUIRED'], number);
+          if (revision.slug !== task.slug) throw new Error('INVALID_SKILL_IDENTITY');
+          validateSkillDraft(revision, taskFacts);
+          draft = revision;
+        } catch (error) {
+          if (error instanceof SkillDraftRepairFailed) {
+            repairIssues = ['SKILL_AUTO_REPAIR_GENERATION_FAILED'];
+            generationRepair.attempts.push({ number, status: 'generation_failed', issueCount: 1 });
+          } else if (isSkillDraftValidationError(error) || (error instanceof Error && error.message === 'INVALID_SKILL_IDENTITY')) {
+            repairIssues = ['SKILL_AUTO_REPAIR_INVALID'];
+            generationRepair.attempts.push({ number, status: 'invalid', issueCount: 1 });
+          } else throw error;
+          continue;
+        }
+        repairIssues = [];
+        audit = await deps.audit(draft, taskFacts);
+        generationRepair.attempts.push({ number, status: audit.supported && !audit.issues.length ? 'passed' : 'held', issueCount: audit.issues.length });
+      }
+    }
+    const candidateIssues = [...audit.issues, ...(!audit.supported ? ['SKILL_SEMANTIC_REVIEW_REQUIRED'] : []), ...repairIssues];
+    if (generationRepair?.attempts.length === MAX_SKILL_DRAFT_REPAIRS && candidateIssues.length) candidateIssues.push('SKILL_AUTO_REPAIR_EXHAUSTED');
+    candidates.push({ task, draft, facts: taskFacts, issues: [...new Set(candidateIssues)], ...(generationRepair ? { generationRepair } : {}) });
   }
   return { candidates, issues, heldVisualFacts: chunks.flatMap(c => c.facts).filter(f => f.status === 'needs_visual_review').length };
 }

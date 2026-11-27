@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-27T16:43:53.874698+00:00",
+  "scope": "Isolated worktree validation before integration; fixed-response models",
+  "implementationBaseCommit": "3c1e47dd988d12d247501a3e678cc928a3b7eb2b",
+  "sourceHashes": [
+    {
+      "path": "apps/api/src/domain/learning/course-skill-draft.ts",
+      "sha256": "298d9cbaee392da5b98129da4f4b29bf78294dd4496d84550ffa28694b584684"
+    },
+    {
+      "path": "apps/api/src/features/course-skills/draft-service.ts",
+      "sha256": "4b84211f57f76ceb74992b560990528c0f8084ee9843b45536f5c9f4b0b4ca50"
+    },
+    {
+      "path": "apps/api/src/integrations/course-skill-candidates.ts",
+      "sha256": "8e0c705d9b02eecb514aa836145b1dd2654b84a7737f978334e62225167defc6"
+    },
+    {
+      "path": "apps/api/src/integrations/course-skill-drafts.ts",
+      "sha256": "c9b0ee70869b9988f60f9f73e0380a8e3d19ad0515f57ab15730eb6e0cd445a4"
+    },
+    {
+      "path": "apps/api/src/integrations/course-skill-execution.ts",
+      "sha256": "571d7f4aa9c4085d294ab6de51398cc8527ede95abf561e3373915095463a1fa"
+    },
+    {
+      "path": "apps/api/src/persistence/contracts/course-skill-candidate-repository.ts",
+      "sha256": "6df991980082880b86570efd92896c9bf7efc137dc395e4224029ff3db69b8cb"
+    },
+    {
+      "path": "apps/api/test/course-skill-draft.test.ts",
+      "sha256": "155794de5f956d29ad954f0cc2da0b85f5c0d0fd90767f2704a5ac343e78cbff"
+    },
+    {
+      "path": "apps/api/test/persistence/course-skill-repair.d1.integration.test.ts",
+      "sha256": "2c43c45c2a40cfa5abe3829ee2d5b38d374cfa8dfe079228be56b8c1115d67d7"
+    },
+    {
+      "path": "apps/api/test/persistence/course-skills-runtime.d1.integration.test.ts",
+      "sha256": "7e45b1115d996b11a18ac054461cc32fb34d59bceead7b51e894952165172cfa"
+    },
+    {
+      "path": "apps/web/src/i18n/locales/en/translation.json",
+      "sha256": "f9f42d798daf8ed559702b8db65a8c79441ff79bccc4ac0fd9616c5b2f8ba4e0"
+    },
+    {
+      "path": "apps/web/src/i18n/locales/ja/translation.json",
+      "sha256": "c355c156f916a460604b9a15c02d6ad9c857d8176a83193e791ca7610a720f8e"
+    }
+  ],
+  "maximumAutomaticRevisions": 2,
+  "draftGenerationVersion": "course-draft-v4-bounded-repair",
+  "unitRegression": {
+    "command": "npm run test:unit -- --maxWorkers=2",
+    "exitCode": 0,
+    "filesPassed": 397,
+    "filesSkipped": 129,
+    "passed": 3937,
+    "failed": 0,
+    "skipped": 1605,
+    "durationSeconds": 391.34,
+    "logSha256": "5e2ef570e0af396f207c4095452ff9e6341a437b3bfdce517b2e94fe539ff625"
+  },
+  "workers": {
+    "command": "npm run test:workers",
+    "exitCode": 0,
+    "filesPassed": 16,
+    "passed": 118,
+    "failed": 0,
+    "durationSeconds": 17.65,
+    "logSha256": "ca52a2dc7dff36e452a58c673d5ce73149c56386bddf0abe172b32eedeab7f3f"
+  },
+  "focusedApi": {
+    "files": 6,
+    "passed": 37,
+    "newDomainTestsFailedBeforeImplementation": 4
+  },
+  "d1RuntimeCases": [
+    {
+      "mode": "revision passes",
+      "revisions": 1,
+      "totalModelCalls": 6,
+      "status": "review_required",
+      "publications": 0
+    },
+    {
+      "mode": "audits remain unsupported",
+      "revisions": 2,
+      "totalModelCalls": 8,
+      "status": "review_required with issues",
+      "publications": 0
+    },
+    {
+      "mode": "revision generation fails",
+      "revisions": 2,
+      "totalModelCalls": 6,
+      "failedCallsReusedAcrossLeases": true,
+      "status": "review_required with issues",
+      "publications": 0
+    }
+  ],
+  "invariantsVerified": [
+    "At most one provider invocation per maintenance tick",
+    "Completed revisions and failed generation steps replay without another provider call",
+    "Revision count stays bounded across leases",
+    "Knowledge cache bytes remain unchanged",
+    "Invalid source references preserve the previous valid draft",
+    "Unchanged review work retains its actual generation metadata",
+    "Successful repairs still require an explicit publication action"
+  ],
+  "translationKeys": {
+    "passed": 10
+  },
+  "typecheck": {
+    "apiAllConfigurationsPassed": true
+  },
+  "changedFileLintPassed": true,
+  "integratedAtValidation": false,
+  "productionDeployed": false,
+  "limitations": [
+    "Fixed-response control tests do not establish a real-model quality improvement",
+    "An audit that incorrectly marks a draft supported does not enter the repair branch",
+    "Skipped optional test profiles and current GitHub CI are not claimed as complete",
+    "The running full-course process has not been changed by this isolated worktree"
+  ]
+}

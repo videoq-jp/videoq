@@ -12,6 +12,7 @@ import { createCourseSkillPublicationRepository, publishCourseSkillCandidate } f
 import { createMcpSkillsService } from '../../src/features/mcp/skills-service';
 import { createCourseSkillInputs } from '../../src/integrations/course-skill-inputs';
 import type { CourseSkillCandidateContent } from '../../src/persistence/contracts/course-skill-candidate-repository';
+import { createCourseSkillCandidateRepository } from '../../src/integrations/course-skill-candidates';
 
 const { generate } = vi.hoisted(() => ({ generate: vi.fn() }));
 vi.mock('../../src/integrations/course-skill-model', () => ({ generateCourseSkillJson: generate }));
@@ -90,6 +91,13 @@ it('integrates runtime factories, metered ticks, owner review and live MCP revoc
     const unedited = await owner.get(1, initial.candidates[0].id);
     await owner.update(1, unedited.id, unedited.contentHash, { ...unedited.draft!, title: 'Owner-reviewed retry guide' });
     const originalReview = await owner.get(1, initial.candidates[0].id);
+    // Rebinding existing review work must retain its actual generation version.
+    const provenanceRow = await f.database.prepare('SELECT content FROM course_skill_candidates WHERE id=?').bind(originalReview.id).first<{ content: string }>();
+    const priorContent = JSON.parse(provenanceRow!.content) as CourseSkillCandidateContent;
+    priorContent.generation!.draftPromptVersion = 'legacy-reviewed-v1';
+    const priorText = JSON.stringify(priorContent);
+    const priorHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(priorText)))].map(n => n.toString(16).padStart(2, '0')).join('');
+    await sql('UPDATE course_skill_candidates SET content=?,content_hash=? WHERE id=?', [priorText, priorHash, originalReview.id]);
     await sql("INSERT INTO videos(id,user_id,title,file,status,transcript,description,uploaded_at,error_message,source_type,source_url,youtube_video_id) VALUES(2,'owner','Unrelated','unrelated.mp4','completed',?,'','2026-11-27','','uploaded','','')", ['1\n00:00:01,000 --> 00:00:04,000\nNo reusable knowledge.']);
     await sql('INSERT INTO video_course_members(course_id,video_id,added_at,"order") VALUES(1,2,?,1)', ['2026-11-27']);
     expect((await owner.list(1)).candidates[0].canPublish).toBe(false);
@@ -100,6 +108,8 @@ it('integrates runtime factories, metered ticks, owner review and live MCP revoc
     expect(initial.candidates[0]).toMatchObject({ skillId: initialSkillId, canPublish: true, editable: true });
     expect(initial.candidates[0].id).not.toBe(originalReview.id);
     expect((await owner.get(1, initial.candidates[0].id)).draft).toEqual(originalReview.draft);
+    const rebound = await (await createCourseSkillCandidateRepository(env)).list(1, 'owner');
+    expect(rebound.find(c => c.id === initial.candidates[0].id)?.content.generation).toEqual(priorContent.generation);
     const reviewed = await owner.get(1, initial.candidates[0].id);
     expect(reviewed.sources[0].quote).toContain('same request ID');
     expect(reviewed.files[0].content).toContain('## Verification');

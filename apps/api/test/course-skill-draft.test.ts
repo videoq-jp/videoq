@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SkillDraft } from '@videoq/domain/agent-skills';
 import type { SkillKnowledgeChunk } from '../src/domain/learning/skill-knowledge';
 import { generateCourseSkillDrafts, type SkillDraftDependencies } from '../src/features/course-skills/draft-service';
@@ -13,6 +13,41 @@ const draft: SkillDraft = { slug: 'review-retry', title: '再試行をレビュ�
 const deps: SkillDraftDependencies = { id: () => 'server-id', plan: () => Promise.resolve({ proposals: [{ existingSkillId: null, slug: draft.slug, objective: '再試行をレビューする', factIds: chunk.facts.map(f => f.id) }], issues: [] }), synthesize: () => Promise.resolve(draft), audit: () => Promise.resolve({ supported: true, issues: [] }) };
 
 describe('task-based course skills', () => {
+  it('repairs a failed audit against fixed source facts and audits the revised draft', async () => {
+    const audit = vi.fn().mockResolvedValueOnce({ supported: false, issues: ['Preserve the source condition'] }).mockResolvedValue({ supported: true, issues: [] });
+    const corrected = { ...draft, title: '修正済みの草案' };
+    const revise = vi.fn().mockResolvedValue(corrected);
+    const source = JSON.stringify(chunk);
+    const result = await generateCourseSkillDrafts({ ...deps, audit, revise }, [chunk]);
+    expect(revise).toHaveBeenCalledTimes(1);
+    expect(revise).toHaveBeenCalledWith(expect.objectContaining({ slug: draft.slug }), expect.any(Array), draft, ['Preserve the source condition'], 1);
+    expect(audit).toHaveBeenCalledTimes(2);
+    expect(result.candidates[0]).toMatchObject({ draft: corrected, issues: [], generationRepair: { attempts: [{ number: 1, status: 'passed' }] } });
+    expect(JSON.stringify(chunk)).toBe(source);
+  });
+  it('limits semantic revisions to two and holds the final draft when audits still fail', async () => {
+    const audit = vi.fn().mockResolvedValue({ supported: false, issues: ['Not supported'] });
+    const revise = vi.fn().mockResolvedValue({ ...draft, title: '検査に通らない修正版' });
+    const result = await generateCourseSkillDrafts({ ...deps, audit, revise }, [chunk]);
+    expect(revise.mock.calls.map(call => call[4])).toEqual([1, 2]);
+    expect(audit).toHaveBeenCalledTimes(3);
+    expect(result.candidates[0].issues).toEqual(expect.arrayContaining(['Not supported', 'SKILL_SEMANTIC_REVIEW_REQUIRED', 'SKILL_AUTO_REPAIR_EXHAUSTED']));
+    expect(result.candidates[0].generationRepair?.attempts).toHaveLength(2);
+  });
+  it('retains the last valid draft when revisions invent source references', async () => {
+    const audit = vi.fn().mockResolvedValue({ supported: false, issues: ['Check the source'] });
+    const revise = vi.fn().mockResolvedValue({ ...draft, checks: [{ check: 'Unsupported assertion', factIds: ['invented'] }] });
+    const result = await generateCourseSkillDrafts({ ...deps, audit, revise }, [chunk]);
+    expect(revise).toHaveBeenCalledTimes(2);
+    expect(audit).toHaveBeenCalledTimes(1);
+    expect(result.candidates[0].draft).toEqual(draft);
+    expect(result.candidates[0].issues).toEqual(expect.arrayContaining(['SKILL_AUTO_REPAIR_INVALID', 'SKILL_AUTO_REPAIR_EXHAUSTED']));
+    expect(result.candidates[0].generationRepair?.attempts.map(a => a.status)).toEqual(['invalid', 'invalid']);
+  });
+  it('propagates unexpected repair errors instead of treating them as source validation issues', async () => {
+    const error = new TypeError('Unexpected programming failure');
+    await expect(generateCourseSkillDrafts({ ...deps, audit: async () => ({ supported: false, issues: [] }), revise: async () => { throw error; } }, [chunk])).rejects.toBe(error);
+  });
   it('refuses to render a saved candidate with a known frame outside its cited cue', () => {
     const facts = supportedSkillFacts([chunk]);
     facts[0] = { ...facts[0], requiresVisualEvidence: true, frames: [{ id: 'known-frame', timestampMs: 60000 }], visualEvidence: [{ frameId: 'known-frame', observation: 'Visible detail' }] };

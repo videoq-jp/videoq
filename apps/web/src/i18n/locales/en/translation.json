@@ -1550,6 +1550,9 @@
       "suspended": "Stopped pending source review"
     },
     "issues": {
+      "SKILL_AUTO_REPAIR_EXHAUSTED": "Automatic revisions reached their limit. Review the sources and revise the content.",
+      "SKILL_AUTO_REPAIR_INVALID": "A revision had invalid references or structure. The previous draft has been retained.",
+      "SKILL_AUTO_REPAIR_GENERATION_FAILED": "Generating a revision failed. Review the previous draft.",
       "SKILL_INSUFFICIENT_TASK_KNOWLEDGE": "Supporting decisions, procedures, or verification are missing.",
       "SKILL_TASK_REQUIRES_SPLITTING": "This task needs to be split into smaller tasks.",
       "SKILL_SEMANTIC_REVIEW_REQUIRED": "Check the evidence and applicability of the proposed instructions.",
