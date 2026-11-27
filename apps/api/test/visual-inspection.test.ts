@@ -1,6 +1,6 @@
 import { requestBodyText } from "./helpers/request-body";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { inspectVideoClip, selectClipFrames } from "../src/lib/visual-inspection";
+import { inspectVideoClip, selectClipFrames, readSparseFrames } from "../src/lib/visual-inspection";
 import { readMediaBytes } from "../src/integrations/media";
 import type { Bindings } from "../src/types/bindings";
 
@@ -16,6 +16,9 @@ const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value
 const inspect = (signal = new AbortController().signal) => inspectVideoClip(env, { id: 42, fileKey: "private/video.mp4" }, 10, 70, "Read the equation", signal);
 beforeEach(() => vi.mocked(readMediaBytes).mockReset().mockResolvedValue(encode(cache)));
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+it('keeps grouped evidence selection on the legacy frame-cache path', async () => {
+  expect(await readSparseFrames(env, { id: 42, fileKey: 'private/video.mp4' }, 0, 90, new AbortController().signal, 4, [[{ start: 10, end: 15 }], [{ start: 60, end: 65 }]])).toMatchObject({ frames: [{ timestamp_seconds: 10 }, { timestamp_seconds: 15 }, { timestamp_seconds: 60 }, { timestamp_seconds: 65 }] });
+});
 
 it("selects at most eight in-window frames across the interval", () => {
   const selected = selectClipFrames(frames, 10, 70);

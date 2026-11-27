@@ -130,5 +130,112 @@
     "storedVisualChunksUnderNewPolicy": 2,
     "legacyVisualChunksRetained": 1,
     "published": false
+  },
+  "groupedSelectionValidation": {
+    "selection": {
+      "version": 1,
+      "videoId": 120,
+      "chunkIndex": 1,
+      "limit": 8,
+      "oldTimestampsMs": [
+        612000,
+        693000,
+        774000,
+        856000,
+        929000,
+        1010000,
+        1091000,
+        1172000
+      ],
+      "selectedTimestampsMs": [
+        634000,
+        686000,
+        944000,
+        966000,
+        996000,
+        1003000,
+        1114000,
+        1150000
+      ],
+      "oldCoveragePerFact": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "newCoveragePerFact": [
+        2,
+        4,
+        3,
+        2
+      ],
+      "groups": [
+        [
+          {
+            "start": 607,
+            "end": 714
+          }
+        ],
+        [
+          {
+            "start": 911,
+            "end": 951
+          },
+          {
+            "start": 947,
+            "end": 1028
+          }
+        ],
+        [
+          {
+            "start": 947,
+            "end": 1028
+          }
+        ],
+        [
+          {
+            "start": 1095,
+            "end": 1177
+          }
+        ]
+      ],
+      "modelCalls": 0,
+      "productionWrites": 0,
+      "selectorSha256": "b3ba26c050fcbc0a55a3e764db25e763ea305345cf38bab8e651a1527039295b"
+    },
+    "generationInvocationId": "6cf51a22-be2a-40d5-910c-5bbcf816f765",
+    "explicitLocalRebuild": true,
+    "priorJobsAndCachePreserved": true,
+    "meteredCumulativeCalls": 10,
+    "newVisualInterpretations": 1,
+    "aiReview": {
+      "decision": "ai-reviewed",
+      "model": "gpt-6.1-sol",
+      "clientVersion": "codex-cli 0.167.1",
+      "freshProcesses": 1,
+      "toolCalls": 0,
+      "elapsedMs": 24955,
+      "usage": [
+        {
+          "input_tokens": 23862,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 952,
+          "reasoning_output_tokens": 153
+        }
+      ],
+      "claimsSupported": 5,
+      "claimsUnverifiable": 1,
+      "claimsTotal": 6,
+      "visualObservationsSupported": 3,
+      "visualObservationsUnsupported": 1,
+      "visualObservationsApplicable": 4,
+      "requestedLanguageMet": 6,
+      "packetSha256": "15e56587e58be05fc45aa594a1dfdaa54c81da5a3116dcdd6c7ec80bbbd512a5",
+      "protocolSha256": "3e4d149f9602e36424afc43d1b6e03f39a0a33a28e390285b146a86317c7b27e",
+      "resultSha256": "8c227c606be58fcf0460c0353274008f6fc62e6056bac240144a8921a439b818",
+      "eventsSha256": "f7a591fc6a2bb3c547b192e02e50ca6a76f3719b8fcb0605046e06629b5f78b5"
+    },
+    "interpretation": "The previously missed quantization demonstration is now covered. The overall sample score is unchanged; another claim cites the wrong supplied frame. This is a post-hoc functional/quality sample, not an efficacy estimate. No original trial or judgment was overwritten."
   }
 }
