@@ -16,6 +16,22 @@ export function tagRepositoryContract(backend: string, createFixture: () => Prom
     beforeEach(async () => { fixture = await createFixture(); }, 20_000);
     afterEach(async () => { await fixture?.dispose(); fixture = undefined; });
     const current = () => { if (!fixture) throw new Error("Tag fixture not initialized"); return fixture; };
+    it('rejects NUL without creating tags or partially updating owned tags', async () => {
+      const repo = current().repository;
+      const service = createTagService(repo);
+      const invalid = 'Tag' + String.fromCharCode(0) + 'suffix';
+      const before = await repo.listPage('owner', 100, 0);
+      await expect(service.createUserTag('owner', invalid, TAG_COLORS[0])).resolves.toEqual({ error: 'Text must not contain NUL characters.' });
+      expect(await repo.listPage('owner', 100, 0)).toEqual(before);
+      const tag = await service.createUserTag('owner', '  日本語😀e\u0301  ', TAG_COLORS[0]);
+      if (!('tag' in tag)) throw new Error('Valid Unicode tag required');
+      const stored = await repo.getDetail(tag.tag.id, 'owner');
+      expect(stored?.name).toBe('日本語😀e\u0301');
+      await expect(service.updateUserTag(tag.tag.id, 'other', { name: invalid, color: TAG_COLORS[1] })).resolves.toEqual({ notFound: true });
+      await expect(service.updateUserTag(tag.tag.id, 'owner', { name: invalid, color: TAG_COLORS[1] })).resolves.toEqual({ error: 'Text must not contain NUL characters.' });
+      expect(await repo.getDetail(tag.tag.id, 'owner')).toEqual(stored);
+      await expect(service.updateUserTag(tag.tag.id, 'owner', {})).resolves.toMatchObject({ tag: { name: '日本語😀e\u0301', color: TAG_COLORS[0] } });
+    });
     it("applies application-validated updates and preserves ownership before validation errors", async () => {
       const repo = current().repository;
       const service = createTagService(repo);

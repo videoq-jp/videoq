@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createTagService } from '../src/features/tags/core';
 import { TagNameConflictError, type TagRepository } from '../src/persistence/contracts/tag-repository';
+import { inputSchemas } from '@videoq/trpc/inputs';
 
 function fixture() {
   const repository = {
@@ -11,6 +12,20 @@ function fixture() {
 }
 
 describe('tag application service', () => {
+  it('rejects NUL at public and direct boundaries without partial writes', async () => {
+    const name = 'Tag' + String.fromCharCode(0) + 'suffix';
+    expect(inputSchemas['tags.create'].safeParse({ name, color: 'blue' }).success).toBe(false);
+    expect(inputSchemas['tags.update'].safeParse({ id: 1, name, color: 'green' }).success).toBe(false);
+    const { repository, service } = fixture();
+    await expect(service.createUserTag('owner', name, 'blue')).resolves.toEqual({ error: 'Text must not contain NUL characters.' });
+    expect(repository.create).not.toHaveBeenCalled();
+    repository.update.mockResolvedValue({ notFound: true });
+    await expect(service.updateUserTag(1, 'other', { name, color: 'green' })).resolves.toEqual({ notFound: true });
+    repository.update.mockResolvedValue({ tag: { id: 1, name: 'Old', color: 'blue', created_at: '', video_count: 0 } });
+    await expect(service.updateUserTag(1, 'owner', { name, color: 'green' })).resolves.toEqual({ error: 'Text must not contain NUL characters.' });
+    expect(repository.update.mock.calls).toEqual([[1, 'other', {}], [1, 'owner', {}]]);
+  });
+
   it('rejects invalid creation without persistence and normalizes valid names', async () => {
     const { repository, service } = fixture();
     await expect(service.createUserTag('owner', ' ', 'blue')).resolves.toHaveProperty('error');
