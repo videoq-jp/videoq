@@ -1,3 +1,4 @@
+import { textValueSchema } from '../text-value';
 import { courseNameSchema } from '../course-name';
 import { z } from "zod";
 
@@ -12,12 +13,12 @@ export const coursesInputSchemas = {
   "courses.shared": z.object({ slug: z.string().min(1).max(255) }),
   "courses.create": z.object({
     name: courseNameSchema,
-    description: z.string().default(""),
+    description: textValueSchema.default(""),
   }),
   "courses.update": z.object({
     id,
     name: courseNameSchema.optional(),
-    description: z.string().optional(),
+    description: textValueSchema.optional(),
   }),
   "courses.delete": z.object({ id }),
   "courses.reorder": z.object({ courseIds: z.array(id).min(1) }),

@@ -1,3 +1,4 @@
+import { assertCourseNameWorkflow } from './helpers/course-name-workflow-contract';
 import { expect, it } from 'vitest';
 import { normalizeCourseName } from '@videoq/domain/course-name';
 import { inputSchemas } from '@videoq/trpc/inputs';
@@ -5,7 +6,7 @@ import { managementToolSchemas } from '../src/tools/management';
 import { createCourseService } from '../src/features/courses/service';
 import { createMemoryCourseRepository } from '../src/persistence/memory/course-repository';
 
-it.each(['', '   ', 'x'.repeat(256), '😀'.repeat(128)])('rejects invalid course names consistently: %j', async name => {
+it.each(['', '   ', 'Course' + String.fromCharCode(0) + 'suffix', 'x'.repeat(256), '😀'.repeat(128)])('rejects invalid course names consistently: %j', async name => {
   const repo = createMemoryCourseRepository({ now: () => new Date('2026-11-27T00:00:00Z') });
   const service = createCourseService(repo);
   expect(normalizeCourseName(name)).toHaveProperty('error');
@@ -29,3 +30,5 @@ it.each(['  Lesson  ', 'x'.repeat(255), '😀'.repeat(127) + 'a'])('uses the sam
   await expect(service.updateUserCourse(course!.id, 'owner', { name: '   ' })).rejects.toMatchObject({ kind: 'validation' });
   expect(await service.updateUserCourse(course!.id, 'peer', { name: '   ' })).toEqual({ notFound: true });
 });
+
+it('checks the workflow contract shared with miswiring negative controls', async () => { await assertCourseNameWorkflow(createCourseService); });

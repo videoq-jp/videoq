@@ -67,6 +67,10 @@
     "./course-name": {
       "types": "./src/course-name.ts",
       "default": "./src/course-name.ts"
+    },
+    "./text-value": {
+      "types": "./src/text-value.ts",
+      "default": "./src/text-value.ts"
     }
   },
   "scripts": {

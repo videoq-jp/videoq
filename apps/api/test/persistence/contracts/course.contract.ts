@@ -1,3 +1,4 @@
+import { createCourseService } from '../../../src/features/courses/service';
 import {afterEach,beforeEach,describe,expect,it} from 'vitest';
 import type {CourseRepository} from '../../../src/persistence/contracts/course-repository';
 type Fixture={repository:CourseRepository;execute:(sql:string,args?:unknown[])=>Promise<void>;count:(table:string)=>Promise<number>;failCreate:()=>Promise<void>;failDelete:()=>Promise<void>;dispose:()=>Promise<void>};
@@ -15,7 +16,15 @@ export async function seedCourses(execute:Fixture['execute']){
 export function courseContract(name:string,setup:()=>Promise<Fixture>){
   describe(`${name} course contract`,()=>{
     let f:Fixture;beforeEach(async()=>{f=await setup();});afterEach(async()=>{await f?.dispose();});
-    it('normalizes detail and supports member pages, optional tags and file suppression',async()=>{
+    it.each(['name','description'] as const)('rejects NUL %s in the public workflow with a real repository',async field=>{
+    const service=createCourseService(f.repository), bad='x'+String.fromCharCode(0)+'y';
+    const before=await f.count('video_courses');
+    await expect(service.createUserCourse('owner',field==='name'?bad:'Lesson',field==='description'?bad:'')).rejects.toMatchObject({kind:'validation'});
+    await expect(service.updateUserCourse(10,'owner',{[field]:bad})).rejects.toMatchObject({kind:'validation'});
+    expect(await f.count('video_courses')).toBe(before);
+    expect(await service.getCourse(10,'owner')).toMatchObject({name:'course10',description:'😀日本語 abc'});
+  });
+  it('normalizes detail and supports member pages, optional tags and file suppression',async()=>{
       const detail=await f.repository.getDetail(10,'owner',{includeFileUrls:false});
       expect(detail).toMatchObject({id:10,access_role:'owner',video_count:2,share_slug:'shared'});expect(detail?.created_at).toMatch(/Z$/);
       expect(detail?.videos.map(v=>v.id)).toEqual([1,2]);expect(detail?.videos[0]).toMatchObject({file:null,tags:[{id:1,name:'tag',color:'#123456'}]});

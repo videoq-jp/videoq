@@ -1,3 +1,4 @@
+import { textValueFailure } from '@videoq/domain/text-value';
 import { uploadConfirmed } from '../../domain/media/multipart-upload';
 import type { CreationIdempotency } from "../../persistence/contracts/creation-idempotency";
 import type { VideoUploadRepository } from "../../persistence/contracts/video-upload-repository";
@@ -80,6 +81,7 @@ export function createVideoUploadService<Body>(deps: VideoUploadDependencies<Bod
       filename: uploadFilenameFailure(body.filename),
       content_type: uploadContentTypeFailure(body.content_type),
       title: videoTitleFailure(body.title),
+      description: textValueFailure(body.description),
       transcriptionLanguage: transcriptionLanguageFailure(body.transcriptionLanguage),
     };
     for (const [field, error] of Object.entries(failures)) if (error) fieldError[field] = [error];
@@ -244,6 +246,8 @@ export function createVideoUploadService<Body>(deps: VideoUploadDependencies<Bod
   async function createDirectUpload(userId: string, input: DirectUploadInput<Body>): Promise<DirectUploadResult> {
     if (storage.presigned) return uploadFailure('unavailable', 'Direct upload is unavailable in object-storage mode.');
     const { file, description, transcriptionLanguage } = input;
+    const descriptionError = textValueFailure(description);
+    if (descriptionError) return uploadFailure('validation', descriptionError, 'VALIDATION_ERROR', { description: [descriptionError] });
     const title = input.title.trim();
     const titleFailure = directUploadTitleFailure(title);
     if (titleFailure) return titleFailure;

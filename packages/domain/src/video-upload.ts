@@ -1,3 +1,4 @@
+import { textValueFailure } from './text-value';
 export const TRANSCRIPTION_LANGUAGES = {
   ja: '日本語', en: 'English', zh: '中文', ko: '한국어',
   es: 'Español', fr: 'Français', de: 'Deutsch', pt: 'Português',
@@ -70,11 +71,15 @@ export function isValidUploadPartEtag(value:unknown):value is string {
 /** Public metadata uses 255 UTF-16 units, consistent with API and HTML limits. */
 export const MAX_VIDEO_TITLE_LENGTH = 255;
 export function videoTitleFailure(value: string): string | null {
+  const textError = textValueFailure(value);
+  if (textError) return textError;
   const title = value.trim();
   if (!title) return 'This field may not be blank.';
   return title.length > MAX_VIDEO_TITLE_LENGTH ? 'Ensure this field has no more than 255 characters.' : null;
 }
 export function uploadFilenameFailure(value: string): string | null {
+  const textError = textValueFailure(value);
+  if (textError) return textError;
   const filename = value.trim(), ext = fileExtension(filename);
   if (!filename || filename.length > 255) return 'Filename must contain 1 to 255 characters.';
   return isAllowedExtension(ext) ? null : `Unsupported file type: '${ext}'. Allowed types: ${Object.keys(VIDEO_UPLOAD_TYPES).join(', ')}`;
