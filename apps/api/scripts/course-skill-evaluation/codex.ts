@@ -1,5 +1,6 @@
 /** Executes the actual client, with process-local configuration and isolated skill discovery. */
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createInterface } from 'node:readline';
 import { chmod, readFile, writeFile, realpath, mkdtemp } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -20,6 +21,9 @@ function clientEnvironment(bearer?: string) {
   const env = Object.fromEntries(allowed.flatMap(key => process.env[key] === undefined ? [] : [[key, process.env[key]]]));
   if (bearer) env.VIDEOQ_EVALUATION_TOKEN = bearer;
   return env as unknown as NodeJS.ProcessEnv;
+}
+export async function codexVersion() {
+  return (await promisify(execFile)('codex', ['--version'], { env: clientEnvironment(), timeout: 15_000, maxBuffer: 64_000 })).stdout.trim();
 }
 
 async function skillInventory(cwd: string, config: string[]) {
@@ -99,13 +103,17 @@ export async function runCodexTrial(options: {
     });
     child.stderr.on('data', (data: Buffer) => { stderr = (stderr + data.toString()).slice(-100_000); });
     child.once('error', error => { clearTimeout(timer); clearTimeout(forced); reject(error); });
-    child.once('exit', code => { clearTimeout(timer); clearTimeout(forced); resolve({ exitCode: code, timedOut, stdout, stderr }); });
+    child.once('exit', code => {
+      clearTimeout(timer); clearTimeout(forced);
+      if (timedOut && child.pid) { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* The owned process group already exited. */ } }
+      resolve({ exitCode: code, timedOut, stdout, stderr });
+    });
   });
   const redact = (text: string) => options.server ? text.replaceAll(options.server.bearer, '[local-evaluation-token]') : text;
   await writeFile(logPath, redact(execution.stdout), { mode: 0o600 });
   await writeFile(join(artifacts, 'execution.stderr.txt'), redact(execution.stderr), { mode: 0o600 });
   await chmod(messagePath, 0o600);
-  const events = execution.stdout.split('\n').flatMap(line => { try { return [JSON.parse(line) as { type: string; usage?: unknown }]; } catch { return []; } });
+  const events = redact(execution.stdout).split('\n').flatMap(line => { try { return [JSON.parse(line) as { type: string; usage?: unknown }]; } catch { return []; } });
   return { exitCode: execution.exitCode, timedOut: execution.timedOut, elapsedMs: Date.now() - started, isolation,
     completed: execution.exitCode === 0 && events.some(e => e.type === 'turn.completed'),
     usage: events.filter(e => e.type === 'turn.completed').map(e => e.usage),

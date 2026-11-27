@@ -1,6 +1,7 @@
 /** Frozen real-course fixture; all course writes are local, external operations are search-only. */
 import { readFile } from 'node:fs/promises';
 import { createD1Fixture } from '../../test/persistence/d1-fixture';
+import { openPersistentEvaluationDatabase } from './persistent-database';
 import { createMemoryRateLimitBackend } from '../../src/lib/rate-limit';
 import { embeddingFingerprint, embeddingIdentity, resolveEmbeddingConfig, WORKERS_AI_EMBEDDING_MODEL } from '../../src/lib/embedding-contract';
 import type { Bindings } from '../../src/types/bindings';
@@ -9,6 +10,10 @@ export type FrozenVideo = { id: number; title: string; transcript: string; user_
 export type FrozenRun = { id: string; video_id: number; user_id: string; source_revision: string; dimensions: number; embedding_identity: string; embedding_fingerprint: string; expected_scenes: number; status: string };
 export type FrozenScene = { id: string; video_id: number; content: string; start_time: string; end_time: string; evidence_type: string; dimensions: number; revision: string; vector_id: string | null };
 export type FrozenCourse = { courseId: number; videos: FrozenVideo[]; runs: FrozenRun[]; scenes: FrozenScene[] };
+const localEnvironments = new WeakSet<Bindings>();
+export function assertLocalEvaluationEnvironment(env: Bindings) {
+  if (!localEnvironments.has(env)) throw new Error('LOCAL_EVALUATION_ENVIRONMENT_REQUIRED');
+}
 export const sha256 = async (value: string) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(x => x.toString(16).padStart(2, '0')).join('');
 
 export async function readFrozenCourse(paths: { videos: string; runs: string; scenes: string; originalInput: string; courseId: number }): Promise<FrozenCourse> {
@@ -77,22 +82,23 @@ export function readOnlySearchTransport(options: { accountId: string; indexName:
   };
 }
 
-export async function createFrozenEvaluationEnvironment(source: FrozenCourse, transport: ReturnType<typeof readOnlySearchTransport>) {
-  const fixture = await createD1Fixture();
-  const env = { DB: fixture.database, PERSISTENCE_BACKEND: 'd1', DEPLOYMENT_EDITION: 'cloud',
+export async function createFrozenEvaluationEnvironment(source: FrozenCourse, transport: ReturnType<typeof readOnlySearchTransport>, options: { directory?: string } = {}) {
+  if (!source.videos.length) throw new Error('INVALID_FROZEN_SCOPE');
+  const env = { PERSISTENCE_BACKEND: 'd1', DEPLOYMENT_EDITION: 'cloud',
     RATE_LIMIT_BACKEND: createMemoryRateLimitBackend(), TASK_SCHEDULER: { getByName: () => ({ armAt: () => Promise.resolve() }) },
     EMBEDDING_PROVIDER: 'workers-ai', EMBEDDING_PROFILE: 'embeddinggemma2', AI: transport.ai, SCENE_VECTORIZE_768: transport.index,
   } as unknown as Bindings;
   const config = resolveEmbeddingConfig(env), fingerprint = await embeddingFingerprint(config);
   const ownerId = source.videos[0].user_id;
   const revisions = new Map<number, string>();
-  const sql = async (query: string, args: (string | number | null)[] = []) => { await fixture.database.prepare(query).bind(...args).run(); };
-  try {
-    if (source.runs.some(r => r.embedding_identity !== embeddingIdentity(config) || r.embedding_fingerprint !== fingerprint)) throw new Error('EVALUATION_EMBEDDING_IDENTITY_MISMATCH');
+  for (const video of source.videos) revisions.set(video.id, await sha256(video.transcript));
+  if (source.runs.some(r => r.embedding_identity !== embeddingIdentity(config) || r.embedding_fingerprint !== fingerprint)) throw new Error('EVALUATION_EMBEDDING_IDENTITY_MISMATCH');
+  const initialize = async (database: D1Database) => {
+    const sql = async (query: string, args: (string | number | null)[] = []) => { await database.prepare(query).bind(...args).run(); };
     await sql("INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes,ai_answers_limit) VALUES(?,'local-evaluation','local-evaluation@example.test',0,0,0,0,1000)", [ownerId]);
     await sql("INSERT INTO video_courses(id,user_id,name,description,created_at,updated_at,display_order) VALUES(?,?,'Isolated evaluation','','2026-11-27','2026-11-27',0)", [source.courseId, ownerId]);
     for (const [order, video] of source.videos.entries()) {
-      const revision = await sha256(video.transcript); revisions.set(video.id, revision);
+      const revision = revisions.get(video.id)!;
       await sql("INSERT INTO videos(id,user_id,title,file,status,transcript,description,uploaded_at,error_message,source_type,source_url,youtube_video_id) VALUES(?,?,?,?,'completed',?,'','2026-11-27','','uploaded','','')", [video.id, ownerId, video.title, `isolated-${video.id}.mp4`, video.transcript]);
       await sql('INSERT INTO video_index_versions(video_id,revision) VALUES(?,?) ON CONFLICT(video_id) DO UPDATE SET revision=excluded.revision', [video.id, revision]);
       await sql('INSERT INTO video_course_members(course_id,video_id,added_at,"order") VALUES(?,?,?,?)', [source.courseId, video.id, '2026-11-27', order]);
@@ -105,6 +111,14 @@ export async function createFrozenEvaluationEnvironment(source: FrozenCourse, tr
       await sql('INSERT INTO video_index_heads(video_id,dimensions,run_id) VALUES(?,?,?)', [run.video_id, run.dimensions, run.id]);
     }
     for (const scene of source.scenes) await sql('INSERT INTO scenes(id,video_id,content,start_time,end_time,evidence_type,dimensions,revision,vector_id) VALUES(?,?,?,?,?,?,?,?,?)', [scene.id, scene.video_id, scene.content, scene.start_time, scene.end_time, scene.evidence_type, scene.dimensions, scene.revision, scene.vector_id]);
-    return { env, ownerId, source, revisions, stats: transport.stats, dispose: () => fixture.dispose() };
+  };
+  const fixture = options.directory
+    ? await openPersistentEvaluationDatabase({ directory: options.directory, inputHash: await sha256(JSON.stringify(source)), initialize })
+    : await createD1Fixture();
+  try {
+    if (!options.directory) await initialize(fixture.database);
+    env.DB = fixture.database;
+    localEnvironments.add(env);
+    return { env, ownerId, source, revisions, resumed: 'resumed' in fixture && fixture.resumed, stats: transport.stats, dispose: async () => { localEnvironments.delete(env); await fixture.dispose(); } };
   } catch (error) { await fixture.dispose(); throw error; }
 }
