@@ -1,3 +1,4 @@
+import type { RateLimitEntry } from "../../lib/rate-limit-history";
 import type { ChatAnswer } from "@videoq/domain/chat";
 import { EMBEDDING_DIMENSIONS } from "../../lib/embedding-dimensions";
 import {
@@ -37,7 +38,7 @@ export const ltiCredentials = pgTable("lti_credentials", {
 /** Shared sliding windows for the on-prem Node runtime. Workers keep using DOs. */
 export const runtimeRateLimits = pgTable("runtime_rate_limits", {
 	key: text("key").primaryKey(),
-	history: jsonb("history").$type<number[]>().notNull().default([]),
+	history: jsonb("history").$type<RateLimitEntry[]>().notNull().default([]),
 	windowSec: integer("window_sec").notNull(),
 	expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 }, (table) => [index("runtime_rate_limits_expiry_idx").on(table.expiresAt)]);

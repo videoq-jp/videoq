@@ -1,3 +1,5 @@
+import { consumptionTime, consumptionEntries, refundReservation, validateRateLimit, pruneExpiredHistory, type RateLimitEntry } from './rate-limit-history';
+export { pruneExpiredHistory } from './rate-limit-history';
 import type { Context } from "hono";
 import { PUBLIC_DEMO_SHARE_SLUG } from "@videoq/trpc/public-demo";
 import type { AppEnv, Bindings } from "../types/bindings";
@@ -18,38 +20,26 @@ export type RateLimitBackend = {
     limit: number,
     windowSec: number,
     cost?: number,
+    reservationId?: string,
   ): Promise<ConsumeResult>;
-  /** 直前の消費 `cost` 件を取り消す（best-effort）。 */
-  release(key: string, windowSec: number, cost: number): Promise<void>;
+  /** 指定予約の消費だけを取り消す（期限切れ・二重返却はno-op）。 */
+  release(key: string, windowSec: number, reservationId: string): Promise<void>;
   /** 消費せずに現在の窓を読む。非原子的フォールバック経路専用。 */
   snapshot(key: string): Promise<RateLimitSnapshot | null>;
   /** 上限判定なしで 1 件記録する。非原子的フォールバック経路専用。 */
   record(key: string, windowSec: number): Promise<void>;
 };
 
-/** newest-first の履歴から、現在の窓に残る時刻だけを返す。 */
-export function pruneExpiredHistory(
-  history: readonly number[],
-  nowSec: number,
-  windowSec: number,
-): number[] {
-  const active = [...history];
-  const cutoff = nowSec - windowSec;
-  while (active.length > 0 && active[active.length - 1] <= cutoff) {
-    active.pop();
-  }
-  return active;
-}
-
 /** Unit tests must explicitly inject this isolated backend through Bindings. */
 export function createMemoryRateLimitBackend(): RateLimitBackend {
-  const store = new Map<string, { history: number[]; windowSec: number }>();
-  const prune = (key: string, nowSec: number, windowSec: number): number[] =>
+  const store = new Map<string, { history: RateLimitEntry[]; windowSec: number }>();
+  const prune = (key: string, nowSec: number, windowSec: number): RateLimitEntry[] =>
     pruneExpiredHistory(store.get(key)?.history ?? [], nowSec, windowSec);
 
   return {
     // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
-    async consume(key, limit, windowSec, cost = 1) {
+    async consume(key, limit, windowSec, cost = 1, reservationId) {
+      validateRateLimit(limit, windowSec, cost);
       const now = Date.now() / 1000;
       const history = prune(key, now, windowSec);
       if (history.length + cost > limit) {
@@ -59,17 +49,16 @@ export function createMemoryRateLimitBackend(): RateLimitBackend {
           retryAfterSec:
             oldest === undefined
               ? windowSec
-              : Math.max(1, Math.ceil(windowSec - (now - oldest))),
+              : Math.max(1, Math.ceil(windowSec - (now - consumptionTime(oldest)))),
         };
       }
-      for (let i = 0; i < cost; i++) history.unshift(now);
+      history.unshift(...consumptionEntries(now, cost, reservationId));
       store.set(key, { history, windowSec });
       return { allowed: true, retryAfterSec: 0 };
     },
     // eslint-disable-next-line @typescript-eslint/require-await -- Preserve the asynchronous interface and rejection semantics.
-    async release(key, windowSec, cost) {
-      const history = prune(key, Date.now() / 1000, windowSec);
-      history.splice(0, Math.min(cost, history.length));
+    async release(key, windowSec, reservationId) {
+      const history = refundReservation(prune(key, Date.now() / 1000, windowSec), reservationId);
       if (history.length === 0) store.delete(key);
       else store.set(key, { history, windowSec });
     },
@@ -79,7 +68,7 @@ export function createMemoryRateLimitBackend(): RateLimitBackend {
       if (!entry) return null;
       const history = prune(key, Date.now() / 1000, entry.windowSec);
       if (history.length === 0) return null;
-      return { count: history.length, lastRequestMs: history[0] * 1000 };
+      return { count: history.length, lastRequestMs: consumptionTime(history[0]) * 1000 };
     },
     async record(key, windowSec) {
       await this.consume(key, Number.MAX_SAFE_INTEGER, windowSec);
@@ -121,11 +110,12 @@ export function rateLimitBackend(env: Bindings): RateLimitBackend {
   if (!ns) return injectedTestBackend ?? unavailableBackend;
   const stubFor = (key: string) => ns.get(ns.idFromName(key));
   return {
-    async consume(key, limit, windowSec, cost = 1) {
-      return stubFor(key).consume(limit, windowSec, cost);
+    async consume(key, limit, windowSec, cost = 1, reservationId) {
+      validateRateLimit(limit, windowSec, cost);
+      return stubFor(key).consume(limit, windowSec, cost, reservationId);
     },
-    async release(key, windowSec, cost) {
-      await stubFor(key).release(windowSec, cost);
+    async release(key, windowSec, reservationId) {
+      await stubFor(key).release(windowSec, reservationId);
     },
     async snapshot(key) {
       return stubFor(key).snapshot();
@@ -159,22 +149,28 @@ export async function enforceThrottles(
   const backend = rateLimitBackend(env);
   // 途中のスコープで拒否されたら、先に消費した分を返す。全スコープを通った
   // リクエストだけが枠を使うので、拒否された側に課金が残らない。
-  const consumed: { key: string; windowSec: number; cost: number }[] = [];
-  for (const check of checks) {
-    const consumption = throttleConsumption(check);
-    if (!consumption) continue;
-    const { key, cost, windowSec, limit } = consumption;
-    const result = await backend.consume(key, limit, windowSec, cost);
-    if (!result.allowed) {
-      for (const prior of consumed) {
-        // 補償に失敗しても、返せなかった枠が残るだけで安全側。
-        await backend
-          .release(prior.key, prior.windowSec, prior.cost)
-          .catch(() => {});
-      }
-      return result;
+  const consumed: { key: string; windowSec: number; reservationId: string }[] = [];
+  const compensate = async () => {
+    for (const prior of consumed) {
+      try { await backend.release(prior.key, prior.windowSec, prior.reservationId); }
+      catch { console.error(JSON.stringify({ event: 'throttle_compensation_failed' })); }
     }
-    consumed.push({ key, windowSec, cost });
+  };
+  try {
+    for (const check of checks) {
+      const consumption = throttleConsumption(check);
+      if (!consumption) continue;
+      const { key, cost, windowSec, limit } = consumption;
+      const reservationId = crypto.randomUUID();
+      const result = await backend.consume(key, limit, windowSec, cost, reservationId);
+      if (!result.allowed) { await compensate(); return result; }
+      consumed.push({ key, windowSec, reservationId });
+    }
+  } catch (error) {
+    // Only acknowledged successes are refunded. The failing consume may have
+    // committed before its response was lost; retain that unknown charge.
+    await compensate();
+    throw error;
   }
   return null;
 }

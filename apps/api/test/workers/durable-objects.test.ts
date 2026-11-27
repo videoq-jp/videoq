@@ -10,7 +10,7 @@ describe("RateLimiter Durable Object", () => {
   it("atomically enforces cost and keeps state across eviction", async () => {
     const stub = env.RATE_LIMITER.getByName("runtime-rate-limit");
 
-    await expect(stub.consume(2, 60)).resolves.toEqual({
+    await expect(stub.consume(2, 60, 1, "reservation")).resolves.toEqual({
       allowed: true,
       retryAfterSec: 0,
     });
@@ -21,7 +21,7 @@ describe("RateLimiter Durable Object", () => {
     await evictDurableObject(stub);
     await expect(stub.snapshot()).resolves.toMatchObject({ count: 1 });
 
-    await stub.release(60, 1);
+    await stub.release(60, "reservation");
     await expect(stub.snapshot()).resolves.toBeNull();
   });
 

@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { pruneExpiredHistory } from "../lib/rate-limit";
+import { consumptionTime, consumptionEntries, refundReservation, validateRateLimit, pruneExpiredHistory, type RateLimitEntry } from "../lib/rate-limit-history";
 
 /**
  * 固定キー単位のスライディング・ウィンドウ・レート制限。
@@ -14,10 +14,12 @@ export class RateLimiter extends DurableObject {
     limit: number,
     windowSec: number,
     cost = 1,
+    reservationId?: string,
   ): Promise<{ allowed: boolean; retryAfterSec: number }> {
+    validateRateLimit(limit, windowSec, cost);
     const now = Date.now() / 1000;
     const history = pruneExpiredHistory(
-      (await this.ctx.storage.get<number[]>("history")) ?? [],
+      (await this.ctx.storage.get<RateLimitEntry[]>("history")) ?? [],
       now,
       windowSec,
     );
@@ -28,32 +30,23 @@ export class RateLimiter extends DurableObject {
       const retryAfterSec =
         oldest === undefined
           ? windowSec
-          : Math.max(1, Math.ceil(windowSec - (now - oldest)));
+          : Math.max(1, Math.ceil(windowSec - (now - consumptionTime(oldest))));
       return { allowed: false, retryAfterSec };
     }
 
-    for (let i = 0; i < cost; i++) history.unshift(now);
+    history.unshift(...consumptionEntries(now, cost, reservationId));
     await this.ctx.storage.put({ history, windowSec });
     const oldest = history[history.length - 1];
-    await this.ctx.storage.setAlarm((oldest + windowSec) * 1000);
+    await this.ctx.storage.setAlarm((consumptionTime(oldest) + windowSec) * 1000);
     return { allowed: true, retryAfterSec: 0 };
   }
 
-  /**
-   * 直前に消費した `cost` 件を取り消す。複数スコープを順に消費する呼び出し元が、
-   * 後続スコープで拒否されたときに先行分を返すための best-effort な補償。
-   * 窓から溢れて既に消えている分は、単に取り消す対象が無いだけで無害。
-   */
-  async release(windowSec: number, cost: number): Promise<void> {
-    const stored = await this.ctx.storage.get<number[]>("history");
+  /** Refund only this reservation; expired and repeated refunds are no-ops. */
+  async release(windowSec: number, reservationId: string): Promise<void> {
+    const stored = await this.ctx.storage.get<RateLimitEntry[]>("history");
     if (!stored?.length) return;
-    const history = pruneExpiredHistory(stored, Date.now() / 1000, windowSec);
-    // newest-first なので、返すのは先頭（最も新しい消費）から。
-    history.splice(0, Math.min(cost, history.length));
-    if (history.length === 0) {
-      await this.ctx.storage.deleteAll();
-      return;
-    }
+    const history = refundReservation(pruneExpiredHistory(stored, Date.now() / 1000, windowSec), reservationId);
+    if (history.length === 0) { await this.ctx.storage.deleteAll(); return; }
     await this.ctx.storage.put({ history, windowSec });
   }
 
@@ -63,13 +56,13 @@ export class RateLimiter extends DurableObject {
    */
   async snapshot(): Promise<{ count: number; lastRequestMs: number } | null> {
     const [stored, windowSec] = await Promise.all([
-      this.ctx.storage.get<number[]>("history"),
+      this.ctx.storage.get<RateLimitEntry[]>("history"),
       this.ctx.storage.get<number>("windowSec"),
     ]);
     if (!stored?.length || !windowSec) return null;
     const history = pruneExpiredHistory(stored, Date.now() / 1000, windowSec);
     if (history.length === 0) return null;
-    return { count: history.length, lastRequestMs: history[0] * 1000 };
+    return { count: history.length, lastRequestMs: consumptionTime(history[0]) * 1000 };
   }
 
   /** 上限判定なしで 1 件記録する。`snapshot` と同じフォールバック経路専用。 */
@@ -79,7 +72,7 @@ export class RateLimiter extends DurableObject {
 
   async alarm(): Promise<void> {
     const [storedHistory, windowSec] = await Promise.all([
-      this.ctx.storage.get<number[]>("history"),
+      this.ctx.storage.get<RateLimitEntry[]>("history"),
       this.ctx.storage.get<number>("windowSec"),
     ]);
     if (!storedHistory?.length || !windowSec) {
@@ -97,6 +90,6 @@ export class RateLimiter extends DurableObject {
     }
     await this.ctx.storage.put("history", history);
     const oldest = history[history.length - 1];
-    await this.ctx.storage.setAlarm((oldest + windowSec) * 1000);
+    await this.ctx.storage.setAlarm((consumptionTime(oldest) + windowSec) * 1000);
   }
 }
