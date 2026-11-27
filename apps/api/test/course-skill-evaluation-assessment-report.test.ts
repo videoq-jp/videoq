@@ -7,6 +7,7 @@ import { evaluationCases } from '../scripts/course-skill-evaluation/cases';
 import { runComparisonCohort, type CohortManifest } from '../scripts/course-skill-evaluation/cohort';
 import { exportReviewPackets } from '../scripts/course-skill-evaluation/review-packets';
 import { createAssessmentReport } from '../scripts/course-skill-evaluation/assessment-report';
+import { verifyFrozenCohort } from '../scripts/course-skill-evaluation/strict-verification';
 
 const hash = (raw: string) => createHash('sha256').update(raw).digest('hex');
 async function fixture(run: (f: Awaited<ReturnType<typeof setup>>) => Promise<void>) {
@@ -15,7 +16,7 @@ async function fixture(run: (f: Awaited<ReturnType<typeof setup>>) => Promise<vo
 }
 async function setup(directory: string) {
   const manifest: CohortManifest = { version: 1, seed: 'synthetic-report-fixture', repetitions: 2, definitionHash: hash(JSON.stringify(evaluationCases)), bootstrapHash: 'a'.repeat(64), sourceHashes: ['b'.repeat(64)], approvedSkillHashes: ['c'.repeat(64)], executorVersion: 'synthetic', model: 'synthetic', reasoning: 'medium', contextWindow: 32768, timeoutMs: 1000, baseCommits: Object.fromEntries(evaluationCases.map(c => [c.id, '1'.repeat(40)])) };
-  await runComparisonCohort({ directory, manifest, cases: evaluationCases, maxTrials: 60, verifyInputs: async () => undefined, run: async slot => {
+  const state = await runComparisonCohort({ directory, manifest, cases: evaluationCases, maxTrials: 60, verifyInputs: async () => undefined, run: async slot => {
     const detailPath = join(directory, `${slot.blindId}.json`), body = JSON.stringify({ execution: { answer: 'Synthetic unit answer' }, reviewFiles: { files: [], omitted: [] },
       calls: slot.condition === 'A' ? [] : [{ name: slot.condition === 'B' ? 'search_scenes' : 'read_course_skill_resource', success: true }] });
     await writeFile(detailPath, body);
@@ -26,7 +27,14 @@ async function setup(directory: string) {
   const template = JSON.parse(await readFile(join(reviewerDirectory, 'assessment-template.json'), 'utf8'));
   const completed = { ...template, reviewer: 'Synthetic unit fixture, not a real human assessment', decision: 'human-reviewed', assessments: template.assessments.map((a: { blindId: string; criteria: { criterion: string }[] }, index: number) => ({ blindId: a.blindId, criteria: a.criteria.map(c => ({ ...c, met: true })), misapplied: index === 0, unsupportedClaim: false, notes: 'Synthetic unit fixture evidence only.' })) };
   await writeFile(assessmentFile, JSON.stringify(completed));
-  return { directory, reviewerDirectory, assessmentFile, output, cases: evaluationCases, completed, template };
+  // Synthetic verifier fixture for report-unit tests; the separate integration
+  // test below executes the real verifier over every frozen output.
+  const verificationFile = join(directory, 'verification.json');
+  await writeFile(verificationFile, JSON.stringify({ version: 1, method: 'node-test-process-events-v1', complete: true, cohortManifestHash: state.manifestHash,
+    snapshotSha256: hash(await readFile(join(directory, 'cohort.json'), 'utf8')), nodeVersion: 'synthetic-unit-fixture',
+    graderSourceSha256: hash(await readFile('scripts/course-skill-evaluation/strict-grading.ts', 'utf8')),
+    results: state.results.map(r => ({ blindId: r.slot.blindId, detailSha256: r.outcome.detailSha256, originalFunctional: r.outcome.functional, verifiedFunctional: r.outcome.functional, timedOut: false })) }));
+  return { directory, reviewerDirectory, assessmentFile, verificationFile, output, cases: evaluationCases, completed, template };
 }
 test('keeps machine and human denominators separate and preserves missing usage', () => fixture(async f => {
   const report = await createAssessmentReport(f);
@@ -64,3 +72,21 @@ test('refuses substituted answers even when a packet hash is recomputed', () => 
   await writeFile(f.assessmentFile, JSON.stringify({ ...f.completed, packetHash: hash(raw) }));
   await expect(createAssessmentReport(f)).rejects.toThrow('CONTENT_CHANGED');
 }));
+test('requires a matching complete frozen-code verification artifact', () => fixture(async f => {
+  const verification = JSON.parse(await readFile(f.verificationFile, 'utf8'));
+  verification.snapshotSha256 = '0'.repeat(64);
+  await writeFile(f.verificationFile, JSON.stringify(verification));
+  await expect(createAssessmentReport(f)).rejects.toThrow('VERIFICATION_INPUTS_CHANGED');
+}));
+test('verifies all frozen outputs and does not promote old failures or hide new failures', () => fixture(async f => {
+  const output = join(f.directory, 'real-verification.json');
+  // This fixture intentionally contains no src/main.mjs in frozen snapshots:
+  // independent verification must reject every code result, even though the
+  // synthetic legacy fixture marks B/C as successful.
+  const summary = await verifyFrozenCohort({ directory: f.directory, output, cases: evaluationCases });
+  expect(summary).toMatchObject({ trials: 60, codePasses: 0, discrepancies: 32, modelReruns: 0, originalRecordsModified: false });
+  const report = await createAssessmentReport({ ...f, verificationFile: output });
+  expect(report.conditions.map(c => c.functional.passed)).toEqual([0, 0, 0]);
+  expect(report.conditions.map(c => c.originalFunctionalPasses)).toEqual([0, 16, 16]);
+  expect(report.conditions.map(c => c.verificationDiscrepancies)).toEqual([0, 16, 16]);
+}), 20000);
