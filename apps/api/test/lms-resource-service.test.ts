@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import type { ResourceManifest } from '../src/application/lms-resource';
+import type { ResourceManifest } from '../src/domain/lms/lms-resource';
 import { createLmsResourceService, lmsResourceState, lmsResourceStatus, synchronizeLmsResourceWithRecovery } from '../src/features/lms/resource-service';
 
 const manifest: ResourceManifest = {

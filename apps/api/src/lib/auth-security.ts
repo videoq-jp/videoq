@@ -1,6 +1,7 @@
-import { adminRoleChangeFailure } from "../application/admin";
-import { accountIsBanned } from "../application/resource-access";
-import { currentConsentAllows, refreshConsentDecision } from "../application/oauth-consent";
+import { adminRoleIncludes, adminBooleanRoleLogic } from '../domain/identity/admin';
+import { adminRoleChangeFailure } from "../domain/identity/admin";
+import { accountIsBanned } from "../domain/lms/resource-access";
+import { currentConsentAllows, refreshConsentDecision } from "../domain/identity/oauth-consent";
 import type { AuthContext, BetterAuthPlugin, GenericEndpointContext } from "better-auth";
 import {
   APIError,
@@ -155,7 +156,7 @@ export function videoqAuthSecurity(options: OAuthOptions<string[]>, grants?: OAu
         handler: createAuthMiddleware(async (ctx) => {
           const session = await getSessionFromCtx(ctx, { disableCookieCache: true });
           const isAdmin = session && "role" in session.user && typeof session.user.role === "string" &&
-            session.user.role.split(",").includes("admin");
+            adminRoleIncludes(session.user.role, adminBooleanRoleLogic);
           // Leave authentication/permission errors to the native Admin plugin.
           // A server-only createUser call is also allowed, with the same two roles.
           if (session ? !isAdmin : ctx.request || ctx.headers) return;

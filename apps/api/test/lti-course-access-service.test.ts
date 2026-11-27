@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { resolveCourseAccess } from '../src/features/lti/course-access-service';
-import { deniedCoursePermissions, type CourseAccessRegistration, type CourseGrant } from '../src/application/lms-authority';
+import { deniedCoursePermissions, type CourseAccessRegistration, type CourseGrant } from '../src/domain/lms/lms-authority';
 
 const grant: CourseGrant = { deploymentId: 'dep', contextId: 'ctx', resourceLinkId: 'entry', courseId: 1, resourceGeneration: 2 };
 const registration: CourseAccessRegistration = { id: 'db:school', resources: [

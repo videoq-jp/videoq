@@ -23,7 +23,7 @@ import {
   transcriptionRunReusable,
   validateTranscriptionBegin,
   validateTranscriptionFinish,
-} from "../../application/transcription-policy";
+} from "../../domain/media/transcription-policy";
 import { transcriptionDrizzleLogic as logic } from "../transcription-policy-sql";
 import { buildJobMessage } from "../../lib/job-message";
 import type { WorkerTranscriptionRepository } from "../contracts/worker-transcription";

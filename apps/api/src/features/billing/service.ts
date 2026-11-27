@@ -1,10 +1,11 @@
+import { usableBillingPriceAmount, billingCheckoutAlreadySubscribed, billingEventOwnerMatches, billingSubscriptionCustomerMatches, selectBillingSubscription, subscriptionEntitlementPatch } from '../../domain/billing/subscription-policy';
 import {
-  isPaidLookupKey, currencyForLocale, isPaidPlan, isUsableSubscriptionStatus,
-  PAID_LOOKUP_KEYS, PLAN_CATALOG, planCodeFromLookupKey,
+  isPaidLookupKey, currencyForLocale,
+  PAID_LOOKUP_KEYS, PLAN_CATALOG,
   type BillingCurrency, type PlanCode,
 } from './catalog';
-import { BillingStateChangedError, type BillingRepository, type BillingPatch, type BillingUpdate } from '../../persistence/contracts/billing-repository';
-import type { BillingGateway, BillingPrice, BillingSubscription, BillingEvent, BillingEventTarget } from './ports';
+import { BillingStateChangedError, type BillingRepository, type BillingUpdate } from '../../persistence/contracts/billing-repository';
+import type { BillingGateway, BillingPrice, BillingEvent, BillingEventTarget } from './ports';
 import { validationFailure, conflict, notFound, unavailable } from '../../application/errors';
 
 export type PublicPlan = {
@@ -72,11 +73,8 @@ function catalogPlans(currency: BillingCurrency): PublicPlan[] {
 }
 
 function priceAmount(price: BillingPrice, lookupKey: string, currency: BillingCurrency): number {
-  const amount = price.amounts[currency];
-  const interval = lookupKey.endsWith("_yearly") ? "year" : "month";
-  if (!price.active || !price.recurring || price.interval !== interval ||
-      price.intervalCount !== 1 || !price.perUnit ||
-      amount == null || !Number.isSafeInteger(amount) || amount <= 0) {
+  const amount = usableBillingPriceAmount(price, lookupKey, currency);
+  if (amount === null) {
     throw unavailable(
       `Stripe price '${lookupKey}' is not configured for ${currency.toUpperCase()}.`,
       "STRIPE_PRICE_UNAVAILABLE",
@@ -111,7 +109,7 @@ export function createBillingService({ repository, gateway }: BillingDependencie
     if (!isPaidLookupKey(lookupKey)) throw validationFailure('Unknown plan lookup key.', 'INVALID_LOOKUP_KEY');
     const user = await repository.findUser({ userId, activeOnly: true });
     if (!user) throw notFound('User not found');
-    if (user.stripeSubscriptionId && isPaidPlan(user.planCode) && isUsableSubscriptionStatus(user.subscriptionStatus)) {
+    if (billingCheckoutAlreadySubscribed(user)) {
       throw conflict('You already have an active subscription. Manage it in the customer portal.', 'SUBSCRIPTION_EXISTS');
     }
     const currency = currencyForLocale(locale);
@@ -138,18 +136,14 @@ export function createBillingService({ repository, gateway }: BillingDependencie
 
   async function prepareSubscriptionUpdate(target: BillingEventTarget): Promise<BillingUpdate | null> {
     const user = await repository.findUser(target);
-    if (!user || (user.stripeCustomerId && target.customerId !== user.stripeCustomerId)) return null;
+    if (!user || !billingEventOwnerMatches(user.stripeCustomerId, target.customerId)) return null;
     let subscription = await gateway.retrieveSubscription(target.subscriptionId);
-    if (subscription.customerId !== target.customerId) return null;
+    if (!billingSubscriptionCustomerMatches(subscription, target.customerId)) return null;
     if (user.stripeSubscriptionId && user.stripeSubscriptionId !== subscription.id) {
       const current = await gateway.retrieveSubscription(user.stripeSubscriptionId);
-      // Contract creation time wins over webhook delivery order.
-      if (isUsableSubscriptionStatus(current.status) || current.created > subscription.created ||
-          (current.created === subscription.created && !isUsableSubscriptionStatus(subscription.status))) {
-        subscription = current;
-      }
+      subscription = selectBillingSubscription(current, subscription);
     }
-    return { userId: user.id, expectedRevision: user.revision, patch: subscriptionPatch(subscription, target.customerId) };
+    return { userId: user.id, expectedRevision: user.revision, patch: subscriptionEntitlementPatch(subscription, target.customerId) };
   }
 
   async function handleBillingEvent(event: BillingEvent): Promise<void> {
@@ -168,16 +162,4 @@ export function createBillingService({ repository, gateway }: BillingDependencie
   }
 
   return { listPlans, createCheckoutSession, createPortalSession, handleBillingEvent };
-}
-
-function subscriptionPatch(subscription: BillingSubscription, customerId: string | null): BillingPatch {
-  const plan = subscription.lookupKey ? planCodeFromLookupKey(subscription.lookupKey) ?? 'free' : 'free';
-  const effectivePlan = isUsableSubscriptionStatus(subscription.status) ? plan : 'free';
-  return {
-    stripeCustomerId: customerId ?? undefined,
-    stripeSubscriptionId: subscription.id,
-    planCode: effectivePlan,
-    subscriptionStatus: subscription.status,
-    entitlements: PLAN_CATALOG[effectivePlan].entitlements,
-  };
 }

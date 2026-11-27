@@ -3,7 +3,7 @@ import type {
   CourseManagementLogic,
   CourseRoleChoice,
   CoursePriorityChoice,
-} from "../application/course-management";
+} from "../domain/learning/course-management";
 export const courseManagementDrizzleLogic: CourseManagementLogic<SQL> = {
   and: (a, b) => sql`(${a} AND ${b})`,
 };

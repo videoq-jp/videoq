@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { materialsSnapshotIssues } from '../src/features/lms/materials-snapshot-policy';
+import { materialsSnapshotIssues } from '../src/domain/lms/materials-snapshot-policy';
 
 function resource(externalId: string, kind?: 'course' | 'youtube', contextId = 'course') {
   return { externalId, manifest: { contextId, kind } };

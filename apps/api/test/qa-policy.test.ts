@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { qaBooleanLogic, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, qaLtiAccessAllowed, validLtiQaScope, type QaOperation } from "../src/features/qa/policy";
+import { qaBooleanLogic, qaContentAbilities, qaMutationAllowed, qaNativeAccessAllowed, qaLtiAccessAllowed, validLtiQaScope, type QaOperation } from "../src/domain/qa/policy";
 
 const operations: QaOperation[] = ["qa.ask", "qa.reply", "qa.vote", "qa.feature", "qa.updateQuestion", "qa.deleteQuestion", "qa.updateReply", "qa.deleteReply"];
 describe("Q&A business policy", () => {

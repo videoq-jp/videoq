@@ -1,4 +1,4 @@
-import { DEFAULT_SCENE_SEARCH_RESULTS, sceneSearchSelection, validateSceneSearchLimit } from '../../application/scene-retrieval';
+import { DEFAULT_SCENE_SEARCH_RESULTS, sceneSearchSelection, validateSceneSearchLimit } from '../../domain/search/scene-retrieval';
 import type { SceneHit, SceneSearchRepository } from "../contracts/scene-search";
 import { PGEngine, PGVectorStore } from "@videoq-jp/langchainjs-postgres";
 import type { EmbeddingsInterface } from "@langchain/core/embeddings";

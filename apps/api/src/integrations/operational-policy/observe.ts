@@ -1,6 +1,6 @@
 import {embeddingFingerprint,embeddingDimensions,resolveEmbeddingConfig} from '../../lib/embedding-contract';
 import { createD1OperationalPolicyRepository } from '../../persistence/d1/operational-policy';
-import { evaluateOperationalPolicy } from '../../application/operational-policy';
+import { evaluateOperationalPolicy } from '../../domain/operations/operational-policy';
 import { deliverPolicyNotification } from './notifications';
 import { persistenceBackend } from '../../persistence/backend';
 import type { Bindings } from '../../types/bindings';

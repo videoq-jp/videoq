@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { users } from "../../db/schema/sqlite";
-import { lmsOwnerAvailable } from "../../application/lms-owner";
+import { lmsOwnerAvailable } from "../../domain/lms/lms-owner";
 import { lmsOwnerDrizzleLogic } from "../lms-owner-policy";
 
 export function activeD1LmsOwner() {

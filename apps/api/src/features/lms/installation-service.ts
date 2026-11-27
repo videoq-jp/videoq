@@ -1,4 +1,4 @@
-import type { MaterialsService, ProvisionInstallation } from '../../application/lti-registration';
+import type { MaterialsService, ProvisionInstallation } from '../../domain/lms/lti-registration';
 import type { LmsInstallationRepository } from '../../persistence/contracts/lms-installation-repository';
 
 export interface LmsInstallationDependencies {

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { managementContextView } from '../src/application/lms-management';
+import { managementContextView } from '../src/domain/lms/lms-management';
 import { deploymentFeatures, deploymentEdition } from '@videoq/domain/deployment';
 
 it('keeps recovery and billing available to a cloud owner without reactivating a disconnected connection', () => {

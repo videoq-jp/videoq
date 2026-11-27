@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createMoodlePairingService, type MoodlePairingDependencies } from '../src/features/lms/pairing-service';
-import type { PairingExchangeInput } from '../src/application/moodle-pairing';
+import type { PairingExchangeInput } from '../src/domain/lms/moodle-pairing';
 
 function setup(mode: 'legacy' | 'materials' = 'materials') {
   const deps = {

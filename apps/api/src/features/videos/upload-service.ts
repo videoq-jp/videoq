@@ -1,14 +1,14 @@
-import { uploadConfirmed } from '../../application/multipart-upload';
+import { uploadConfirmed } from '../../domain/media/multipart-upload';
 import type { CreationIdempotency } from "../../persistence/contracts/creation-idempotency";
 import type { VideoUploadRepository } from "../../persistence/contracts/video-upload-repository";
 import type { VideoMutationRepository } from "../../persistence/contracts/video-mutation-repository";
 import type { VideoReadRepository, VideoDetail } from "../../persistence/contracts/video-read-repository";
 import type { MultipartUploadRepository } from "../../persistence/contracts/multipart-upload-repository";
 import {
-  buildPendingUploadFileKey, fileExtension, isAllowedExtension, isAllowedContentType,
-  parseReservedBytesFromFileKey, unsupportedTypeMessage, invalidContentTypeMessage,
-} from "../../application/upload";
-import { MAX_SINGLE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "@videoq/domain/video-upload";
+  buildPendingUploadFileKey, fileExtension,
+  parseReservedBytesFromFileKey,
+} from "../../domain/media/upload";
+import { videoTitleFailure, uploadFilenameFailure, uploadContentTypeFailure, uploadSizeFailure, transcriptionLanguageFailure } from "@videoq/domain/video-upload";
 
 /** Only the capabilities needed by the upload lifecycle; no runtime environment. */
 export interface VideoUploadDependencies<Body = unknown> {
@@ -52,16 +52,8 @@ const uploadFailure = (kind: Extract<DirectUploadResult, { ok: false }>['error']
 
 /** Shared title validation preserves form error precedence without HTTP dependencies. */
 export function directUploadTitleFailure(rawTitle: string) {
-  const title = rawTitle.trim();
-  if (!title) {
-    const message = 'This field may not be blank.';
-    return uploadFailure('validation', message, 'VALIDATION_ERROR', { title: [message] });
-  }
-  if ([...title].length > 255) {
-    const message = 'Ensure this field has no more than 255 characters.';
-    return uploadFailure('validation', message, 'VALIDATION_ERROR', { title: [message] });
-  }
-  return null;
+  const message = videoTitleFailure(rawTitle);
+  return message ? uploadFailure('validation', message, 'VALIDATION_ERROR', { title: [message] }) : null;
 }
 
 
@@ -83,19 +75,17 @@ export function createVideoUploadService<Body>(deps: VideoUploadDependencies<Bod
     }
 
     const fieldError: Record<string, string[]> = {};
-    if (!Number.isSafeInteger(body.file_size) || body.file_size <= 0 || body.file_size > MAX_VIDEO_UPLOAD_BYTES) {
-      fieldError.file_size = ["Invalid file size (exceeds the storage provider object limit)."];
-    } else if (!body.multipart && body.file_size > MAX_SINGLE_UPLOAD_BYTES) {
-      fieldError.file_size = ["Files larger than 5 GiB require multipart upload."];
-    }
-    const ext = fileExtension(body.filename);
-    if (!isAllowedExtension(ext)) {
-      fieldError.filename = [unsupportedTypeMessage(ext)];
-    }
-    if (!isAllowedContentType(body.content_type)) {
-      fieldError.content_type = [invalidContentTypeMessage(body.content_type)];
-    }
+    const failures = {
+      file_size: uploadSizeFailure(body.file_size, !body.multipart),
+      filename: uploadFilenameFailure(body.filename),
+      content_type: uploadContentTypeFailure(body.content_type),
+      title: videoTitleFailure(body.title),
+      transcriptionLanguage: transcriptionLanguageFailure(body.transcriptionLanguage),
+    };
+    for (const [field, error] of Object.entries(failures)) if (error) fieldError[field] = [error];
     if (Object.keys(fieldError).length) return { fieldError } as const;
+    body = { ...body, title: body.title.trim(), filename: body.filename.trim(), content_type: body.content_type.trim() };
+    const ext = fileExtension(body.filename);
 
     const fileKey = idempotency
       ? buildPendingUploadFileKey(
@@ -257,21 +247,15 @@ export function createVideoUploadService<Body>(deps: VideoUploadDependencies<Bod
     const title = input.title.trim();
     const titleFailure = directUploadTitleFailure(title);
     if (titleFailure) return titleFailure;
-    if (transcriptionLanguage !== undefined && !Object.hasOwn(TRANSCRIPTION_LANGUAGES, transcriptionLanguage)) {
+    if (transcriptionLanguageFailure(transcriptionLanguage)) {
       return uploadFailure('validation', 'Invalid transcription language.', 'VALIDATION_ERROR', { transcriptionLanguage: ['Invalid transcription language.'] });
     }
 
-    const ext = fileExtension(file.name || '');
-    if (!isAllowedExtension(ext)) {
-      const message = unsupportedTypeMessage(ext);
-      return uploadFailure('validation', message, 'VALIDATION_ERROR', { file: [message] });
-    }
-    const contentType = file.type || 'application/octet-stream';
-    if (!isAllowedContentType(contentType)) {
-      const message = invalidContentTypeMessage(contentType);
-      return uploadFailure('validation', message, 'VALIDATION_ERROR', { file: [message] });
-    }
-
+    const filename = (file.name || '').trim();
+    const contentType = (file.type || 'application/octet-stream').trim();
+    const metadataFailure = uploadFilenameFailure(filename) ?? uploadContentTypeFailure(contentType) ?? uploadSizeFailure(file.size);
+    if (metadataFailure) return uploadFailure('validation', metadataFailure, 'VALIDATION_ERROR', { file: [metadataFailure] });
+    const ext = fileExtension(filename);
     const fileSize = file.size;
     const fileKey = deps.newFileKey(userId, fileSize, ext);
     const pending = await videos.reserveUpload({ userId, storageBytes: fileSize, fileKey, title, description, transcriptionLanguage });

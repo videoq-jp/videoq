@@ -22,7 +22,7 @@ it("prevents extracted use cases from acquiring runtime and implementation depen
       if (!path.endsWith('.ts')) continue;
       const rules = (await eslint.calculateConfigForFile(path))?.rules;
       const restriction = JSON.stringify(rules?.['no-restricted-imports']);
-      if (restriction?.includes('Application workflows and their contracts') || restriction?.includes('Application models and persistence ports')) {
+      if (restriction?.includes('Application workflows and their contracts') || restriction?.includes('Application models and persistence ports') || restriction?.includes('Domain rules depend only')) {
         protectedPaths.push(path.slice(cwd.length));
       }
     }
@@ -74,7 +74,9 @@ it("prevents extracted use cases from acquiring runtime and implementation depen
       const [result] = await eslint.lintText(source, { filePath });
       expect(result.messages.some(message => message.ruleId === "no-restricted-imports" || message.ruleId === "no-restricted-syntax"), `${source}: ${JSON.stringify(result.messages)}`).toBe(true);
     }
-    const allowedSource = relativePath.startsWith('src/application/')
+    const allowedSource = relativePath.startsWith('src/domain/')
+      ? 'export type { InvitationStatus } from "./course-invitations";'
+      : relativePath.startsWith('src/application/')
       ? 'export type { ChatAnswer } from "./models";'
       : relativePath.startsWith('src/persistence/contracts/')
         ? 'export type { VideoUploadRepository } from "./video-upload-repository";'
@@ -118,7 +120,7 @@ it('checks real transitive dependencies of the extracted workflows, including ty
   async function visit(filePath: string): Promise<void> {
     if (visited.has(filePath)) return;
     visited.add(filePath);
-    expect(pureFiles.has(filePath) || filePath.startsWith(resolve(cwd, 'src/application') + '/') || filePath.startsWith(resolve(cwd, 'src/persistence/contracts') + '/'), filePath).toBe(true);
+    expect(pureFiles.has(filePath) || filePath.startsWith(resolve(cwd, 'src/domain') + '/') || filePath.startsWith(resolve(cwd, 'src/application') + '/') || filePath.startsWith(resolve(cwd, 'src/persistence/contracts') + '/'), filePath).toBe(true);
     const source = readFileSync(filePath, 'utf8');
     const [result] = await eslint.lintText(source, { filePath });
     expect(result.messages.filter(m => m.ruleId === 'no-restricted-imports' || m.ruleId === 'no-restricted-syntax'), filePath).toEqual([]);
@@ -139,7 +141,7 @@ it('checks real transitive dependencies of the extracted workflows, including ty
       else if (entry.isFile() && entry.name.endsWith('.ts')) await visit(path);
     }
   }
-  for (const directory of ['application', 'persistence/contracts']) await inspectDirectory(resolve(cwd, 'src', directory));
+  for (const directory of ['domain', 'application', 'persistence/contracts']) await inspectDirectory(resolve(cwd, 'src', directory));
 });
 
 
@@ -188,7 +190,7 @@ it('includes every ESLint-protected application module in the DOM-free compilati
       if (!path.endsWith('.ts')) continue;
       const rules = (await eslint.calculateConfigForFile(path))?.rules;
       const restriction = JSON.stringify(rules?.['no-restricted-imports']);
-      if (restriction?.includes('Application workflows and their contracts') || restriction?.includes('Application models and persistence ports')) {
+      if (restriction?.includes('Application workflows and their contracts') || restriction?.includes('Application models and persistence ports') || restriction?.includes('Domain rules depend only')) {
         expect(compiled.has(path), `Missing DOM-free application compilation: ${path}`).toBe(true);
       }
     }
@@ -200,7 +202,7 @@ it('requires explicit operation time in invitation and maintenance workflows', a
   const cwd = fileURLToPath(new URL('../', import.meta.url));
   const eslint = new ESLint({ cwd, overrideConfig: [tseslint.configs.disableTypeChecked] });
   for (const relativePath of [
-    'src/application/course-invitations.ts',
+    'src/domain/learning/course-invitations.ts',
     'src/features/course-memberships/core.ts',
     'src/features/course-memberships/delivery-service.ts',
     'src/features/maintenance/service.ts',
@@ -214,4 +216,28 @@ it('requires explicit operation time in invitation and maintenance workflows', a
     });
     expect(allowed.errorCount, JSON.stringify(allowed.messages)).toBe(0);
   }
+});
+
+it('keeps local prototype compositions out of every production entrypoint', () => {
+  const sourceRoot = fileURLToPath(new URL('../src/', import.meta.url));
+  const visited = new Set<string>();
+  function inspect(path: string): void {
+    if (visited.has(path)) return;
+    visited.add(path);
+    expect(/\/(runtime\/prototype[^/]*|integrations\/prototype\/|persistence\/memory\/)/.test(path), path).toBe(false);
+    const tree = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
+    function visit(node: ts.Node): void {
+      const module = ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier)
+        || (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0]);
+      if (module && ts.isStringLiteral(module) && module.text.startsWith('.')) {
+        const base = resolve(dirname(path), module.text);
+        const dependency = [base, base + '.ts', resolve(base, 'index.ts')].find(candidate => ts.sys.fileExists(candidate));
+        if (dependency?.endsWith('.ts')) inspect(dependency);
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(tree);
+  }
+  for (const root of ['index.ts', 'runtime/node.ts', 'runtime/background-worker.ts']) inspect(resolve(sourceRoot, root));
+  expect(visited.size).toBeGreaterThan(100);
 });

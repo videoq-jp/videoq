@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { CourseTagCommand } from '../src/application/course-tags';
 import type { MaterialCommand, MaterialView } from '../src/application/material-management';
-import type { PrivacyRequest } from '../src/application/privacy';
+import type { PrivacyRequest } from '../src/domain/lms/privacy';
 import type { courseTagInput } from '../src/shared/course-tags';
 import type { materialManagementInput, materialView } from '../src/shared/material-management';
 import type { privacyRequest } from '../src/shared/privacy';

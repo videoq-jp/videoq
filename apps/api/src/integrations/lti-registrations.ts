@@ -1,4 +1,4 @@
-import { mergeLtiRegistrations } from '../features/lti/registration-service';
+import { mergeLtiRegistrations } from '../domain/lms/registration-policy';
 import { createLtiRegistrationRepository } from '../persistence/factory';
 import { ltiConfig } from '../features/lti/config';
 import { features } from '../lib/deployment';

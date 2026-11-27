@@ -1,4 +1,4 @@
-import type { GenerationResult } from '../../application/answer-generation';
+import type { GenerationResult } from '../../domain/conversation/answer-generation';
 import type { ConversationScope, OpenConversation, PersistConversationLog } from '../../persistence/contracts/conversation';
 
 export type ConversationRequest = { id?: string; resume?: boolean; question?: string; scope: ConversationScope; persistLog?: PersistConversationLog };

@@ -1,5 +1,5 @@
-import type { ResourceManifest } from '../application/lms-resource';
-import type { LmsGrant } from '../application/lms-upload';
+import type { ResourceManifest } from '../domain/lms/lms-resource';
+import type { LmsGrant } from '../domain/lms/lms-upload';
 import { synchronizeLmsResourceWithRecovery } from '../features/lms/resource-service';
 import { syncLmsResource } from '../repositories/lms-resource-repository';
 import { armMaintenance } from '../lib/task-scheduler';

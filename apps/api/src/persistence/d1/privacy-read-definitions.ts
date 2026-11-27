@@ -13,7 +13,7 @@ import {
   privacyRecentContext,
   privacyReportContext,
   privacyRecordAllowed,
-} from "../../application/privacy-policy";
+} from '../../domain/lms/privacy-policy';
 import { privacyDrizzleLogic } from "../privacy-policy-sql";
 import {
   chatLogs,

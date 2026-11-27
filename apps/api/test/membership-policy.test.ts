@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import {
   uniqueMembershipIds, planTagAttachment, membershipCourseAllowed, membershipVideoAllowed,
   membershipOrderAllowed, matchesMembershipOrder, tagAttachmentAllowed, type MembershipLogic,
-} from '../src/application/membership-policy';
+} from '../src/domain/learning/membership-policy';
 
 const logic: MembershipLogic<boolean> = { and: (left, right) => left && right, or: (left, right) => left || right };
 

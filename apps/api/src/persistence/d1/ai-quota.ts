@@ -5,7 +5,7 @@ import { users } from "../../db/schema/sqlite";
 import {
   failedAiReservation,
   quotaAllowsNext,
-} from "../../application/quota-policy";
+} from "../../domain/billing/quota-policy";
 import { quotaDrizzleComparison } from "../quota-policy-sql";
 import type { AiQuotaRepository } from "../contracts/ai-quota";
 

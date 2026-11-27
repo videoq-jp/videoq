@@ -1,1 +1,1 @@
-export { isSafeMediaPath } from '../application/media-path';
+export { isSafeMediaPath } from '../domain/media/media-path';

@@ -1,4 +1,4 @@
-import type { PolicyEvent } from '../../application/operational-policy';
+import type { PolicyEvent } from '../../domain/operations/operational-policy';
 export type PolicyNotificationSink = {url:string;token:string};
 /** Sink must implement Idempotency-Key semantics. Unknown delivery outcomes may retry. */
 export async function deliverPolicyNotification(sink:PolicyNotificationSink,event:PolicyEvent,idempotencyKey:string,send:typeof fetch=fetch) {

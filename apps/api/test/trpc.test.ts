@@ -25,7 +25,10 @@ const videoService = vi.hoisted(() => ({
 }));
 
 vi.mock("../src/features/tags/service", () => tagService);
-vi.mock("../src/integrations/courses", () => courseService);
+vi.mock("../src/integrations/courses", async () => {
+  const { createUseCaseBus } = await import('../src/application/use-case-bus');
+  return { createCourseUseCases: async () => createUseCaseBus(courseService) };
+});
 vi.mock("../src/features/videos/service", () => videoService);
 
 import { createApp } from "../src/app";
@@ -446,7 +449,6 @@ describe("tRPC Hono adapter", () => {
       },
     });
     expect(courseService.listCourses).toHaveBeenCalledWith(
-      ENV,
       TEST_USER_ID,
       24,
       5,
@@ -490,7 +492,6 @@ describe("tRPC Hono adapter", () => {
       result: { data: sampleCourse },
     });
     expect(courseService.createUserCourse).toHaveBeenCalledWith(
-      ENV,
       TEST_USER_ID,
       sampleCourse.name,
       sampleCourse.description,
@@ -500,7 +501,6 @@ describe("tRPC Hono adapter", () => {
       result: { data: { courseIds: [7, 8] } },
     });
     expect(courseService.reorderUserCourses).toHaveBeenCalledWith(
-      ENV,
       TEST_USER_ID,
       [7, 8],
     );

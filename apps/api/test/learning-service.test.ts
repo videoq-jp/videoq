@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { LearningAuthorization } from '../src/application/lti-authorization';
-import { deniedCoursePermissions } from '../src/application/lms-authority';
+import { deniedCoursePermissions } from '../src/domain/lms/lms-authority';
 import { completeLearningChat, readLearningHistory, readLearningTranscript, updateLearningFeedback } from '../src/features/lti/learning-service';
 
 const access: LearningAuthorization = {

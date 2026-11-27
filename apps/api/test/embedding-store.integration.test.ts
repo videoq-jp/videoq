@@ -10,7 +10,7 @@ import { openSceneSearch } from "../src/repositories/vector-repository";
 import type { Bindings } from "../src/types/bindings";
 import { embedding } from "./helpers/embedding";
 import { replacePostgresTranscriptIndex } from "../src/persistence/postgres/transcript-index-writer";
-import { parseSearchScenes } from "../src/application/search-scene-splitting";
+import { parseSearchScenes } from "../src/domain/search/search-scene-splitting";
 
 const databaseUrl = process.env.EMBEDDING_TEST_DATABASE_URL;
 const migrations = fileURLToPath(new URL("../drizzle", import.meta.url));

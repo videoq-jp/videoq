@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { users, videos } from "../../db/schema";
-import { quotaAllowsAdditional } from "../../application/quota-policy";
+import { quotaAllowsAdditional } from "../../domain/billing/quota-policy";
 import { quotaDrizzleComparison } from "../quota-policy-sql";
 import type { Bindings } from "../../types/bindings";
 import {

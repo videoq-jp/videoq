@@ -1,10 +1,11 @@
 import { insertSelectValues, runD1Batch } from "../../db/d1/query-builders";
 import {
+} from '../../application/teaching';
+import {
   teachingConnectionConflicts,
   teachingInstallationRequired,
   teachingResourceLinkAllowed,
-  selectTeachingCourse,
-} from "../../application/teaching";
+  selectTeachingCourse} from '../../domain/lms/teaching';
 import { activeD1LmsOwner } from "./lms-owner-policy";
 import { and, eq, exists, sql } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";

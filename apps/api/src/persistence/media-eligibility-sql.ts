@@ -1,5 +1,5 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
-import type { MediaEligibilityLogic } from "../application/media-eligibility";
+import type { MediaEligibilityLogic } from "../domain/media/media-eligibility";
 export const mediaDrizzleLogic: MediaEligibilityLogic<SQLWrapper, SQL> = {
   and: (left, right) => sql`(${left} AND ${right})`,
   statusIs: (status, expected) => sql`${status}=${expected}`,

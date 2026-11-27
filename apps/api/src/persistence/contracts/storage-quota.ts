@@ -1,1 +1,1 @@
-export type { StorageReservationResult, UploadReservationResult } from '../../application/quota-policy';
+export type { StorageReservationResult, UploadReservationResult } from '../../domain/billing/quota-policy';

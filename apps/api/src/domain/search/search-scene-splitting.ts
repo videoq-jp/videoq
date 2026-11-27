@@ -62,14 +62,10 @@ export function otsuBoundary(vectors: readonly number[][], start: number, end: n
   return best;
 }
 
-export interface SceneSplittingDependencies {
-  encoding: SceneEncoding;
-  embed(texts: string[]): Promise<number[][]>;
-  boundary?(start: number, end: number, texts: string[]): Promise<number>;
-}
+export type SceneSplitEffect = { kind: 'embed'; texts: string[] } | { kind: 'boundary'; start: number; end: number; texts: string[] };
 
 /** Iterative port of the Python splitter; no runtime, storage or provider dependency. */
-export async function splitSearchScenes(transcript: string, deps: SceneSplittingDependencies, maxTokens = 512): Promise<string> {
+export function* planSearchScenes(transcript: string, encoding: SceneEncoding, maxTokens = 512, externalBoundary = false): Generator<SceneSplitEffect, string, number | number[][]> {
   if (!Number.isSafeInteger(maxTokens) || maxTokens <= 0) throw new Error('maxTokens must be positive');
   const raw = parseSearchScenes(transcript);
   if (!raw.length) return '';
@@ -79,16 +75,16 @@ export async function splitSearchScenes(transcript: string, deps: SceneSplitting
   const prefix = [0];
   const long = new Map<number, Pick<SearchScene, 'startTime' | 'endTime' | 'text'>[]>();
   for (let i = 0; i < texts.length; i++) {
-    const tokens = deps.encoding.encode(texts[i]);
+    const tokens = encoding.encode(texts[i]);
     prefix.push(prefix.at(-1)! + tokens.length);
     if (tokens.length <= maxTokens) continue;
     const chunks: Pick<SearchScene, 'startTime' | 'endTime' | 'text'>[] = [];
     for (let start = 0; start < tokens.length;) {
       let end = Math.min(start + maxTokens, tokens.length), text: string | undefined;
       while (end > start) {
-        try { text = deps.encoding.decodeStrict(tokens.slice(start, end)); }
+        try { text = encoding.decodeStrict(tokens.slice(start, end)); }
         catch { text = undefined; }
-        if (text !== undefined && deps.encoding.encode(text.trim()).length <= maxTokens) break;
+        if (text !== undefined && encoding.encode(text.trim()).length <= maxTokens) break;
         end--;
       }
       if (end <= start || text === undefined) throw new Error('maxTokens is too small to preserve this text');
@@ -105,18 +101,18 @@ export async function splitSearchScenes(transcript: string, deps: SceneSplitting
     const [start, end] = pending.pop()!;
     const tokens = prefix[end + 1] - prefix[start];
     if (start === end && tokens > maxTokens) { scenes.push(...long.get(start)!); continue; }
-    if (tokens <= maxTokens && (start === end || deps.encoding.encode(texts.slice(start, end + 1).join(' ')).length <= maxTokens)) {
+    if (tokens <= maxTokens && (start === end || encoding.encode(texts.slice(start, end + 1).join(' ')).length <= maxTokens)) {
       scenes.push({ startTime: raw[start].startTime, endTime: raw[end].endTime, text: texts.slice(start, end + 1).join(' ') });
       continue;
     }
     let split = end;
-    if (end !== start + 1 && deps.boundary) {
-      const boundary = await deps.boundary(start, end, texts);
+    if (end !== start + 1 && externalBoundary) {
+      const boundary = (yield { kind: 'boundary', start, end, texts }) as number;
       if (!Number.isSafeInteger(boundary) || boundary < 1 || boundary >= end - start + 1) throw new Error('Invalid scene boundary');
       split = start + boundary;
     } else if (end !== start + 1) {
       if (!vectors) {
-        vectors = await deps.embed(texts);
+        vectors = (yield { kind: 'embed', texts }) as number[][];
         const dimensions = vectors[0]?.length;
         if (vectors.length !== texts.length || !dimensions || vectors.some(v => v.length !== dimensions || v.some(x => !Number.isFinite(x)))) {
           throw new Error('Invalid scene embeddings');

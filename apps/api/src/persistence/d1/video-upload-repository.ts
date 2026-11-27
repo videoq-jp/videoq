@@ -8,13 +8,13 @@ import {
   pendingYoutubeVideo,
   uploadConfirmationTransition,
   videoCreationReplayAllowed,
-} from "../../application/video-creation";
+} from "../../domain/media/video-creation";
 import { validateCreationIdempotency } from "../../application/creation-idempotency";
 import {
   failedUploadReservation,
   quotaAllowsAdditional,
   validateUploadReservationBytes,
-} from "../../application/quota-policy";
+} from "../../domain/billing/quota-policy";
 import { quotaDrizzleComparison } from "../quota-policy-sql";
 import { and, eq, sql, notExists } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";

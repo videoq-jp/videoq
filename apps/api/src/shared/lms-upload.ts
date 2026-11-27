@@ -1,5 +1,5 @@
 import type {LmsContentAttempt,LmsUploadSnapshot} from '../persistence/contracts/lms-upload-repository';
-import {parseReservedBytesFromFileKey} from '../application/upload';
+import {parseReservedBytesFromFileKey} from '../domain/media/upload';
 export const contentSlot=(s:LmsUploadSnapshot)=>'lms-content-upload:'+s.videoId;
 export const contentCleanup=(id:string)=>'lms-content-stage:'+id;
 export const contentPayload=(a:LmsContentAttempt)=>JSON.stringify({id:a.id,installationId:a.grant.id,ownerUserId:a.grant.ownerUserId,

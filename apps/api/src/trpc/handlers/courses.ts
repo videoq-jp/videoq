@@ -1,6 +1,7 @@
 import { visitorSession } from "../../lib/visitor-session";
 import type { Context } from "hono";
-import * as courseService from "../../integrations/courses";
+import { createCourseUseCases } from "../../integrations/courses";
+import { createCourseProcedures } from "./course-procedures";
 import * as courseMembershipService from "../../features/course-memberships/service";
 import * as membershipService from "../../features/membership/service";
 import { processExternalTasks } from "../../lib/external-tasks";
@@ -75,63 +76,16 @@ export function courseHandlers(
 ): HandlersFor<"courses"> & HandlersFor<"courseMemberships"> & HandlersFor<"memberships"> {
   const userId = () => requireUserId(authenticatedUserId);
   return {
-    "courses.list": async ({ limit, cursor }) => {
-      const offset = cursor ?? 0;
-      const { count, results } = await courseService.listCourses(c.env, userId(), limit, offset);
-      return { data: results, meta: { total: count, limit, offset } };
-    },
-    "courses.get": async ({ id }) => {
-      const course = await courseService.getCourse(c.env, id, userId());
-      if (!course) return rpcError("NOT_FOUND", "Course not found");
-      return course;
-    },
-    "courses.shared": async ({ slug }) => {
-      const denied = await enforceThrottles(c.env, [
-        { scope: "chat_share_token_ip", ident: clientIp(c) },
-      ]);
-      if (denied) return throttleError(denied.retryAfterSec);
-      const course = await courseService.getSharedCourse(c.env, slug);
-      if (!course) return rpcError("NOT_FOUND", "Share link not found");
-      await visitorSession(c);
-      return course;
-    },
-    "courses.create": async ({ name, description }) => {
-      const course = await courseService.createUserCourse(c.env, userId(), name, description);
-      if (!course || course.access_role === "public") {
-        return rpcError("INTERNAL_SERVER_ERROR", "Created course could not be loaded");
-      }
-      return { ...course, access_role: course.access_role };
-    },
-    "courses.update": async ({ id, ...patch }) => {
-      const result = await courseService.updateUserCourse(c.env, id, userId(), patch);
-      if ("notFound" in result) return rpcError("NOT_FOUND", "Course not found");
-      return result.course;
-    },
-    "courses.delete": async ({ id }) => {
-      const result = await courseService.removeCourse(c.env, id, userId());
-      if ("notFound" in result) return rpcError("NOT_FOUND", "Course not found");
-      return { success: true };
-    },
-    "courses.reorder": async ({ courseIds }) => {
-      const result = await courseService.reorderUserCourses(c.env, userId(), courseIds);
-      if ("mismatch" in result) {
-        return rpcError("BAD_REQUEST", "Specified course IDs do not match user courses");
-      }
-      return { courseIds };
-    },
-    "courses.createShare": async ({ id, shareSlug }) => {
-      const result = await courseService.saveShareLink(c.env, id, userId(), shareSlug);
-      if ("notFound" in result) return rpcError("NOT_FOUND", "Course not found");
-      if ("error" in result) return rpcError("BAD_REQUEST", result.error ?? "Bad request");
-      if ("conflict" in result) return rpcError("CONFLICT", result.conflict ?? "Conflict");
-      return { message: "Share link saved", share_slug: result.share_slug };
-    },
-    "courses.deleteShare": async ({ id }) => {
-      const result = await courseService.clearShareLink(c.env, id, userId());
-      if ("notFound" in result) return rpcError("NOT_FOUND", "Course not found");
-      if ("notConfigured" in result) return rpcError("NOT_FOUND", "Share link is not configured");
-      return { success: true };
-    },
+    ...createCourseProcedures({
+      useCases: () => createCourseUseCases(c.env), userId,
+      beforeShared: async () => {
+        const denied = await enforceThrottles(c.env, [
+          { scope: "chat_share_token_ip", ident: clientIp(c) },
+        ]);
+        if (denied) throttleError(denied.retryAfterSec);
+      },
+      afterShared: async () => { await visitorSession(c); },
+    }),
 
     "courseMemberships.invite": async ({ courseId, emails }) => {
       const uid = userId();

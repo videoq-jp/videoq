@@ -1,5 +1,5 @@
 import { protectedTextRanges, type ChatAnswer, type ChatContentPart, type ChatSource, type ModelAnswer } from '@videoq/domain/chat';
-import { StructuredAnswerError } from '../../application/answer-generation';
+import { StructuredAnswerError } from '../../domain/conversation/answer-generation';
 
 export interface AnswerTextParser {
   push(delta: string): Array<{ segmentIndex: number; text: string }>;

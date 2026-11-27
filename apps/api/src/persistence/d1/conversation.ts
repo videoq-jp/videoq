@@ -45,7 +45,7 @@ import {
   conversationLogShouldExpire,
   conversationTitleOnCommit,
   conversationStoredScopeConflict,
-} from "../../application/conversation-lifecycle";
+} from "../../domain/conversation/conversation-lifecycle";
 import { conversationDrizzleLogic as logic } from "../conversation-policy-sql";
 import { apiConflict, apiNotFound, ApiError } from "../../shared/errors";
 import type {

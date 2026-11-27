@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { externalTaskFailure, storageCleanupRefundRequired, storageCleanupState, validateExternalTaskDeferral, type StorageCleanupLogic } from '../src/application/external-task-policy';
+import { externalTaskFailure, storageCleanupRefundRequired, storageCleanupState, validateExternalTaskDeferral, type StorageCleanupLogic } from '../src/domain/operations/external-task-policy';
 
 const logic: StorageCleanupLogic<number | null, boolean> = {
   remaining: (used, refunded) => Math.max(0, used! - refunded!),

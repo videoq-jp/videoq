@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createGoogleAccountProfile } from '../src/application/google-account';
+import { createGoogleAccountProfile } from '../src/domain/identity/google-account';
 
 const deps = { usernameExists: async () => false, newId: () => 'unused' };
 

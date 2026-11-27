@@ -44,7 +44,7 @@ import {
   qaNativeParticipationAllowed,
   qaLtiAccessAllowed,
   validLtiQaScope,
-} from "../../features/qa/policy";
+} from "../../domain/qa/policy";
 import { qaDrizzleLogic as logic } from "../qa-policy-sql";
 import type {
   QaQuestion,

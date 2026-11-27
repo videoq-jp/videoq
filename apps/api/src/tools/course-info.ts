@@ -4,8 +4,8 @@ import { getCourseInfo } from "../repositories/course-repository";
 import type { Bindings } from "../types/bindings";
 
 export { MAX_COURSE_INFO_CALLS } from "./contract";
-import { COURSE_INFO_PAGE_SIZE } from "../application/evidence";
-export { COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from "../application/evidence";
+import { COURSE_INFO_PAGE_SIZE } from "../domain/conversation/evidence";
+export { COURSE_DESCRIPTION_LIMIT, VIDEO_DESCRIPTION_LIMIT } from "../domain/conversation/evidence";
 import { createCourseInfoService } from "../features/evidence/course-info-service";
 
 /** Only server-authorized course context may be captured here, never model arguments. */

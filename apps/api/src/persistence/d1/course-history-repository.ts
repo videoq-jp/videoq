@@ -16,7 +16,7 @@ import {
   courseHistoryScopeIds,
   courseHistoryAttribution,
   retainedCourseHistory,
-} from "../../application/course-history-append";
+} from "../../domain/learning/course-history";
 import { historyDrizzleChoice } from "../course-history-policy-sql";
 import { createD1Connection } from "../../db/d1/connection";
 import { insertSelectFields, runD1Batch } from "../../db/d1/query-builders";

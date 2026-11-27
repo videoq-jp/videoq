@@ -1,7 +1,7 @@
 """Pure job identities, payload invariants and workload grouping."""
 
 import json
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
 from uuid import UUID, NAMESPACE_URL, uuid5
 
 JOB_TRANSCRIBE_VIDEO = "transcribe_video"
@@ -153,3 +153,19 @@ def child_job_id(parent_job_id: str, job_type: str, payload: dict[str, Any] | No
         sort_keys=True, separators=(",", ":"),
     )
     return str(uuid5(NAMESPACE_URL, f"videoq:{canonical}"))
+
+
+def job_claim_decision(same_identity: bool, status: str, lease_active: bool) -> str:
+    if not same_identity:
+        return 'conflict'
+    if status == 'completed':
+        return 'completed'
+    return 'busy' if status == 'running' and lease_active else 'claimable'
+
+
+LeaseTerm = TypeVar('LeaseTerm')
+
+
+def job_lease_mutation_allowed(operation: str, running: LeaseTerm, token_matches: LeaseTerm, lease_active: LeaseTerm,
+                               conjunction: Callable[..., LeaseTerm]) -> LeaseTerm:
+    return conjunction(running, token_matches, *([lease_active] if operation == 'heartbeat' else []))

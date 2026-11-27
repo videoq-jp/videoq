@@ -18,8 +18,7 @@ import {
 import {
   reportMediaAllowed,
   reportGrantMatches,
-  reportLogAllowed,
-} from "../../application/course-report";
+  reportLogAllowed} from '../../domain/learning/course-report';
 import { reportDrizzleLogic as logic } from "../course-report-policy-sql";
 import { activeD1LmsOwner } from "./lms-owner-policy";
 import { checkCourseReport, reportDenied } from "../../shared/course-report";

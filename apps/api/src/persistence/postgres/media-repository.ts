@@ -3,7 +3,7 @@ import {
   mediaAccessMode,
   mediaSharedPathValue,
   mediaAuthenticatedPermission,
-} from "../../application/media-access";
+} from "../../domain/media/media-access";
 import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
 import type { MediaRepository } from "../contracts/media-repository";
 import { withDb } from "../../db/pool";

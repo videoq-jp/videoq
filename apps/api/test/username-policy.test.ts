@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { allocateUniqueUsername } from '../src/application/username';
+import { allocateUniqueUsername } from '../src/domain/identity/username';
 
 it('keeps a collision suffix within the username limit', async () => {
   const exists = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);

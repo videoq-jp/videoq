@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { qaBooleanLogic, qaNativeAccessAllowed, qaNativePermissions, qaQuestionScopeAllowed } from '../src/features/qa/policy';
+import { qaBooleanLogic, qaNativeAccessAllowed, qaNativePermissions, qaQuestionScopeAllowed } from '../src/domain/qa/policy';
 
 it.each([
   { label: 'anonymous reader', authenticated: false, owner: false, post: false, moderate: false },

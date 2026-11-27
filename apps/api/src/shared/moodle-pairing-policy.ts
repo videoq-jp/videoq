@@ -1,4 +1,4 @@
-import { pairingProofMatches, validPairingAuthentication } from '../application/pairing-exchange';
+import { pairingProofMatches, validPairingAuthentication } from '../domain/lms/pairing-exchange';
 import {z} from 'zod';
 import {materialsServiceSchema} from '../features/lms/contracts';
 import {LmsSyncError} from '../features/lms/resource';
@@ -26,4 +26,4 @@ export const pairingExchangeSchema = z.object({
   materialsService: materialsServiceSchema.optional(),
 }).strict().refine(value => validPairingAuthentication(value,(endpoint,issuer)=>new URL(endpoint).origin===new URL(issuer).origin), "Invalid connection authentication mode");
 export const pairingPayloadSchema = z.object({ ownerUserId: z.string().min(1), moodleUrl: moodleUrlSchema, mode: z.enum(["legacy", "materials"]).default("legacy"), codeChallenge: codeChallengeSchema.optional() });
-export { PAIRING_SECONDS } from '../application/moodle-pairing';
+export { PAIRING_SECONDS } from '../domain/lms/moodle-pairing';

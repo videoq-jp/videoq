@@ -1,4 +1,4 @@
-import type { QuotaReservationFailure } from '../../application/quota-policy';
+import type { QuotaReservationFailure } from '../../domain/billing/quota-policy';
 export type AiAnswerReservation = {
   userId:string;
   /** Opaque database timestamp: preserve its precision for the refund fence. */

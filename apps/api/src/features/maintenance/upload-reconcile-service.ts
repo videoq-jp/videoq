@@ -1,4 +1,4 @@
-import { parseReservedBytesFromFileKey } from '../../application/upload';
+import { parseReservedBytesFromFileKey } from '../../domain/media/upload';
 
 const DEFAULT_ABANDON_HOURS = 2;
 export const ABANDONED_UPLOAD_MS = DEFAULT_ABANDON_HOURS * 60 * 60 * 1000;

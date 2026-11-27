@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
-import type { ResourceManifest } from '../src/application/lms-resource';
+import type { ResourceManifest } from '../src/domain/lms/lms-resource';
 import {
   planResourceReconciliation, resourceCourseBindingMatches, resourceCourseOwnerMatches,
   resourceRevisionConflict, resourceVideoBindingMatches, type ResourceSnapshot, type ResourceVideoSnapshot,
-} from '../src/application/resource-reconciliation';
+} from '../src/domain/lms/resource-reconciliation';
 
 const file = { filename: 'video.mp4', size: 100, contentType: 'video/mp4', contentHash: 'hash' };
 const manifest: ResourceManifest = { generation: 2, contextId: 'context', resourceLinkId: 'source', enabled: true, title: 'Video', file };

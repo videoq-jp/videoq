@@ -1,10 +1,11 @@
+import { sceneIndexAdmission, sceneTranscriptState, sceneTranscriptRequired, sceneIndexFinishDecision, sceneSplitResultValid } from '../domain/search/index-lifecycle';
 import { logJobFailure } from '../integrations/background-jobs/diagnostics';
-import { SafeJobError, classifyJobFailure, JOB_FAILURE_CODES, safeJobFailureCode } from '../application/job-failure';
+import { SafeJobError, classifyJobFailure, JOB_FAILURE_CODES, safeJobFailureCode } from '../domain/operations/job-failure';
 import { streamingOtsuBoundary } from '../application/streaming-otsu';
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep, type WorkflowStepConfig } from 'cloudflare:workers';
 import { canonicalBackgroundJob, parseBackgroundJob } from '../application/background-job';
-import { parseSearchScenes } from '../application/search-scene-splitting';
-import type { SceneIndexSource } from '../application/scene-index-policy';
+import { parseSearchScenes } from '../domain/search/search-scene-splitting';
+import type { SceneIndexSource } from '../domain/search/scene-index-policy';
 import { createJobRepository, createWorkerScenePersistence } from '../persistence/factory';
 import { embedTexts } from '../lib/embeddings';
 import { embeddingFingerprint, embeddingDimensions, resolveEmbeddingConfig } from '../lib/embedding-contract';
@@ -123,21 +124,22 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
         const source = await persistence.readSource(job.payload.video_id);
         if (!source) return null;
         if (job.type === 'index_video_transcript') {
-          if (source.status === 'completed') return null;
-          if (source.status !== 'indexing') throw new SafeJobError('INDEX_NOT_READY', true, 'Video is not ready for indexing');
-          const status = await finish(source);
+          const admission = sceneIndexAdmission(source.status, true);
+          if (admission === 'completed') return null;
+          if (admission === 'not_ready') throw new SafeJobError('INDEX_NOT_READY', true, 'Video is not ready for indexing');
+          const status = sceneIndexFinishDecision(await finish(source));
           if (status === 'completed') return null;
           // Published runs already own durable delivery tasks. Their final
           // readiness acknowledgement atomically queues a completion job; do
           // not spend workflow retries or regenerate embeddings while waiting.
-          if (status === 'pending') {
+          if (status === 'pending_delivery') {
             if (this.env.TASK_SCHEDULER) await armMaintenance(this.env, Date.now() + 1000);
             return null;
           }
-          if (status !== 'missing') throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Scene source changed before indexing completion');
-          if (!source.transcript.trim() && !job.payload.allow_empty) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Video has no transcript');
+          if (status !== 'build') throw new SafeJobError('INDEX_SOURCE_CHANGED', true, 'Scene source changed before indexing completion');
+          if (sceneTranscriptState(source.transcript) === 'empty' && sceneTranscriptRequired(true, !!job.payload.allow_empty)) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Video has no transcript');
         }
-        if (source.transcript.trim() && !parseSearchScenes(source.transcript).length) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Invalid SRT source');
+        if (sceneTranscriptState(source.transcript) === 'malformed') throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Invalid SRT source');
         const runId = crypto.randomUUID();
         await bucket.put(sourceKey, JSON.stringify({fingerprint,source}), { httpMetadata: { contentType: 'application/json' } });
         return { fingerprint, runId, source: { ...source, transcript: '' }, model: config.model, profile: config.profile ?? 'openai', dimensions };
@@ -189,7 +191,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
               });
             }) : '';
           scenes = parseSearchScenes(grouped);
-          if (source.transcript.trim() && !scenes.length) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Scene splitting produced no scenes');
+          if (!sceneSplitResultValid(!!source.transcript.trim(), scenes.length)) throw new SafeJobError('INVALID_TRANSCRIPT', false, 'Scene splitting produced no scenes');
         }
         prepared = await durable('prepare-scenes', retry, async () => {
           await renew();
@@ -209,7 +211,7 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
             await renew();
             const artifact = `${root}${prepared.runId}-${offset}.json`;
             const existing = await bucket.get(artifact);
-            let rows: import('../application/scene-index-policy').SceneEmbedding[];
+            let rows: import('../domain/search/scene-index-policy').SceneEmbedding[];
             if (existing) rows = await existing.json();
             else {
               const document = await bucket.get(key);
@@ -233,8 +235,8 @@ export class SearchIndexWorkflow extends WorkflowEntrypoint<Bindings, unknown> {
         if (job.type === 'index_video_transcript') {
           await durable('finish-video-indexing', retry, async () => {
             await renew();
-            const status = await finish(prepared.source);
-            if (status === 'pending') {
+            const status = sceneIndexFinishDecision(await finish(prepared.source));
+            if (status === 'pending_delivery') {
               if (this.env.TASK_SCHEDULER) await armMaintenance(this.env, Date.now() + 1000);
             } else if (status !== 'completed') {
               // Deletion can follow vector readiness before this durable step

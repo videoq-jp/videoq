@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readMediaRange } from "../integrations/media";
 import type { Bindings } from "../types/bindings";
 import { focusCacheKey } from './video-evidence';
-import { MAX_FOCUS_FRAMES, assertFocusInterval, selectDenseFramePlan } from '../application/video-evidence';
+import { MAX_FOCUS_FRAMES, assertFocusInterval, selectDenseFramePlan } from '../domain/conversation/video-evidence';
 import { readVisualManifest, visualChunkKey, type VisualVideo } from "./visual-manifest";
 
 // Wire format written atomically by worker_python/pipeline/focus_frames.py.

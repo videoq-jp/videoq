@@ -1,8 +1,9 @@
 import { expect, it } from 'vitest';
-import { assertPrivacyRecovery, privacyCatalogPage, privacySubjectsWithData, privacyCursorFailure, privacyRecordCursor,
+import { assertPrivacyRecovery} from '../src/application/privacy-policy';
+import { privacyCatalogPage, privacySubjectsWithData, privacyCursorFailure, privacyRecordCursor,
   privacyCourseContext, privacyRecentContext, privacyReportContext, privacyRecordAllowed, privacyHistoryNeedsUpgrade,
-  privacyErasurePlan, type PrivacyLogic } from '../src/application/privacy-policy';
-import { privacyCollections } from '../src/application/privacy';
+  privacyErasurePlan, type PrivacyLogic } from '../src/domain/lms/privacy-policy';
+import { privacyCollections } from '../src/domain/lms/privacy';
 import { privacyIdentityPrefixes, courseQaAuthorInput, courseHistoryIdentityInput } from '../src/application/subject-identity';
 
 it('denies stale authority before the legacy writer gate and allows independent recovery', () => {

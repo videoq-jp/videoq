@@ -1,0 +1,74 @@
+[
+  {
+    "sameIdentity": false,
+    "status": "running",
+    "leaseActive": false,
+    "result": "conflict"
+  },
+  {
+    "sameIdentity": false,
+    "status": "running",
+    "leaseActive": true,
+    "result": "conflict"
+  },
+  {
+    "sameIdentity": false,
+    "status": "completed",
+    "leaseActive": false,
+    "result": "conflict"
+  },
+  {
+    "sameIdentity": false,
+    "status": "completed",
+    "leaseActive": true,
+    "result": "conflict"
+  },
+  {
+    "sameIdentity": false,
+    "status": "failed",
+    "leaseActive": false,
+    "result": "conflict"
+  },
+  {
+    "sameIdentity": false,
+    "status": "failed",
+    "leaseActive": true,
+    "result": "conflict"
+  },
+  {
+    "sameIdentity": true,
+    "status": "running",
+    "leaseActive": false,
+    "result": "claimable"
+  },
+  {
+    "sameIdentity": true,
+    "status": "running",
+    "leaseActive": true,
+    "result": "busy"
+  },
+  {
+    "sameIdentity": true,
+    "status": "completed",
+    "leaseActive": false,
+    "result": "completed"
+  },
+  {
+    "sameIdentity": true,
+    "status": "completed",
+    "leaseActive": true,
+    "result": "completed"
+  },
+  {
+    "sameIdentity": true,
+    "status": "failed",
+    "leaseActive": false,
+    "result": "claimable"
+  },
+  {
+    "sameIdentity": true,
+    "status": "failed",
+    "leaseActive": true,
+    "result": "claimable"
+  }
+]

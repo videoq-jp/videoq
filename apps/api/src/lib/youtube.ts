@@ -1,5 +1,5 @@
-import { youtubeVideoIdFromParts } from "../application/youtube";
-export { INVALID_YOUTUBE_URL_MESSAGE } from "../application/youtube";
+import { youtubeVideoIdFromParts } from "../domain/media/youtube";
+export { INVALID_YOUTUBE_URL_MESSAGE } from "../domain/media/youtube";
 
 export function extractYoutubeVideoId(value: string): string | null {
   try {

@@ -17,13 +17,13 @@ class VisualRun:
     status: str
 
 
-def validate_visual_duration(duration: float) -> None:
-    if not math.isfinite(duration) or not 0 < duration <= MAX_DURATION_SECONDS:
+def validate_visual_duration(duration: float, maximum: float = MAX_DURATION_SECONDS) -> None:
+    if not math.isfinite(duration) or not 0 < duration <= maximum:
         raise ValueError('Visual inspection supports videos up to 10 hours')
 
 
-def visual_plan(duration: float) -> tuple[int, int]:
-    validate_visual_duration(duration)
+def visual_plan(duration: float, maximum: float = MAX_DURATION_SECONDS) -> tuple[int, int]:
+    validate_visual_duration(duration, maximum)
     duration_ms = math.ceil(duration * 1000)
     return duration_ms, math.ceil(duration_ms / (CHUNK_SECONDS * 1000))
 

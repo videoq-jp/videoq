@@ -1,4 +1,4 @@
-import type { AdminFlagsPatch } from '../../application/admin';
+import type { AdminFlagsPatch } from '../../domain/identity/admin';
 import { adminService } from '../../integrations/admin';
 import type { Bindings } from '../../types/bindings';
 

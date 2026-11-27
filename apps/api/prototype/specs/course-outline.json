@@ -1,0 +1,8 @@
+{
+  "context": "learning",
+  "name": "course-outline",
+  "description": "講座の概要をフロントエンドの先行開発で確認する",
+  "input": { "courseId": "number" },
+  "output": { "title": "string", "sections": "string[]" },
+  "sample": { "title": "講座の概要", "sections": ["はじめに", "実践"] }
+}

@@ -1,5 +1,5 @@
-import type { SceneEmbedding, SceneIndexRunInput, SceneIndexSource } from '../../application/scene-index-policy';
-export type { SceneEmbedding, SceneIndexRunInput, SceneIndexSource, FinishSceneIndexInput, FinishSceneIndexResult } from '../../application/scene-index-policy';
+import type { SceneEmbedding, SceneIndexRunInput, SceneIndexSource } from '../../domain/search/scene-index-policy';
+export type { SceneEmbedding, SceneIndexRunInput, SceneIndexSource, FinishSceneIndexInput, FinishSceneIndexResult } from '../../domain/search/scene-index-policy';
 export interface SceneIndexWriter {
   readSource(videoId: number, userId: string): Promise<SceneIndexSource | null>;
   start(input: SceneIndexRunInput): Promise<boolean>;

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { assertFocusInterval, selectClipFrames, selectDenseFramePlan } from '../src/application/video-evidence';
+import { assertFocusInterval, selectClipFrames, selectDenseFramePlan } from '../src/domain/conversation/video-evidence';
 
 it('keeps sparse window endpoints and time-distributed samples without mutating source frames', () => {
   const frames = Array.from({ length: 21 }, (_, index) => ({ timestamp_seconds: index, opaque: String(index) }));

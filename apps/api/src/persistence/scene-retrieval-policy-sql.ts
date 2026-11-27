@@ -1,5 +1,5 @@
 import { sql, type SQL, type SQLWrapper } from 'drizzle-orm';
-import type { SceneVisibilityLogic } from '../application/scene-retrieval';
+import type { SceneVisibilityLogic } from '../domain/search/scene-retrieval';
 
 export const sceneVisibilityDrizzleLogic: SceneVisibilityLogic<SQLWrapper, SQL> = {
   and: (left, right) => sql`(${left} AND ${right})`,

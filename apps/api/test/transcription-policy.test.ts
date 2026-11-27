@@ -3,7 +3,7 @@ import {
   transcriptionCompletion, transcriptionFinishAllowed, transcriptionPlan, transcriptionQuotaAllowed,
   transcriptionRejectionAllowed, transcriptionRunActive, transcriptionRunReusable, validTranscriptionSegments, validateTranscriptionBegin,
   validateTranscriptionFinish, type TranscriptionChoice,
-} from '../src/application/transcription-policy';
+} from '../src/domain/media/transcription-policy';
 
 const logic: TranscriptionChoice<string, boolean> = {
   and: (...terms) => terms.every(Boolean), or: (...terms) => terms.some(Boolean), not: value => !value,

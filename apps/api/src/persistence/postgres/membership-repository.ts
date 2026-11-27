@@ -4,7 +4,7 @@ import {
   membershipCourseAllowed,
   membershipVideoAllowed,
   matchesMembershipOrder,
-} from "../../application/membership-policy";
+} from "../../domain/learning/membership-policy";
 import { membershipDrizzleLogic } from "../membership-policy-sql";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";

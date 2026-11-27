@@ -5,8 +5,8 @@ import {
   privacyCatalogPage,
   privacySubjectsWithData,
   privacyHistoryNeedsUpgrade,
-} from "../../application/privacy-policy";
-import { PRIVACY_CONTEXT_PAGE_SIZE } from "../../application/privacy";
+} from '../../domain/lms/privacy-policy';
+import { PRIVACY_CONTEXT_PAGE_SIZE } from '../../domain/lms/privacy';
 import { withDb } from "../../db/pool";
 import {
   lmsInstallations,

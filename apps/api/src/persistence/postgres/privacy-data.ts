@@ -47,15 +47,15 @@ import {
   privacyRecordCursor,
   privacyErasurePlan,
   privacyOperationBarriers,
-} from "../../application/privacy-policy";
+} from '../../domain/lms/privacy-policy';
 import { privacyDrizzleLogic as logic } from "../privacy-policy-sql";
-import { PRIVACY_CONTEXT_PAGE_SIZE } from "../../application/privacy";
+import { PRIVACY_CONTEXT_PAGE_SIZE } from '../../domain/lms/privacy';
 import {
   privacyContextCollections,
   privacyContextPage,
   privacyExportPage,
   PRIVACY_EXPORT_CHUNK_CHARACTERS,
-} from "../../application/privacy";
+} from '../../domain/lms/privacy';
 import { reservationKeySql } from "./operation-reservations";
 import { z } from "zod";
 import { ApiError } from "../../shared/errors";

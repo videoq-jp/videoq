@@ -1,4 +1,5 @@
-import { MAX_INLINE_TRANSCRIPT_BYTES, MAX_MATERIAL_DESCRIPTION_BYTES } from '../../application/content-read';
+import { materialCapabilities } from '../../domain/media/material-management';
+import { MAX_INLINE_TRANSCRIPT_BYTES, MAX_MATERIAL_DESCRIPTION_BYTES } from '../../domain/media/content-read';
 import { conflict, notFound, tooLarge, validationFailure } from '../../application/errors';
 import { createLtiSessionProof } from '../../application/lti-session-proof';
 import type { MaterialCommand, ManagedMaterialScope, ManagedVideo, MaterialJob } from '../../application/material-management';
@@ -17,9 +18,8 @@ export const revisionOf = (scope: ManagedMaterialScope, video: ManagedVideo, dig
 export async function materialView(scope:ManagedMaterialScope,video:ManagedVideo,job:MaterialJob|undefined,retryJob:MaterialJob|undefined,deps:MaterialPolicyDependencies){
   return { videoId: scope.videoId, title: video.title, description: video.description!, transcript: video.transcript!,
     status: video.status, revision: await revisionOf(scope, video, value => deps.digest(value)),
-    canEdit: ['completed','error'].includes(video.status), canReindex: video.status==='completed',
-    canRetry: video.status==='indexing' || (video.status==='error' && retryJob?.status!=='completed'
-      && deps.validTranscriptionMessage(retryJob?.message)),
+    ...materialCapabilities(video.status, retryJob?.status === 'completed',
+      video.status === 'error' && retryJob?.status !== 'completed' && deps.validTranscriptionMessage(retryJob?.message)),
     jobState: job?.dead || job?.status==='failed' ? 'failed' : job?.status==='running' ? 'running' :
       video.status==='completed' ? 'completed' : 'queued' };
 }

@@ -1,8 +1,8 @@
-import type { LtiRegistration } from '../../application/lti-registration';
-import type { LtiLoginRecord } from '../../application/lti-launch';
-import type { LearningGrant, LearningCourse } from '../../application/native-learning';
-import type { CourseAccess } from '../../application/lms-authority';
-import { learningFeatures } from '../../application/lti-authorization';
+import type { LtiRegistration } from '../../domain/lms/lti-registration';
+import type { LtiLoginRecord } from '../../domain/lms/lti-launch';
+import type { LearningGrant, LearningCourse } from '../../domain/lms/native-learning';
+import type { CourseAccess } from '../../domain/lms/lms-authority';
+import { learningFeatures } from '../../domain/lms/learning-features';
 import type { authorizeLtiLaunch } from './launch-service';
 
 type VerifiedLaunch = ReturnType<typeof authorizeLtiLaunch>;

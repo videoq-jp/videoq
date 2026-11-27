@@ -4,7 +4,7 @@ import {
   quotaAllowsAdditional, quotaAllowsNext, QUOTA_GIB_BYTES,
   validateProcessingReservation, validateStorageReservationBytes, validateUploadReservationBytes,
   type QuotaComparison,
-} from '../src/application/quota-policy';
+} from '../src/domain/billing/quota-policy';
 
 const arithmetic: QuotaComparison<number | null, boolean> = {
   isUnlimited: limit => limit === null,

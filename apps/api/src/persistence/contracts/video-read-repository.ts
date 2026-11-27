@@ -1,5 +1,5 @@
-import type { VideoListCriteria, VideoStatusCounts } from '../../application/video-catalog';
-export type { VideoListCriteria, VideoStatusCounts } from '../../application/video-catalog';
+import type { VideoListCriteria, VideoStatusCounts } from '../../domain/media/video-catalog';
+export type { VideoListCriteria, VideoStatusCounts } from '../../domain/media/video-catalog';
 import type { VideoSourceType, VideoStatus } from "../../application/models";
 
 export type VideoListItem = {

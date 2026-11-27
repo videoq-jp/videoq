@@ -11,7 +11,7 @@ import {
 import {
   inlineTranscript,
   inlineMaterialDescription,
-} from "../../application/content-read";
+} from '../../domain/media/content-read';
 import { contentDrizzleLogic } from "../content-read-policy-sql";
 import { sql, and, eq, inArray, desc, isNotNull } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";

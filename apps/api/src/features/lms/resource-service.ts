@@ -1,6 +1,6 @@
 import { ApplicationError } from '../../application/errors';
-import type { ResourceManifest } from '../../application/lms-resource';
-import type { LmsGrant, LmsResourceData, LmsResourceSyncRepository } from '../../persistence/contracts/lms-resource-repository';
+import type { ResourceManifest } from '../../domain/lms/lms-resource';
+import type { LmsGrant, LmsResourceSyncRepository } from '../../persistence/contracts/lms-resource-repository';
 
 export function createLmsResourceService(deps: {
   youtube: () => boolean;
@@ -36,23 +36,4 @@ export async function synchronizeLmsResourceWithRecovery(deps: {
   }
 }
 
-export function lmsResourceStatus(input: {
-  enabled: boolean; syncError: string | null; kind: string; videoStatus?: string | null;
-}): string {
-  return !input.enabled ? 'disabled' : input.syncError ? 'blocked'
-    : input.kind === 'course' ? 'completed' : input.videoStatus ?? 'awaiting_upload';
-}
-
-/** Select upload eligibility here; adapters resolve the storage URL and method. */
-export function lmsResourceState({ resource, video }: {
-  resource: Pick<LmsResourceData['resource'], 'generation' | 'enabled' | 'kind' | 'syncError' | 'contentType' | 'fileSize'>;
-  video: Pick<NonNullable<LmsResourceData['video']>, 'status' | 'file'> | null;
-}) {
-  return {
-    generation: resource.generation,
-    status: lmsResourceStatus({ ...resource, videoStatus: video?.status }),
-    error: resource.syncError,
-    upload: resource.kind === 'video' && resource.enabled && video?.status === 'uploading'
-      ? { fileKey: video.file, contentType: resource.contentType!, size: resource.fileSize! } : null,
-  };
-}
+export { lmsResourceStatus, lmsResourceState } from '../../domain/lms/resource-state';

@@ -1,4 +1,5 @@
-import type { CancellationState } from '../../application/answer-generation';
+import { aiQuotaConsumed } from '../../domain/billing/ai-consumption';
+import type { CancellationState } from '../../domain/conversation/answer-generation';
 import { validConversationQuestion } from '@videoq/domain/chat';
 import type { ChatAnswer } from "../../application/models";
 import type { LtiSessionProof } from "../../application/lti-session-proof";
@@ -271,7 +272,7 @@ export function createChatGenerationService<Ledger, Signal extends CancellationS
         },
       );
     } catch (e) {
-      const consumed = deps.isCommittedFailure(e);
+      const consumed = aiQuotaConsumed({ kind: 'failed_answer', committed: deps.isCommittedFailure(e) });
       if (!consumed) await deps.release(setup.quotaReservation);
       await deps.finishCost(costLedger, "failed", consumed);
       const f = deps.classifyFailure(e);
@@ -305,11 +306,11 @@ export function createChatGenerationService<Ledger, Signal extends CancellationS
           );
       }
 
-      await deps.finishCost(costLedger, "completed", true);
+      await deps.finishCost(costLedger, "completed", aiQuotaConsumed({ kind: 'completed_answer' }));
 
       return { ok: true, message: body };
     } catch (e) {
-      await deps.finishCost(costLedger, "failed", true);
+      await deps.finishCost(costLedger, "failed", aiQuotaConsumed({ kind: 'completed_answer' }));
       const f = deps.classifyFailure(e);
       return {
         ok: false,
@@ -425,11 +426,12 @@ export function createChatGenerationService<Ledger, Signal extends CancellationS
           if (!final) throw new Error("Missing completed structured answer");
         } catch (error) {
           // 一部でも回答を生成済みなら、上流LLMの実コストも消費済みなので返却しない。
-          if (!generatedContent) await deps.release(setup.quotaReservation);
+          const consumed = aiQuotaConsumed({ kind: 'interrupted_stream', textGenerated: generatedContent });
+          if (!consumed) await deps.release(setup.quotaReservation);
           await deps.finishCost(
             costLedger,
             clientSignal?.aborted ? "interrupted" : "failed",
-            generatedContent,
+            consumed,
           );
           const failure = deps.classifyFailure(error);
           await send({
@@ -450,7 +452,7 @@ export function createChatGenerationService<Ledger, Signal extends CancellationS
               retrievedContexts: final.retrievedContexts,
             })));
         } catch (error) {
-          await deps.finishCost(costLedger, "failed", true);
+          await deps.finishCost(costLedger, "failed", aiQuotaConsumed({ kind: 'completed_answer' }));
           const failure = deps.classifyFailure(error);
           await send({
             type: "error",
@@ -472,7 +474,7 @@ export function createChatGenerationService<Ledger, Signal extends CancellationS
               }
             : {}),
         };
-        await deps.finishCost(costLedger, "completed", true);
+        await deps.finishCost(costLedger, "completed", aiQuotaConsumed({ kind: 'completed_answer' }));
         await send(done);
       },
     };

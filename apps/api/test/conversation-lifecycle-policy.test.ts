@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { conversationTitle, conversationCandidateIds, conversationCourseAllowed, conversationMembersAllowed,
   conversationStoredScopeAllowed, conversationStoredScopeConflict, conversationLogShouldExpire, conversationTitleOnCommit,
-  conversationBooleanLogic as logic } from '../src/application/conversation-lifecycle';
+  conversationBooleanLogic as logic } from '../src/domain/conversation/conversation-lifecycle';
 
 it('derives the first title with the existing UTF-16 cap and never replaces an existing title', () => {
   expect(conversationTitle(' \n question \t')).toBe('question');

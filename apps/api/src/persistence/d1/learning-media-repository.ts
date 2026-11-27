@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { runD1Batch, type D1Query } from "../../db/d1/query-builders";
 import { videos } from "../../db/schema/sqlite";
-import { learningVideoAllowed } from "../../application/media-eligibility";
+import { learningVideoAllowed } from "../../domain/media/media-eligibility";
 import { mediaDrizzleLogic } from "../media-eligibility-sql";
 import type { LearningMediaRepository } from "../contracts/learning-media-repository";
 export function createD1LearningMediaRepository(

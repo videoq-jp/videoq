@@ -5,7 +5,7 @@ import {
   countVideoStatuses,
   videoKeywordMatcher,
   videoUploadAbandoned,
-} from "../../application/video-catalog";
+} from "../../domain/media/video-catalog";
 import { videoReadDrizzleLogic } from "../video-read-policy-sql";
 import {
   and,

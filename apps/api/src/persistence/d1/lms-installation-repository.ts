@@ -3,7 +3,7 @@ import { insertSelectValues, runD1Batch } from "../../db/d1/query-builders";
 import {
   managementSystemAdministrator,
   managementConnectionActive,
-} from "../../application/lms-management";
+} from "../../domain/lms/lms-management";
 import { mediaDrizzleLogic } from "../media-eligibility-sql";
 import { activeD1LmsOwner } from "./lms-owner-policy";
 import { and, eq, isNull, sql, exists, inArray } from "drizzle-orm";

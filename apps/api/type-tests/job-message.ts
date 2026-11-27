@@ -1,5 +1,5 @@
 // Compile-only producer contract; regular API typecheck must reject each invalid case.
-import type { JobMessage } from '../src/application/job-message';
+import type { JobMessage } from '../src/domain/operations/job-message';
 import { buildJobMessage } from '../src/lib/job-message';
 
 declare function enqueue(message: JobMessage): void;

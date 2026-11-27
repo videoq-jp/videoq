@@ -3,7 +3,7 @@ import { users } from "../../db/schema";
 import {
   failedAiReservation,
   quotaAllowsNext,
-} from "../../application/quota-policy";
+} from "../../domain/billing/quota-policy";
 import { quotaDrizzleComparison } from "../quota-policy-sql";
 import { withDb } from "../../db/pool";
 import type { Bindings } from "../../types/bindings";

@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { otsuBoundary } from '../src/application/search-scene-splitting';
+import { otsuBoundary } from '../src/domain/search/search-scene-splitting';
 import { streamingOtsuBoundary,type OtsuCheckpoint } from '../src/application/streaming-otsu';
 describe('bounded-memory durable Otsu kernel',()=>{
   it.each([[0,120],[5,88],[16,33],[9,10]])('matches the in-memory kernel for range %i..%i',async(start,end)=>{

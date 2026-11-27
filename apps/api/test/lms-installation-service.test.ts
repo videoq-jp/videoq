@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import type { ProvisionInstallation } from '../src/application/lti-registration';
+import type { ProvisionInstallation } from '../src/domain/lms/lti-registration';
 import type { LmsInstallationRepository } from '../src/persistence/contracts/lms-installation-repository';
 import { createLmsInstallationService } from '../src/features/lms/installation-service';
 

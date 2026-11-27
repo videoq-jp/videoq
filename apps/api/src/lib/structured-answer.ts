@@ -1,6 +1,6 @@
-import { normalizeAnswerTexts } from "../application/answer-normalization";
+import { normalizeAnswerTexts } from "../domain/conversation/answer-normalization";
 import { AnswerTextService } from "../features/chat/answer-text-service";
-import { StructuredAnswerError, assertAnswerHasText } from "../application/answer-generation";
+import { StructuredAnswerError, assertAnswerHasText } from "../domain/conversation/answer-generation";
 import { z } from "zod";
 import { parsePartialJson } from "@langchain/core/output_parsers";
 import { modelAnswerSchema, type ModelAnswer } from "@videoq/trpc/chat";

@@ -16,9 +16,9 @@ import type { TeachingTicket } from '../src/application/teaching';
 import type { ticketSchema } from '../src/shared/teaching';
 export type TeachingTicketCompatibility = Assert<Equal<TeachingTicket, z.infer<typeof ticketSchema>>>;
 
-import type { AdminFlagsPatch } from '../src/application/admin';
+import type { AdminFlagsPatch } from '../src/domain/identity/admin';
 import type { RpcInputMap } from '@videoq/trpc';
-import type { LearningGrant, NativeLearningClaims } from '../src/application/native-learning';
+import type { LearningGrant, NativeLearningClaims } from '../src/domain/lms/native-learning';
 import type { sessionRecord } from '../src/features/lti/protocol';
 import type { nativeAssertionClaims } from '../src/features/lms/native-auth';
 export type AdminFlagsCompatibility = Assert<Equal<AdminFlagsPatch, Omit<RpcInputMap['admin.patchFlags'], 'id'>>>;
@@ -26,11 +26,11 @@ export type LearningGrantCompatibility = Assert<Equal<LearningGrant, z.infer<typ
 export type NativeClaimsCompatibility = Assert<Equal<NativeLearningClaims,
   Pick<z.infer<typeof nativeAssertionClaims>, keyof NativeLearningClaims>>>;
 
-import type { AdminQuotaPatch, AdminUsagePatch } from '../src/application/admin';
+import type { AdminQuotaPatch, AdminUsagePatch } from '../src/domain/identity/admin';
 export type AdminQuotaCompatibility = Assert<Equal<AdminQuotaPatch, Omit<RpcInputMap['admin.patchQuota'], 'id'>>>;
 export type AdminUsageCompatibility = Assert<Equal<AdminUsagePatch, Omit<RpcInputMap['admin.patchUsage'], 'id'>>>;
 
-import type { LtiLoginRecord } from '../src/application/lti-launch';
+import type { LtiLoginRecord } from '../src/domain/lms/lti-launch';
 import type { loginRecord } from '../src/features/lti/protocol';
 export type LoginRecordCompatibility = Assert<Equal<LtiLoginRecord, z.infer<typeof loginRecord>>>;
 
@@ -42,7 +42,7 @@ export type ClassroomLaunchCompatibility = Assert<Equal<ClassroomLaunch, z.infer
 export type ClassroomMaterialCompatibility = Assert<Equal<ClassroomMaterial, z.infer<typeof materialSchema>>>;
 export type ClassroomAccountCompatibility = Assert<Equal<ClassroomAccount, z.infer<typeof accountSchema>>>;
 
-import type { ManagementIdentity, ManagementContext } from '../src/application/lms-management';
+import type { ManagementIdentity, ManagementContext } from '../src/domain/lms/lms-management';
 import type { moodleManagementRequest, moodleManagementContext } from '@videoq/trpc/moodle-management';
 export type ManagementIdentityCompatibility = Assert<Equal<ManagementIdentity, z.infer<typeof moodleManagementRequest>>>;
 export type ManagementContextCompatibility = Assert<Equal<ManagementContext, z.infer<typeof moodleManagementContext>>>;

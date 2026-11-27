@@ -1,7 +1,7 @@
 import { and, gt } from "drizzle-orm";
 import { createD1Connection } from "../../db/d1/connection";
 import { videos } from "../../db/schema/sqlite";
-import { reindexCandidateAllowed } from "../../application/media-eligibility";
+import { reindexCandidateAllowed } from "../../domain/media/media-eligibility";
 import { mediaDrizzleLogic } from "../media-eligibility-sql";
 import {
   REINDEX_PAGE_SIZE,

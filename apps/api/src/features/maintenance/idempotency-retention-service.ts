@@ -1,5 +1,5 @@
 import type { IdempotencyRetentionRepository } from '../../persistence/contracts/idempotency-retention-repository';
-import { retentionBounds } from './policy';
+import { retentionBounds } from '../../domain/operations/retention-policy';
 
 /** Validate policy before acquiring storage; cleanup itself remains atomic. */
 export async function pruneIdempotencyRetention(

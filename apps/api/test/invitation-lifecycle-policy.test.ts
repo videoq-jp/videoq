@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { invitationBooleanChoice, invitationControlEffects, invitationDecisionEffects, invitationDecisionState, invitationRecipientState, planInvitationControl } from '../src/application/invitation-lifecycle';
+import { invitationBooleanChoice, invitationControlEffects, invitationDecisionEffects, invitationDecisionState, invitationRecipientState, planInvitationControl } from '../src/domain/learning/invitation-lifecycle';
 
 const state = (patch: Partial<{ accepting: boolean; accepted: boolean; acceptedByActor: boolean; notPending: boolean; expired: boolean }>) =>
   invitationDecisionState({ accepting: true, accepted: false, acceptedByActor: false, notPending: false, expired: false, ...patch },

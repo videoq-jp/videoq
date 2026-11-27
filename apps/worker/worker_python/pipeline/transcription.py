@@ -17,6 +17,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from worker_python.domain.caption_selection import caption_track_candidates
 from worker_python.env import env_flag, env_str, heavy_pipeline_enabled
 from worker_python.domain.srt import format_srt_time
 from worker_python.domain.transcription_segments import segments_within_interval
@@ -417,36 +418,29 @@ def _fetch_youtube_transcript(youtube_video_id: str, api_key: str) -> list[dict]
     info = request("info", {"video_url": youtube_video_id})
     tracks = [track for track in (info.get("available_languages") or [])
               if isinstance(track, dict)]
-    manual = [track for track in tracks if track.get("kind") == "manual"]
-    automatic = [track for track in tracks if track.get("kind") == "auto"]
     last_error: RuntimeError | None = None
-    for candidates in (manual, automatic):
-        # SearchAPI defaulted to English, then the first available track.
-        candidates = sorted(candidates, key=lambda track: (
-            str(track.get("code", "")).removeprefix("asr-").split("-")[0].lower() != "en"
-        ))
-        for track in candidates[:1]:
-            code = track.get("code")
-            if not code:
-                continue
-            if track.get("kind") == "auto" and not code.startswith("asr-"):
-                code = f"asr-{code}"
-            try:
-                payload = request("transcript", {
-                    "video_url": youtube_video_id,
-                    "format": "json",
-                    "include_timestamp": "true",
-                    "language": code,
-                    "language_fallback": "false",
-                })
-            except TranscriptApiError as exc:
-                if exc.status != 404:
-                    raise
-                last_error = exc
-                continue
-            transcript = payload.get("transcript") or []
-            if transcript:
-                return transcript
+    for track in caption_track_candidates(tracks):
+        code = track.get("code")
+        if not code:
+            continue
+        if track.get("kind") == "auto" and not code.startswith("asr-"):
+            code = f"asr-{code}"
+        try:
+            payload = request("transcript", {
+                "video_url": youtube_video_id,
+                "format": "json",
+                "include_timestamp": "true",
+                "language": code,
+                "language_fallback": "false",
+            })
+        except TranscriptApiError as exc:
+            if exc.status != 404:
+                raise
+            last_error = exc
+            continue
+        transcript = payload.get("transcript") or []
+        if transcript:
+            return transcript
     if last_error:
         raise last_error
     raise RuntimeError("No transcript available for this YouTube video.")

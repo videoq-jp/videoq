@@ -1,1 +1,1 @@
-export { normalizeAnswerTexts } from "../application/answer-normalization";
+export { normalizeAnswerTexts } from "../domain/conversation/answer-normalization";

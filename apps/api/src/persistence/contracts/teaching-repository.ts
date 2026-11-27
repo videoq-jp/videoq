@@ -1,5 +1,5 @@
 import type {TeachingTicket,TeachingConnectionBinding} from '../../application/teaching';
-import type {MaterialsService} from '../../application/lti-registration';
+import type {MaterialsService} from '../../domain/lms/lti-registration';
 export type TeachingConnection=TeachingConnectionBinding & {id:string;provider:string;installationId:string;contextId:string;resourceLinkId:string|null;active:boolean;createdAt:string;courseTitle:string};
 export type TeachingInstallation={id:string;clientId:string;deploymentId:string;materialsService:MaterialsService|null};
 export interface TeachingRepository {

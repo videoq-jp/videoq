@@ -5,7 +5,7 @@ from worker_python.db import db_connection
 from worker_python.internal_api import call_internal_api, uses_internal_persistence
 from worker_python.pipeline.storage import resolve_media_input
 from worker_python.pipeline.transcription import _ffprobe_duration
-from worker_python.pipeline.visual_chunks import MAX_DURATION_SECONDS
+from worker_python.domain.visual_checkpoints import MAX_DURATION_SECONDS
 from worker_python import visual_checkpoints
 from worker_python.tasks.segmented_visuals import dispatch, build_video_visual_chunk, finish_video_visuals
 from worker_python.video_sql import get_video_for_task

@@ -1,4 +1,4 @@
-import type { TranscriptionFailure, TranscriptionStatus } from '../../application/transcription-policy';
+import type { TranscriptionFailure, TranscriptionStatus } from '../../domain/media/transcription-policy';
 export type WorkerTranscriptionSource = {
   videoId: number; userId: string; title: string; sourceRevision: string;
   fileKey: string; status: string; sourceType: string; youtubeVideoId: string;

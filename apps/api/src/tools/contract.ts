@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export { MAX_SCENE_SEARCHES, MAX_COURSE_INFO_CALLS } from "../application/evidence";
+export { MAX_SCENE_SEARCHES, MAX_COURSE_INFO_CALLS } from "../domain/conversation/evidence";
 
 /** Wire contract shared by MCP servers and consumers; no server or agent runtime. */
 export const toolResponseSchema = z.object({ result: z.union([z.string(), z.record(z.string(), z.unknown())]) });

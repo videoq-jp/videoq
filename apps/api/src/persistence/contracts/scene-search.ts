@@ -1,5 +1,5 @@
-import type { SceneHit } from '../../application/evidence';
-export type { SceneHit } from '../../application/evidence';
+import type { SceneHit } from '../../domain/conversation/evidence';
+export type { SceneHit } from '../../domain/conversation/evidence';
 
 export interface SceneSearchRepository {
   search(params: {

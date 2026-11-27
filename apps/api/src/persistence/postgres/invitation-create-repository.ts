@@ -1,5 +1,5 @@
 import {features} from '../../lib/deployment';
-import { invitationMemberEmails, invitationCandidates, uncreatedInvitationEmails, invitationPendingExpired } from '../../application/invitation-creation';
+import { invitationMemberEmails, invitationCandidates, uncreatedInvitationEmails, invitationPendingExpired } from '../../domain/learning/invitation-creation';
 import { invitationDrizzleLogic } from '../invitation-policy-sql';
 import {and,eq,inArray,lte} from 'drizzle-orm';
 import {withDb} from '../../db/pool';

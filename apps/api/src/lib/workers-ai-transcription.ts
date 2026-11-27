@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import OpenAI, { toFile } from "openai";
 import { z } from "zod";
-import type { TranscriptSegment } from "../application/transcription-policy";
+import type { TranscriptSegment } from "../domain/media/transcription-policy";
 
 export const WORKERS_AI_TRANSCRIPTION_MODEL = "@cf/openai/whisper-large-v3-turbo";
 export const MAX_TRANSCRIPTION_AUDIO_BYTES = 3_000_000;

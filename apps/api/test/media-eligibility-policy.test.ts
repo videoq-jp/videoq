@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { learningVideoAllowed, linkedCourseAllowed, linkedLessonTitle, mediaBooleanLogic, reindexCandidateAllowed } from '../src/application/media-eligibility';
-import { managementConnectionActive, managementSystemAdministrator } from '../src/application/lms-management';
+import { learningVideoAllowed, linkedCourseAllowed, linkedLessonTitle, mediaBooleanLogic, reindexCandidateAllowed } from '../src/domain/media/media-eligibility';
+import { managementConnectionActive, managementSystemAdministrator } from '../src/domain/lms/lms-management';
 it('limits learning media to completed owned videos', () => {
   expect(learningVideoAllowed(true,'completed',mediaBooleanLogic)).toBe(true);
   for(const status of ['processing','error','uploading','indexing','COMPLETED',null])expect(learningVideoAllowed(true,status,mediaBooleanLogic)).toBe(false);

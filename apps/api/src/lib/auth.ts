@@ -1,7 +1,7 @@
-import { initializeAccount } from "../application/account-registration";
-import { createGoogleAccountProfile } from "../application/google-account";
-import { defaultApiKeyPermissions } from "../application/resource-access";
-export { usernameFromEmail } from "../application/username";
+import { initializeAccount } from "../domain/identity/account-registration";
+import { createGoogleAccountProfile } from "../domain/identity/google-account";
+import { defaultApiKeyPermissions } from "../domain/lms/resource-access";
+export { usernameFromEmail } from "../domain/identity/username";
 import { API_KEY_RATE_LIMIT } from "./api-key-policy";
 import { features } from "./deployment";
 import { betterAuth, type DBAdapterInstance } from "better-auth";

@@ -24,7 +24,7 @@ import {
   visualObjectDesired,
   visualRunMutable,
   visualSourceCurrent,
-} from "../../application/visual-checkpoint-policy";
+} from "../../domain/media/visual-checkpoint-policy";
 import { visualDrizzleLogic as logic } from "../visual-policy-sql";
 import type {
   VisualCleanup,

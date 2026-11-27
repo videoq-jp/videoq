@@ -4,6 +4,10 @@ import * as videoService from "../../features/videos/service";
 import type { AppEnv } from "../../types/bindings";
 import { requireUserId, rpcError, type HandlersFor } from "./shared";
 
+function firstFieldError(fields: Record<string, readonly string[] | undefined> | undefined): string {
+  return fields ? Object.values(fields)[0]?.[0] ?? 'Invalid input' : 'Invalid input';
+}
+
 export function mediaLibraryHandlers(
   c: Context<AppEnv>,
   authenticatedUserId: string | null,
@@ -71,7 +75,7 @@ export function mediaLibraryHandlers(
         transcriptionLanguage: input.transcriptionLanguage,
       });
       if ("fieldError" in result && result.fieldError) {
-        return rpcError("BAD_REQUEST", Object.values(result.fieldError)[0]?.[0] ?? "Invalid input", {
+        return rpcError("BAD_REQUEST", firstFieldError(result.fieldError), {
           appCode: "VALIDATION_ERROR", details: result.fieldError,
         });
       }
@@ -106,7 +110,7 @@ export function mediaLibraryHandlers(
         description: description ?? "",
       });
       if ("fieldError" in result && result.fieldError) {
-        return rpcError("BAD_REQUEST", Object.values(result.fieldError)[0]?.[0] ?? "Invalid input");
+        return rpcError("BAD_REQUEST", firstFieldError(result.fieldError));
       }
       if ("idempotencyConflict" in result) {
         return rpcError("CONFLICT", "Idempotency conflict");
@@ -119,7 +123,7 @@ export function mediaLibraryHandlers(
       if ("notFound" in result) return rpcError("NOT_FOUND", "Video not found");
       if ("fieldError" in result) {
         return rpcError("BAD_REQUEST", result.fieldError
-          ? Object.values(result.fieldError)[0]?.[0] ?? "Invalid input"
+          ? firstFieldError(result.fieldError)
           : "Invalid input");
       }
       return result.video;

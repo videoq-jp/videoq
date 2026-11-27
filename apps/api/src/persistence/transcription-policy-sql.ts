@@ -1,5 +1,5 @@
 import { and, or, not, sql, type SQL } from "drizzle-orm";
-import type { TranscriptionChoice } from "../application/transcription-policy";
+import type { TranscriptionChoice } from "../domain/media/transcription-policy";
 
 export const transcriptionDrizzleLogic: TranscriptionChoice<SQL, SQL> = {
   and: (...terms) => and(...terms)!,

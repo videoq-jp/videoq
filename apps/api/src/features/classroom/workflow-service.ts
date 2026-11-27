@@ -1,6 +1,6 @@
 import { ClassroomAccessDeniedError } from '../../application/classroom';
 import type { ClassroomLaunch, ClassroomMaterial } from '../../application/classroom';
-import type { LearningGrant } from '../../application/native-learning';
+import type { LearningGrant } from '../../domain/lms/native-learning';
 import type { TeachingTicket } from '../../application/teaching';
 import type { LearningMediaRepository } from '../../persistence/contracts/learning-media-repository';
 import { classroomAccess, authorizeAttachment, materialUri, type ClassroomAuthorizationDependencies } from './authorization-service';

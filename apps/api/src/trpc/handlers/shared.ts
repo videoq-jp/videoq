@@ -1,3 +1,4 @@
+import { createUseCaseBus } from '../../application/use-case-bus';
 import { TRPCError, type TRPC_ERROR_CODE_KEY } from "@trpc/server";
 import type {
   ProcedureHandlers,
@@ -70,13 +71,14 @@ function normalizeError(error: unknown): never {
 }
 
 export function createRpcCaller(handlers: ProcedureHandlers, beforeCall?: (name: ProcedureName) => void): RpcCaller {
+  const execute = createUseCaseBus(handlers).execute as RpcCaller;
   return async <Name extends ProcedureName>(
     name: Name,
     input: RpcInputMap[Name],
   ): Promise<RpcOutputMap[Name]> => {
     try {
       beforeCall?.(name);
-      return await handlers[name](input);
+      return await execute(name, input);
     } catch (error) {
       return normalizeError(error);
     }

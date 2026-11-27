@@ -1,4 +1,4 @@
-import { SafeJobError } from '../src/application/job-failure';
+import { SafeJobError } from '../src/domain/operations/job-failure';
 import { describe, expect, it, vi } from 'vitest';
 import { canonicalBackgroundJob, executeBackgroundJob, parseBackgroundJob } from '../src/application/background-job';
 import type { JobClaim } from '../src/application/job-execution-port';

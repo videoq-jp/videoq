@@ -1,10 +1,9 @@
-import type { VisualMode, VisualInspectionResult, EvidenceNavigation, EvidenceInterval } from '../../application/visual-evidence';
+import { EvidenceBudget } from '../../domain/conversation/evidence-budget';
+import type { VisualMode, VisualInspectionResult, EvidenceNavigation, EvidenceInterval } from '../../domain/media/visual-evidence';
 import type { VideoEvidence } from '../../persistence/contracts/video-evidence-repository';
 import type { SceneHit } from '../../persistence/contracts/scene-search';
 import { transcriptQuality } from '@videoq/domain/transcript-quality';
-import { formatEvidenceTime, MAX_CLIP_INSPECTIONS, MAX_WINDOW_READS, MAX_OVERVIEWS, MAX_SKIMS,
-  MAX_VISUAL_CALLS, MAX_VISUAL_FRAMES, MAX_OVERVIEW_FRAMES, MAX_CLIP_FRAMES,
-  MAX_FOCUS_CALLS, MAX_FOCUS_FRAMES, MAX_FOCUS_INTERVAL_SECONDS, transcriptWindow, transcriptTimeline } from '../../application/video-evidence';
+import { formatEvidenceTime, MAX_FOCUS_INTERVAL_SECONDS, transcriptWindow, transcriptTimeline } from '../../domain/conversation/video-evidence';
 
 export interface VisualEvidenceExecution {
   checkCancelled(): void;
@@ -17,22 +16,13 @@ export interface VisualEvidenceDependencies {
 }
 
 export function createVideoEvidenceService(deps: VisualEvidenceDependencies) {
-  let windowReads = 0;
-  let inspections = 0;
-  let overviews = 0;
-  let skims = 0;
-  let focuses = 0;
-  let visualCalls = 0;
-  let visualFrames = 0;
+  const budget = new EvidenceBudget();
   let inspectionTail = Promise.resolve();
-  const seen = new Set<string>();
   const allowed = new Set(deps.videoIds);
   const respond = (result: object) => ({
     ...result,
     budget: {
-      remaining_visual_calls: Math.max(0, MAX_VISUAL_CALLS - visualCalls),
-      remaining_images: Math.max(0, MAX_VISUAL_FRAMES - visualFrames),
-      remaining_focus_calls: Math.max(0, MAX_FOCUS_CALLS - focuses),
+      ...budget.remaining(),
       note: "Shared per execution scope; includes reservations for concurrent calls. An overview uses up to 16 images; a focus uses up to 16. Reserve images for comparing candidate intervals. Tool completion alone does not mean useful evidence was found.",
     },
   });
@@ -55,12 +45,9 @@ export function createVideoEvidenceService(deps: VisualEvidenceDependencies) {
     if (!visualEnabled) return { status: "unavailable", unavailable: "Visual inspection is disabled. Only subtitles were checked." };
     if (video.sourceType !== "uploaded" || !video.fileKey) return { status: "unavailable", unavailable: "Visual inspection is available only for uploaded videos, not YouTube imports." };
     // Reserve before awaiting: parallel calls share both count and image budgets.
-    if (visualCalls >= MAX_VISUAL_CALLS || visualFrames >= MAX_VISUAL_FRAMES) {
-      return { status: "unavailable", unavailable: "Visual inspection limit reached (4 calls / 48 frames shared across all viewing tools). Use collected evidence." };
-    }
-    const maxFrames = Math.min(mode === "focus" ? MAX_FOCUS_FRAMES : mode === "overview" ? MAX_OVERVIEW_FRAMES : MAX_CLIP_FRAMES, MAX_VISUAL_FRAMES - visualFrames);
-    visualCalls++;
-    visualFrames += maxFrames;
+    const reservation = budget.reserveVisual(mode);
+    if (!reservation) return { status: "unavailable", unavailable: "Visual inspection limit reached (4 calls / 48 frames shared across all viewing tools). Use collected evidence." };
+    const { maxFrames } = reservation;
     // Only one bounded cache/model payload in flight per execution scope.
     const previous = inspectionTail;
     let release!: () => void;
@@ -71,7 +58,7 @@ export function createVideoEvidenceService(deps: VisualEvidenceDependencies) {
       const visualQuery = deps.originalQuestion ? `Original user question: ${deps.originalQuestion}\nSpecific inspection task: ${query}` : query;
       const result = await execution.inspect(video, start, end, visualQuery, { mode, maxFrames });
       const actualFrames = "unavailable" in result ? 0 : result.sampled_timestamps.length;
-      visualFrames -= maxFrames - actualFrames;
+      reservation.settle(actualFrames);
       if ("unavailable" in result) return { ...result, status: "unavailable" };
       return {
         ...result,
@@ -97,11 +84,10 @@ export function createVideoEvidenceService(deps: VisualEvidenceDependencies) {
     execution.checkCancelled();
     const error = check(video_id);
     if (error) return error;
-    if (overviews >= MAX_OVERVIEWS) return "Video overview limit reached. Use collected evidence or narrow an existing interval.";
     const key = `overview|${video_id}|${include_visuals}|${query}`;
-    if (seen.has(key)) return "This overview was already requested. Use the existing timeline.";
-    seen.add(key);
-    overviews++;
+    const reserved = budget.reserveTool('overview', key);
+    if (reserved === 'limit') return "Video overview limit reached. Use collected evidence or narrow an existing interval.";
+    if (reserved === 'duplicate') return "This overview was already requested. Use the existing timeline.";
     const video = await deps.load(video_id);
     execution.checkCancelled();
     if (!video) return "This video is unavailable or not ready.";
@@ -114,11 +100,10 @@ export function createVideoEvidenceService(deps: VisualEvidenceDependencies) {
     execution.checkCancelled();
     const error = check(video_id, start_seconds, end_seconds, 900);
     if (error) return error;
-    if (skims >= MAX_SKIMS) return "Video skim limit reached. Use collected evidence or inspect a known short interval.";
     const key = `skim|${video_id}|${start_seconds}|${end_seconds}|${include_visuals}|${query}`;
-    if (seen.has(key)) return "This interval was already skimmed. Use existing evidence or narrow the interval.";
-    seen.add(key);
-    skims++;
+    const reserved = budget.reserveTool('skim', key);
+    if (reserved === 'limit') return "Video skim limit reached. Use collected evidence or inspect a known short interval.";
+    if (reserved === 'duplicate') return "This interval was already skimmed. Use existing evidence or narrow the interval.";
     const video = await deps.load(video_id);
     execution.checkCancelled();
     if (!video) return "This video is unavailable or not ready.";
@@ -132,7 +117,7 @@ export function createVideoEvidenceService(deps: VisualEvidenceDependencies) {
     execution.checkCancelled();
     const error = check(video_id, start_seconds, end_seconds);
     if (error) return error;
-    if (windowReads++ >= MAX_WINDOW_READS) return "Transcript window limit reached. Answer from collected evidence and state any gaps.";
+    if (budget.reserveTool('window') === 'limit') return "Transcript window limit reached. Answer from collected evidence and state any gaps.";
     const video = await deps.load(video_id);
     execution.checkCancelled();
     if (!video) return "This video is unavailable or not ready.";
@@ -148,11 +133,10 @@ export function createVideoEvidenceService(deps: VisualEvidenceDependencies) {
     execution.checkCancelled();
     const error = check(video_id, start_seconds, end_seconds);
     if (error) return error;
-    if (inspections >= MAX_CLIP_INSPECTIONS) return "Visual inspection limit reached. Answer from collected evidence and state any gaps.";
     const key = `${video_id}|${start_seconds}|${end_seconds}|${query}`;
-    if (seen.has(key)) return "This clip and query were already inspected. Use the existing observations.";
-    seen.add(key);
-    inspections++;
+    const reserved = budget.reserveTool('inspect', key);
+    if (reserved === 'limit') return "Visual inspection limit reached. Answer from collected evidence and state any gaps.";
+    if (reserved === 'duplicate') return "This clip and query were already inspected. Use the existing observations.";
     const video = await deps.load(video_id);
     execution.checkCancelled();
     if (!video) return "This video is unavailable or not ready.";
@@ -162,11 +146,10 @@ export function createVideoEvidenceService(deps: VisualEvidenceDependencies) {
     execution.checkCancelled();
     const error = check(video_id, start_seconds, end_seconds, MAX_FOCUS_INTERVAL_SECONDS);
     if (error) return error;
-    if (focuses >= MAX_FOCUS_CALLS) return "Focus limit reached. Answer from collected evidence and state any gaps.";
     const key = `focus|${video_id}|${start_seconds}|${end_seconds}|${query}`;
-    if (seen.has(key)) return "This dense clip was already inspected. Use existing evidence or a different interval.";
-    seen.add(key);
-    focuses++;
+    const reserved = budget.reserveTool('focus', key);
+    if (reserved === 'limit') return "Focus limit reached. Answer from collected evidence and state any gaps.";
+    if (reserved === 'duplicate') return "This dense clip was already inspected. Use existing evidence or a different interval.";
     const video = await deps.load(video_id);
     execution.checkCancelled();
     if (!video) return "This video is unavailable or not ready.";

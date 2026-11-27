@@ -14,6 +14,7 @@ from worker_python.db import db_connection
 from worker_python.internal_api import call_internal_api, uses_internal_persistence
 from worker_python.env import env_flag
 from worker_python.domain.srt import create_srt_from_whisper_segments
+from worker_python.domain.video_processing import prepared_transcription_content
 from worker_python.pipeline.storage import resolve_media_input
 from worker_python.pipeline.transcription import (
     NoAudioStreamError, _ffprobe_duration, ensure_audio_stream, transcribe_audio_interval,
@@ -132,11 +133,11 @@ def _commit_local_run(run: checkpoints.TranscriptionRun) -> str | None:
             if segments is None:
                 raise RuntimeError("Transcription chunks are still incomplete")
             transcript = create_srt_from_whisper_segments(segments)
-            empty = not transcript.strip()
-            conn.execute("UPDATE videos SET status = 'processing' WHERE id = %s", (run.video_id,))
+            content = prepared_transcription_content(transcript)
+            empty = content.transcript is None
+            conn.execute("UPDATE videos SET status = %s WHERE id = %s", (content.processing_status, run.video_id))
             video = get_video_for_task(conn, run.video_id, include_transcript=False)
-            status = finish_transcription(conn, video, transcript=transcript if not empty else None,
-                                          error_message="Whisper returned an empty transcript" if empty else "")
+            status = finish_transcription(conn, video, transcript=content.transcript, error_message=content.error)
             # An all-silent plan is terminal too. An explicit user retry can
             # create a fresh plan instead of endlessly joining the same blanks.
             conn.execute("UPDATE video_transcription_runs SET completed_at = now() WHERE run_id = %s", (run.run_id,))
@@ -187,8 +188,7 @@ def _commit_cloud_run(run: checkpoints.TranscriptionRun) -> str | None:
         if after + 1 != run.chunk_count:
             raise RuntimeError("Transcription checkpoint count is incomplete")
         transcript = create_srt_from_whisper_segments(segments)
-        if not transcript.strip():
-            transcript = None
+        transcript = prepared_transcription_content(transcript).transcript
     result = call_internal_api("checkpoints/finish", {"videoId": run.video_id, "runId": run.run_id, "transcript": transcript})
     if result.get("stale") is True:
         return

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { retainedCourseHistory, courseHistoryScopeIds, courseHistoryAttribution } from '../src/application/course-history-append';
-import { reportMediaAllowed, reportGrantMatches, reportLogAllowed, courseReportVideoIds } from '../src/application/course-report';
+import { retainedCourseHistory, courseHistoryScopeIds, courseHistoryAttribution } from '../src/domain/learning/course-history';
+import { reportMediaAllowed, reportGrantMatches, reportLogAllowed, courseReportVideoIds } from '../src/domain/learning/course-report';
 import { checkTagMutation, assertTagOperationIdentity, assertTagOperationAvailable, assertTagCatalogSize, assignmentRevision } from '../src/features/course-tags/policy';
 import type { CourseTagScope, CourseTag } from '../src/application/course-tags';
 

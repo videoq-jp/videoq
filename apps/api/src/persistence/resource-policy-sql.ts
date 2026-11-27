@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import type { ResourceErrorChoice } from "../application/resource-mutation";
+import type { ResourceErrorChoice } from "../domain/lms/resource-mutation";
 
 export const resourceDrizzleErrorChoice: ResourceErrorChoice<SQL, SQL> = {
   code: (code) => sql`${code}`,

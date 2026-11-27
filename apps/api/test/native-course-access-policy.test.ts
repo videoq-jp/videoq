@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { nativeCourseAccessAllowed, nativeCourseExternalAllowed, type NativeCourseLogic } from '../src/application/native-course-access';
+import { nativeCourseAccessAllowed, nativeCourseExternalAllowed, type NativeCourseLogic } from '../src/domain/learning/native-course-access';
 
 const logic: NativeCourseLogic<boolean> = { and: (a, b) => a && b, or: (a, b) => a || b };
 const bits = [false, true];

@@ -1,4 +1,4 @@
-import { COURSE_HISTORY_MAX_TURNS } from '../application/course-history-append';
+import { COURSE_HISTORY_MAX_TURNS } from '../domain/learning/course-history';
 import {z} from 'zod';
 import { asApiError } from './errors';
 import * as policy from '../features/course-history/policy';

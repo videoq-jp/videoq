@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { privacyExportPage, privacyContextPage, PRIVACY_EXPORT_CHUNK_CHARACTERS } from '../src/application/privacy';
+import { privacyExportPage, privacyContextPage, PRIVACY_EXPORT_CHUNK_CHARACTERS } from '../src/domain/lms/privacy';
 
 const row = { id: 'record', context: 'course', revision: 'r', total: 70000, chunk: 'data' };
 it('continues an export at the exact character boundary and finishes with a record cursor', () => {

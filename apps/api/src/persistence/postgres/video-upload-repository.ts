@@ -3,7 +3,7 @@ import {
   pendingYoutubeVideo,
   uploadConfirmationTransition,
   videoCreationReplayAllowed,
-} from "../../application/video-creation";
+} from "../../domain/media/video-creation";
 import { and, eq, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { users, videos } from "../../db/schema";

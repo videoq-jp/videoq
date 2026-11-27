@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api';
 import { users, videos } from '../../src/db/schema';
 import { getVideoEvidence } from '../../src/repositories/video-evidence-repository';
-import { MAX_INLINE_TRANSCRIPT_BYTES } from '../../src/application/content-read';
+import { MAX_INLINE_TRANSCRIPT_BYTES } from '../../src/domain/media/content-read';
 import type { Bindings } from '../../src/types/bindings';
 import { createD1Fixture } from './d1-fixture';
 import { isolatedPostgres } from './isolated-postgres';

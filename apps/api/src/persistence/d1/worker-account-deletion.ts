@@ -1,3 +1,5 @@
+import { adminRoleIncludes } from '../../domain/identity/admin';
+import { adminD1RoleLogic } from '../admin-policy-sql';
 import {
   and,
   eq,
@@ -29,7 +31,7 @@ import {
   accountDeletionForbidden,
   accountDeletionVideoOutcome,
   accountDeletionDrainOutcome,
-} from "../../application/worker-account-deletion";
+} from "../../domain/operations/worker-account-deletion";
 import type {
   AccountDeletionLease,
   WorkerAccountDeletion,
@@ -77,7 +79,7 @@ export function createD1WorkerAccountDeletion(
                 {
                   banned: sql`coalesce(${users.banned},0)=1`,
                   noExpiry: isNull(users.banExpires),
-                  administrator: sql`instr(','||coalesce(${users.role},'')||',',',admin,')>0`,
+                  administrator: adminRoleIncludes(users.role, adminD1RoleLogic),
                 },
                 { or: (...terms) => or(...terms)!, not },
               ),

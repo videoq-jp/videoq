@@ -2,4 +2,4 @@ export type ProcessingReservation = { allowed: boolean; limitSeconds: number | n
 export interface ProcessingQuotaRepository {
   reserve(videoId: number, seconds: number): Promise<ProcessingReservation>;
 }
-export { validateProcessingReservation } from '../../application/quota-policy';
+export { validateProcessingReservation } from '../../domain/billing/quota-policy';

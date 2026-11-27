@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { MAX_INLINE_TRANSCRIPT_BYTES, MAX_MATERIAL_DESCRIPTION_BYTES, type ContentReadLogic } from '../src/application/content-read';
-import { evidenceVideoSelected, inlineTranscript, inlineMaterialDescription, visualEvidenceReady } from '../src/application/content-read';
+import { MAX_INLINE_TRANSCRIPT_BYTES, MAX_MATERIAL_DESCRIPTION_BYTES, type ContentReadLogic } from '../src/domain/media/content-read';
+import { evidenceVideoSelected, inlineTranscript, inlineMaterialDescription, visualEvidenceReady } from '../src/domain/media/content-read';
 const logic:ContentReadLogic<string|null,number|null,boolean|null>={
   atMost:(size,limit)=>size===null?null:size<=limit,
   above:(size,limit)=>size===null?null:size>limit,

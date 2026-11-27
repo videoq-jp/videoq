@@ -1,5 +1,6 @@
+import { jobReclaimAllowed, jobClaimRefusal, jobLeaseMutationAllowed, type JobLeaseOperation } from '../../domain/operations/job-execution';
 import { safeJobRepository } from '../job-failure';
-import { safeJobFailureCode } from '../../application/job-failure';
+import { safeJobFailureCode } from '../../domain/operations/job-failure';
 import { and, eq, ne, or, isNull, sql } from "drizzle-orm";
 import { withDb } from "../../db/pool";
 import { jobExecutions as jobs } from "../../db/schema";
@@ -12,12 +13,10 @@ import {
 
 const now = sql`now()`;
 const leaseUntil = sql`now()+(${JOB_LEASE_SECONDS}*interval '1 second')`;
-const owns = (jobId: string, token: string) =>
-  and(
-    eq(jobs.jobId, jobId),
-    eq(jobs.status, "running"),
-    eq(jobs.leaseToken, token),
-  );
+const owns = (jobId: string, token: string, operation: JobLeaseOperation = 'complete') =>
+    and(eq(jobs.jobId, jobId), jobLeaseMutationAllowed(operation, {
+      running: eq(jobs.status, 'running'), tokenMatches: eq(jobs.leaseToken, token), leaseActive: sql`${jobs.leaseUntil} > ${now}`,
+    }, { and: (...terms) => and(...terms)! }));
 export function createPostgresJobRepository(env: Bindings): JobRepository {
   return safeJobRepository({
     async claim(input) {
@@ -43,16 +42,11 @@ export function createPostgresJobRepository(env: Bindings): JobRepository {
               lastError: "",
               updatedAt: now,
             },
-            setWhere: and(
-              eq(jobs.jobType, input.jobType),
-              eq(jobs.payloadSha256, input.payloadSha256),
-              ne(jobs.status, "completed"),
-              or(
-                ne(jobs.status, "running"),
-                isNull(jobs.leaseUntil),
-                sql`${jobs.leaseUntil}<=${now}`,
-              ),
-            ),
+            setWhere: jobReclaimAllowed({
+          sameIdentity: and(eq(jobs.jobType, input.jobType), eq(jobs.payloadSha256, input.payloadSha256))!,
+          notCompleted: ne(jobs.status, 'completed'), notRunning: ne(jobs.status, 'running'),
+          noLease: isNull(jobs.leaseUntil), expired: sql`${jobs.leaseUntil} <= ${now}`,
+        }, { and: (...terms) => and(...terms)!, or: (...terms) => or(...terms)! }),
           })
           .returning({ id: jobs.jobId });
         if (claimed.length) return { status: "claimed", leaseToken };
@@ -65,14 +59,7 @@ export function createPostgresJobRepository(env: Bindings): JobRepository {
           .from(jobs)
           .where(eq(jobs.jobId, input.jobId));
         if (!existing) throw new Error("Job execution disappeared");
-        if (
-          existing.jobType !== input.jobType ||
-          existing.payloadSha256 !== input.payloadSha256
-        )
-          return { status: "conflict" };
-        return {
-          status: existing.status === "completed" ? "completed" : "busy",
-        };
+        return { status: jobClaimRefusal(existing.jobType === input.jobType && existing.payloadSha256 === input.payloadSha256, existing.status) };
       });
     },
     complete: (jobId, token) =>
@@ -108,7 +95,7 @@ export function createPostgresJobRepository(env: Bindings): JobRepository {
                 lastError: safeJobFailureCode(errorCode),
                 updatedAt: now,
               })
-              .where(owns(jobId, token))
+              .where(owns(jobId, token, 'fail'))
               .returning({ id: jobs.jobId })
           ).length > 0,
       ),
@@ -120,7 +107,7 @@ export function createPostgresJobRepository(env: Bindings): JobRepository {
             await db
               .update(jobs)
               .set({ leaseUntil, updatedAt: now })
-              .where(and(owns(jobId, token), sql`${jobs.leaseUntil}>${now}`))
+              .where(owns(jobId, token, 'heartbeat'))
               .returning({ id: jobs.jobId })
           ).length > 0,
       ),

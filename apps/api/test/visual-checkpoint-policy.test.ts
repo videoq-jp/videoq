@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import {
   validateVisualCheckpoint, visualAttemptAdoptable, visualAttemptAllowed, visualObjectAttempt,
   visualObjectDesired, visualPlan, visualReadyAllowed, visualRunRecoveryAllowed, type VisualLogic,
-} from '../src/application/visual-checkpoint-policy';
+} from '../src/domain/media/visual-checkpoint-policy';
 const logic: VisualLogic<boolean> = {
   and: (...terms) => terms.every(Boolean), or: (...terms) => terms.some(Boolean), not: term => !term,
 };

@@ -1,4 +1,4 @@
-import { SAFE_JOB_FAILURE, type Failure } from '../application/job-failure';
+import { SAFE_JOB_FAILURE, type Failure } from '../domain/operations/job-failure';
 import { workersAiFetch, WORKERS_AI_LLM_MODEL } from "./workers-ai-transport";
 import type { Bindings } from "../types/bindings";
 

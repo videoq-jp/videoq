@@ -1,0 +1,599 @@
+{
+  "version": 1,
+  "trackingIssue": 1702,
+  "rules": [
+    {
+      "issue": 1703,
+      "rules": [
+        {
+          "path": "packages/domain/src/course-name.ts",
+          "symbols": [
+            "normalizeCourseName"
+          ],
+          "consumers": [
+            "apps/api/src/features/courses/service.ts",
+            "packages/trpc/src/course-name.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/course-name-contract.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1704,
+      "rules": [
+        {
+          "path": "packages/domain/src/video-upload.ts",
+          "symbols": [
+            "videoTitleFailure",
+            "uploadFilenameFailure",
+            "uploadContentTypeFailure",
+            "uploadSizeFailure",
+            "transcriptionLanguageFailure"
+          ],
+          "consumers": [
+            "apps/api/src/features/videos/upload-service.ts",
+            "packages/trpc/src/video-upload.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/video-metadata-contract.test.ts"
+      ],
+      "intentionalDifferences": [
+        "単一PUTのみ5GiB上限。multipartは物理オブジェクト上限。タイトルはtrim後255 UTF-16単位。"
+      ]
+    },
+    {
+      "issue": 1705,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/billing/ai-consumption.ts",
+          "symbols": [
+            "aiQuotaConsumed"
+          ],
+          "consumers": [
+            "apps/api/src/features/chat/generation-service.ts",
+            "apps/api/src/features/evidence/external-service.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/ai-consumption-policy.test.ts"
+      ],
+      "intentionalDifferences": [
+        "通常回答は完成/確定、失敗streamは生成text、外部AI処理はprovider完了を消費根拠とする。"
+      ]
+    },
+    {
+      "issue": 1706,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/billing/subscription-policy.ts",
+          "symbols": [
+            "selectBillingSubscription",
+            "subscriptionEntitlementPatch",
+            "billingCheckoutAlreadySubscribed",
+            "usableBillingPriceAmount"
+          ],
+          "consumers": [
+            "apps/api/src/features/billing/service.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/billing-subscription-policy.test.ts",
+        "apps/api/test/billing-webhook.integration.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1707,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/operations/worker-account-deletion.ts",
+          "symbols": [
+            "accountDeletionForbidden"
+          ],
+          "consumers": [
+            "apps/api/src/persistence/d1/worker-account-deletion.ts",
+            "apps/api/src/persistence/postgres/worker-account-deletion.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/worker-account-deletion-policy.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1708,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/identity/admin.ts",
+          "symbols": [
+            "adminRoleIncludes"
+          ],
+          "consumers": [
+            "apps/api/src/application/account-summary.ts",
+            "apps/api/src/lib/auth-security.ts",
+            "apps/api/src/persistence/postgres/worker-account-deletion.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/admin-role-policy.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1709,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/lms/learning-features.ts",
+          "symbols": [
+            "learningFeatures",
+            "classroomLearningPermissions",
+            "classroomOwnerHistory"
+          ],
+          "consumers": [
+            "apps/api/src/features/lti/session-service.ts",
+            "apps/api/src/features/lti/operation-policy.ts",
+            "apps/api/src/features/classroom/authorization-service.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/learning-service.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1710,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/lms/registration-policy.ts",
+          "symbols": [
+            "mergeLtiRegistrations"
+          ],
+          "consumers": [
+            "apps/api/src/integrations/lti-registrations.ts"
+          ]
+        },
+        {
+          "path": "apps/api/src/domain/lms/course-binding.ts",
+          "symbols": [
+            "boundCourseAccess",
+            "linkedCourseBinding"
+          ],
+          "consumers": [
+            "apps/api/src/features/lti/course-access-service.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/lti-registration-service.test.ts",
+        "apps/api/test/lti-course-access-service.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1711,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/qa/policy.ts",
+          "symbols": [
+            "qaOperationPrecheck",
+            "qaMutationAllowed"
+          ],
+          "consumers": [
+            "apps/api/src/features/lti/operation-policy.ts",
+            "apps/api/src/persistence/d1/qa-repository.ts",
+            "apps/api/src/persistence/postgres/qa-repository.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/qa-permission-contract.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1712,
+      "rules": [],
+      "contracts": [
+        "apps/api/test/trpc-surface.test.ts",
+        "apps/api/test/mcp.test.ts"
+      ],
+      "intentionalDifferences": [
+        "PR #1701 removed agent skill generation and installation on main; no skill runtime is restored."
+      ],
+      "supersededBy": 1701
+    },
+    {
+      "issue": 1713,
+      "rules": [],
+      "contracts": [
+        "apps/api/test/trpc-surface.test.ts",
+        "apps/api/test/mcp.test.ts"
+      ],
+      "intentionalDifferences": [
+        "PR #1701 removed agent skill generation and installation on main; no skill runtime is restored."
+      ],
+      "supersededBy": 1701
+    },
+    {
+      "issue": 1714,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/search/index-lifecycle.ts",
+          "symbols": [
+            "sceneIndexAdmission",
+            "sceneTranscriptState",
+            "sceneIndexFinishDecision"
+          ],
+          "consumers": [
+            "apps/api/src/application/scene-index-execution.ts",
+            "apps/api/src/integrations/search-index/index-transcript.ts",
+            "apps/api/src/workflows/search-index.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/index-lifecycle-policy.test.ts",
+        "apps/api/test/scene-index-execution.test.ts"
+      ],
+      "intentionalDifferences": [
+        "PGはtransaction/CAS、D1はstaged publish、Workflowはdurable step。状態の意味だけを共通化する。"
+      ]
+    },
+    {
+      "issue": 1715,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/lms/lms-upload.ts",
+          "symbols": [
+            "lmsUploadMaterialAllowed",
+            "currentLmsUploadSource",
+            "planLmsUploadSnapshot"
+          ],
+          "consumers": [
+            "apps/api/src/features/lms/upload-service.ts",
+            "apps/api/src/domain/lms/resource-state.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/lms-upload-service.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1716,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/learning/course-history.ts",
+          "symbols": [
+            "retainedCourseHistory",
+            "courseHistoryAttribution"
+          ],
+          "consumers": [
+            "apps/api/src/persistence/d1/course-history-repository.ts",
+            "apps/api/src/persistence/postgres/course-history-repository.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/course-persistence-policy.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1717,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/lms/teaching.ts",
+          "symbols": [
+            "teachingConnectionConflicts",
+            "selectTeachingCourse"
+          ],
+          "consumers": [
+            "apps/api/src/persistence/d1/teaching-repository.ts",
+            "apps/api/src/persistence/postgres/teaching-repository.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/teaching-connection-policy.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1718,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/search/scene-retrieval.ts",
+          "symbols": [
+            "sceneCandidateCurrent",
+            "sceneOwnerVisible",
+            "sceneSearchSelection"
+          ],
+          "consumers": [
+            "apps/api/src/persistence/d1/scene-search.ts",
+            "apps/api/src/persistence/postgres/scene-search.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/scene-retrieval-policy.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1719,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/conversation/scope-identity.ts",
+          "symbols": [
+            "conversationIdentityInput"
+          ],
+          "consumers": [
+            "apps/api/src/application/conversation-scope.ts"
+          ]
+        },
+        {
+          "path": "apps/api/src/domain/lms/subject-identity.ts",
+          "symbols": [
+            "checkedLtiSubjectIdentity",
+            "courseQaAuthorInput",
+            "courseHistoryIdentityInput"
+          ],
+          "consumers": [
+            "apps/api/src/application/subject-identity.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/conversation-scope-policy.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1720,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/conversation/evidence-budget.ts",
+          "symbols": [
+            "EvidenceBudget",
+            "externalEvidencePlan"
+          ],
+          "consumers": [
+            "apps/api/src/features/evidence/video-evidence-service.ts",
+            "apps/api/src/features/evidence/scene-search-service.ts",
+            "apps/api/src/features/evidence/course-info-service.ts",
+            "apps/api/src/features/evidence/external-service.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/evidence-budget-policy.test.ts",
+        "apps/api/test/video-evidence-service.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1721,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/lms/native-session-policy.ts",
+          "symbols": [
+            "nativeSessionInputAllowed",
+            "nativeSessionMatches"
+          ],
+          "consumers": [
+            "apps/api/src/features/lms/native-session-policy.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/persistence/contracts/native-session.contract.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1722,
+      "rules": [
+        {
+          "path": "apps/worker/worker_python/domain/visual_checkpoints.py",
+          "symbols": [
+            "visual_plan",
+            "validate_visual_duration"
+          ],
+          "consumers": [
+            "apps/worker/worker_python/use_cases/visual_preparation.py"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/worker/tests/test_prepare_visual_frames.py"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1723,
+      "rules": [
+        {
+          "path": "apps/worker/worker_python/domain/video_processing.py",
+          "symbols": [
+            "transcription_admission",
+            "transcription_failure_retry",
+            "prepared_transcription_content"
+          ],
+          "consumers": [
+            "apps/worker/worker_python/use_cases/transcription.py",
+            "apps/worker/worker_python/use_cases/cloud_transcription.py",
+            "apps/worker/worker_python/tasks/segmented_transcription.py"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/worker/tests/test_transcription_use_case.py",
+        "apps/worker/tests/test_cloud_transcription_use_case.py"
+      ],
+      "intentionalDifferences": [
+        "localのhandoff再開とcloudの原子的outboxは実行方式の差として保持する。"
+      ]
+    },
+    {
+      "issue": 1724,
+      "rules": [
+        {
+          "path": "apps/worker/worker_python/domain/caption_selection.py",
+          "symbols": [
+            "caption_track_candidates"
+          ],
+          "consumers": [
+            "apps/worker/worker_python/pipeline/transcription.py"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/worker/tests/test_caption_selection_policy.py"
+      ],
+      "intentionalDifferences": [
+        "現行のmanual-first、英語優先、各群最初の1件を保持する。"
+      ]
+    },
+    {
+      "issue": 1725,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/operations/job-execution.ts",
+          "symbols": [
+            "jobReclaimAllowed",
+            "jobClaimRefusal",
+            "jobClaimDecision",
+            "jobLeaseMutationAllowed"
+          ],
+          "consumers": [
+            "apps/api/src/persistence/d1/job-repository.ts",
+            "apps/api/src/persistence/postgres/job-repository.ts"
+          ]
+        },
+        {
+          "path": "apps/worker/worker_python/domain/jobs.py",
+          "symbols": [
+            "job_claim_decision",
+            "job_lease_mutation_allowed"
+          ],
+          "consumers": [
+            "apps/worker/worker_python/job_execution.py"
+          ]
+        }
+      ],
+      "contracts": [
+        "packages/domain/test/fixtures/job-claim-policy.json",
+        "apps/api/test/job-claim-policy.test.ts",
+        "apps/worker/tests/test_job_claim_policy.py",
+        "packages/domain/test/fixtures/job-lease-policy.json"
+      ],
+      "intentionalDifferences": [
+        "native Pythonはcomplete/failを実行し、heartbeatの実行はTS repositoryが担当する。完了/失敗はtoken、heartbeatはさらに生きたlease時刻を要求。"
+      ]
+    },
+    {
+      "issue": 1726,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/operations/reindex-job.ts",
+          "symbols": [
+            "reindexAllEmbeddingsMessage"
+          ],
+          "consumers": [
+            "apps/api/src/application/reindex-job.ts"
+          ]
+        },
+        {
+          "path": "apps/api/src/domain/search/search-scene-splitting.ts",
+          "symbols": [
+            "planSearchScenes"
+          ],
+          "consumers": [
+            "apps/api/src/application/scene-splitting.ts"
+          ]
+        },
+        {
+          "path": "apps/api/src/domain/search/streaming-otsu.ts",
+          "symbols": [
+            "normalizedOtsuVector",
+            "accumulateOtsuBoundary"
+          ],
+          "consumers": [
+            "apps/api/src/application/streaming-otsu.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/search-worker-core.test.ts",
+        "apps/api/test/streaming-otsu.test.ts",
+        "apps/api/test/reindex-job.test.ts"
+      ],
+      "intentionalDifferences": []
+    },
+    {
+      "issue": 1727,
+      "rules": [],
+      "contracts": [
+        "apps/api/test/domain-rule-ownership.test.ts",
+        "apps/worker/tests/test_domain_rule_ownership.py"
+      ],
+      "intentionalDifferences": [
+        "import方向・正本の一意性・実呼出し経路・契約試験を組み合わせる。任意の意味的重複を自動証明するものではない。"
+      ]
+    },
+    {
+      "issue": 1728,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/lms/lms-owner.ts",
+          "symbols": [
+            "lmsOwnerAvailable",
+            "materialTeacherConnectionAccess"
+          ],
+          "consumers": [
+            "apps/api/src/persistence/d1/lms-owner-policy.ts",
+            "apps/api/src/persistence/postgres/lms-owner-policy.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/lms-management-policy.test.ts"
+      ],
+      "intentionalDifferences": [
+        "LMSのban期限は等号で解除。課金・検索のstrict expiryとの差を維持する。"
+      ]
+    },
+    {
+      "issue": 1729,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/operations/throttle-policy.ts",
+          "symbols": [
+            "THROTTLE_RATES",
+            "throttleConsumption",
+            "chatThrottlePolicy"
+          ],
+          "consumers": [
+            "apps/api/src/lib/rate-limit.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/rate-limit.test.ts"
+      ],
+      "intentionalDifferences": []
+    }
+  ]
+}

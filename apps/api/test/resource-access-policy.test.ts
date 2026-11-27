@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accountIsBanned, apiKeyResourceAccess, defaultApiKeyPermissions, oauthResourceAccess, parseResourceScopes } from '../src/application/resource-access';
+import { accountIsBanned, apiKeyResourceAccess, defaultApiKeyPermissions, oauthResourceAccess, parseResourceScopes } from '../src/domain/lms/resource-access';
 
 describe('verified resource credential policy', () => {
   it('checks current API-key owner status before evaluating write permission', () => {

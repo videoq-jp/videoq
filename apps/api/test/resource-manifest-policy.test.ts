@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { validResourceManifestSource, type ResourceManifest } from '../src/application/lms-resource';
+import { validResourceManifestSource, type ResourceManifest } from '../src/domain/lms/lms-resource';
 
 type Source = Parameters<typeof validResourceManifestSource>[0];
 const file: NonNullable<ResourceManifest['file']> = { filename: 'source.mp4', contentType: 'video/mp4', size: 3, contentHash: 'a'.repeat(40) };

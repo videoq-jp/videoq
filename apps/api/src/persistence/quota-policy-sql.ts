@@ -1,5 +1,5 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
-import type { QuotaComparison } from "../application/quota-policy";
+import type { QuotaComparison } from "../domain/billing/quota-policy";
 
 export const quotaDrizzleComparison: QuotaComparison<SQLWrapper, SQL> = {
   isUnlimited: (limit) => sql`${limit} IS NULL`,

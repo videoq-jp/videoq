@@ -3,9 +3,9 @@ import {
   storageCleanupRefundRequired,
   storageCleanupState,
   validateExternalTaskDeferral,
-} from "../../application/external-task-policy";
+} from "../../domain/operations/external-task-policy";
 import { storageCleanupDrizzleLogic } from "../external-task-policy-sql";
-import { retentionBounds } from "../../features/maintenance/policy";
+import { retentionBounds } from "../../domain/operations/retention-policy";
 import {
   and,
   eq,

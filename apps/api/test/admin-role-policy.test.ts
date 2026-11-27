@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminRoleChangeFailure } from '../src/application/admin';
+import { adminRoleChangeFailure } from '../src/domain/identity/admin';
 
 describe('account role assignment policy', () => {
   it('allows omitted roles and the two supported roles', () => {

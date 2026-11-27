@@ -11,14 +11,14 @@ import {
   privacySubjectsWithData,
   privacyCursorFailure,
   privacyRecordCursor,
-} from "../../application/privacy-policy";
+} from '../../domain/lms/privacy-policy';
 import {
   PRIVACY_CONTEXT_PAGE_SIZE,
   privacyContextCollections,
   privacyContextPage,
   privacyExportPage,
   PRIVACY_EXPORT_CHUNK_CHARACTERS,
-} from "../../application/privacy";
+} from '../../domain/lms/privacy';
 import { z } from "zod";
 import { ApiError } from "../../shared/errors";
 import {

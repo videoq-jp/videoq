@@ -1,4 +1,4 @@
-import { ltiRegistrationSnapshotAllowed } from '../../application/lti-registration';
+import { ltiRegistrationSnapshotAllowed } from '../../domain/lms/lti-registration';
 import { nativeCourseDrizzleLogic } from '../native-course-policy-sql';
 import { activeD1LmsOwner } from './lms-owner-policy';
 import {and,eq,inArray,sql} from 'drizzle-orm';

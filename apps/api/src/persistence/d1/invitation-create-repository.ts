@@ -19,7 +19,7 @@ import {
   uncreatedInvitationEmails,
   invitationCandidates,
   invitationPendingExpired,
-} from "../../application/invitation-creation";
+} from "../../domain/learning/invitation-creation";
 import { invitationDrizzleLogic } from "../invitation-policy-sql";
 import {
   validateInvitationBatch,

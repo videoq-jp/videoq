@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { invitationCandidates, invitationCreationAllowed, invitationMemberEmails, invitationPendingExpired, uncreatedInvitationEmails } from '../src/application/invitation-creation';
-import { invitationDeliveryCutoff, invitationDeliveryStranded, invitationDeliveryValues, invitationDeliveryWasSent, invitationInviterName } from '../src/application/invitation-delivery';
+import { invitationCandidates, invitationCreationAllowed, invitationMemberEmails, invitationPendingExpired, uncreatedInvitationEmails } from '../src/domain/learning/invitation-creation';
+import { invitationDeliveryCutoff, invitationDeliveryStranded, invitationDeliveryValues, invitationDeliveryWasSent, invitationInviterName } from '../src/domain/learning/invitation-delivery';
 const logic = { and: (a: boolean, b: boolean) => a && b };
 it('normalizes owner/member identities and retains first matching membership order', () => {
   const requested=['owner@example.test','üser@example.test','member@example.test','new@example.test'].map(email=>({email}));

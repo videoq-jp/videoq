@@ -1,9 +1,9 @@
-import type { LtiRegistration } from '../../application/lti-registration';
-import type { LtiRegistrationRepository } from '../../persistence/contracts/lti-registration-repository';
+import type { LtiRegistration } from './lti-registration';
+import type { LtiRegistrationSnapshot } from './registration-snapshot';
 
 /** Filter current resources before exposing bindings; configured authorities cannot overlap. */
 export function mergeLtiRegistrations(configured: LtiRegistration[],
-  snapshot: Awaited<ReturnType<LtiRegistrationRepository['snapshot']>>,
+  snapshot: LtiRegistrationSnapshot,
   options: { youtube: boolean; origin(issuer: string): string },
 ): LtiRegistration[] {
   const { installations, resources, linked } = snapshot;

@@ -1,4 +1,4 @@
-import { managementContextView } from "../../../../application/lms-management";
+import { managementContextView } from "../../../../domain/lms/lms-management";
 import type {moodleManagementRequest} from '@videoq/trpc/moodle-management';
 import type {z} from 'zod';
 import {createLmsInstallationRepository} from '../../../../persistence/factory';

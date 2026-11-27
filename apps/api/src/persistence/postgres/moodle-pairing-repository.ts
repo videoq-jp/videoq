@@ -1,5 +1,5 @@
-import { pairingMaterialsUnavailable, pairingSupportsReplay, pairingCanReplay, matchingPairingPayload, pairingConnectionConflict, pairingInstallationFields, pairingSyncTokenHash, pairingExpiry } from '../../application/pairing-exchange';
-import { pairingBooleanLogic } from '../../application/pairing-exchange';
+import { pairingMaterialsUnavailable, pairingSupportsReplay, pairingCanReplay, matchingPairingPayload, pairingConnectionConflict, pairingInstallationFields, pairingSyncTokenHash, pairingExpiry } from '../../domain/lms/pairing-exchange';
+import { pairingBooleanLogic } from '../../domain/lms/pairing-exchange';
 import {and,eq,gt} from 'drizzle-orm';
 import {withDb} from '../../db/pool';
 import {lmsInstallations,ltiCredentials,users} from '../../db/schema';

@@ -1,4 +1,4 @@
-import { SafeJobError } from '../application/job-failure';
+import { SafeJobError } from '../domain/operations/job-failure';
 import type { JobRepository } from '../application/job-execution-port';
 const networkCodes=new Set(['ECONNREFUSED','ECONNRESET','ENOTFOUND','ETIMEDOUT','EPIPE']);
 /** Network codes become database facts only inside a database adapter. */

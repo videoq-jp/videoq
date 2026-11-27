@@ -6,7 +6,7 @@ import type { Bindings } from "../types/bindings";
 import { DEFAULT_LLM_MODEL, resolveLlmConnection, llmMaxTokens, llmModelKwargs, llmReasoningEffort, LlmProviderError } from "./openai";
 import { deadlineSignal } from "./request-timeout";
 import { frameCacheKey, MAX_FRAME_CACHE_BYTES } from './video-evidence';
-import { MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, sampleByTime, selectClipFrames } from '../application/video-evidence';
+import { MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, sampleByTime, selectClipFrames } from '../domain/conversation/video-evidence';
 import { readFocusFrames, type FrameSelection } from "./focus-frames";
 import { readVisualManifest, visualChunkKey, jpegBase64, type VisualVideo } from "./visual-manifest";
 import type { UsageRecorder } from "../tools/usage";
@@ -29,10 +29,10 @@ const observationsSchema = z.object({
 }).strict();
 type Frame = z.infer<typeof frameSchema>;
 
-export { selectClipFrames } from '../application/video-evidence';
+export { selectClipFrames } from '../domain/conversation/video-evidence';
 
-import type { VisualMode, VisualInspectionResult } from "../application/visual-evidence";
-export type { VisualMode } from "../application/visual-evidence";
+import type { VisualMode, VisualInspectionResult } from "../domain/media/visual-evidence";
+export type { VisualMode } from "../domain/media/visual-evidence";
 
 async function readSparseFrames(
   env: Bindings, video: VisualVideo,

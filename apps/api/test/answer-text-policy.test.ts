@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { assertAnswerHasText, StructuredAnswerError } from '../src/application/answer-generation';
+import { assertAnswerHasText, StructuredAnswerError } from '../src/domain/conversation/answer-generation';
 
 it.each([[], [''], [' ', '\n\t', '\u3000']].map(texts => ({ texts })))('rejects answers without visible text: $texts', ({ texts }) => {
   expect(() => assertAnswerHasText({ segments: texts.map(text => ({ text, sourceIds: [] })) }))

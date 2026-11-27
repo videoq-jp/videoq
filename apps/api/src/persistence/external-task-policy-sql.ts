@@ -1,6 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
-import type { StorageCleanupLogic } from "../application/external-task-policy";
-import { QUOTA_GIB_BYTES } from "../application/quota-policy";
+import type { StorageCleanupLogic } from "../domain/operations/external-task-policy";
+import { QUOTA_GIB_BYTES } from "../domain/billing/quota-policy";
 
 export const storageCleanupDrizzleLogic: StorageCleanupLogic<SQL, SQL> = {
   remaining: (used, refunded) => sql`GREATEST(0, ${used} - ${refunded})`,

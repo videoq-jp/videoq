@@ -1,3 +1,5 @@
+import { videoTitleSchema, uploadFilenameSchema, uploadContentTypeSchema, uploadFileSizeSchema } from '@videoq/trpc/video-upload';
+import { courseNameSchema } from '@videoq/trpc/course-name';
 import { z } from "zod";
 import { defineTool, type ToolDefinition, type ToolMetadata } from "./definition";
 import { ToolError } from "./errors";
@@ -113,10 +115,10 @@ export const managementToolSchemas = {
   }),
   request_video_upload: z.strictObject({
     idempotency_key: idempotencyKey,
-    filename: z.string().trim().min(1).max(255),
-    content_type: z.string().trim().min(1).max(100),
-    file_size: intId,
-    title: z.string().trim().min(1).max(255),
+    filename: uploadFilenameSchema,
+    content_type: uploadContentTypeSchema,
+    file_size: integerInput(uploadFileSizeSchema),
+    title: videoTitleSchema,
     description,
   }),
   confirm_video_upload: z.strictObject({
@@ -125,7 +127,7 @@ export const managementToolSchemas = {
   create_youtube_video: z.strictObject({
     idempotency_key: idempotencyKey,
     youtube_url: z.string().trim().url().max(200),
-    title: z.string().trim().min(1).max(255),
+    title: videoTitleSchema,
     description,
   }),
   list_courses: z.strictObject({
@@ -138,7 +140,7 @@ export const managementToolSchemas = {
   }),
   create_course: z.strictObject({
     idempotency_key: idempotencyKey,
-    name: z.string().trim().min(1).max(255),
+    name: courseNameSchema,
     description,
   }),
   add_video_to_course: z.strictObject({
@@ -379,7 +381,7 @@ function requireWrite(ctx: ToolActorContext): void {
   }
 }
 
-function firstFieldError(fieldError: Record<string, readonly string[]> | undefined): string {
+function firstFieldError(fieldError: Record<string, readonly string[] | undefined> | undefined): string {
   return fieldError ? Object.values(fieldError)[0]?.[0] ?? "Invalid input" : "Invalid input";
 }
 

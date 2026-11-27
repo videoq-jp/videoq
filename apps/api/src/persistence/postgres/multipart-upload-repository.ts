@@ -1,4 +1,4 @@
-import { uploadConfirmed, assertMultipartInitialization, activeMultipartSession, multipartReservation, multipartPartLength, orderedMultipartParts, multipartObjectMatches, assertMultipartObjectSize } from '../../application/multipart-upload';
+import { uploadConfirmed, assertMultipartInitialization, activeMultipartSession, multipartReservation, multipartPartLength, orderedMultipartParts, multipartObjectMatches, assertMultipartObjectSize } from '../../domain/media/multipart-upload';
 import { and, eq, sql } from "drizzle-orm";
 import { multipartPartSize } from "@videoq/domain/video-upload";
 import { withDb } from "../../db/pool";
@@ -8,7 +8,7 @@ import {
   getR2ObjectSize, presignR2UploadPart,
 } from "../../integrations/media";
 import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from "../../lib/job-message";
-import { parseReservedBytesFromFileKey } from "../../application/upload";
+import { parseReservedBytesFromFileKey } from "../../domain/media/upload";
 import type { Bindings } from "../../types/bindings";
 import { insertJobTask } from "./external-task-repository";
 

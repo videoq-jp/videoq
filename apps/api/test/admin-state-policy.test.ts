@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { adminAssignedRole, adminBooleanRoleLogic, adminDeletionAllowed, adminRoleIncludes, adminSelfLockout, planAdminQuotaEdit } from '../src/application/admin';
-import { entitlementsForSubscription, PLAN_CATALOG } from '../src/application/billing-catalog';
+import { adminAssignedRole, adminBooleanRoleLogic, adminDeletionAllowed, adminRoleIncludes, adminSelfLockout, planAdminQuotaEdit } from '../src/domain/identity/admin';
+import { entitlementsForSubscription, PLAN_CATALOG } from '../src/domain/billing/billing-catalog';
 it.each([['admin',true],['user,admin',true],['admin,user',true],['administrator',false],['user, admin',false],['Admin',false],[null,false]] as const)('matches an exact comma-separated administrator role: %s', (role,expected) => {
   expect(adminRoleIncludes(role,adminBooleanRoleLogic)).toBe(expected);
   expect(adminDeletionAllowed(expected,{not:value=>!value})).toBe(!expected);

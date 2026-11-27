@@ -1,5 +1,5 @@
 import type { VisualCleanup, VisualObjectCleanupRepository } from '../../persistence/contracts/visual-object-cleanup';
-import { isSafeMediaPath } from '../../application/media-path';
+import { isSafeMediaPath } from '../../domain/media/media-path';
 
 export function visualObjectKeys(task:VisualCleanup):string[] {
   const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;

@@ -1,9 +1,10 @@
+import {fileURLToPath} from 'node:url';
 import { build } from 'esbuild';
 import { expect,it } from 'vitest';
 import { createD1Fixture } from './d1-fixture';
 
 it.each(['fail','stop','invalid','rate','spoof','unknown'])('restarts a real isolated %s workflow with ledger/artifact/publication reconciliation',async(mode)=>{
-  const bundle=await build({entryPoints:[new URL('./search-recovery-fixture.worker.ts',import.meta.url).pathname],bundle:true,write:false,format:'esm',platform:'node',external:['cloudflare:*','node:*','pg-native'],banner:{js:'import {createRequire} from "node:module";const require=createRequire("/worker.mjs");'},target:'es2022'});
+  const bundle=await build({entryPoints:[fileURLToPath(new URL('./search-recovery-fixture.worker.ts',import.meta.url))],bundle:true,write:false,format:'esm',platform:'node',external:['cloudflare:*','node:*','pg-native'],banner:{js:'import {createRequire} from "node:module";const require=createRequire("/worker.mjs");'},target:'es2022'});
   const fixture=await createD1Fixture({r2:true,workflowScript:bundle.outputFiles[0].text});
   try {
     const db=fixture.database;

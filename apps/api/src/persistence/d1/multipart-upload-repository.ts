@@ -11,7 +11,7 @@ import {
   orderedMultipartParts,
   multipartObjectMatches,
   assertMultipartObjectSize,
-} from "../../application/multipart-upload";
+} from "../../domain/media/multipart-upload";
 import { multipartPartSize } from "@videoq/domain/video-upload";
 import {
   UploadSessionError,
@@ -23,7 +23,7 @@ import {
   getR2ObjectSize,
   presignR2UploadPart,
 } from "../../integrations/media";
-import { parseReservedBytesFromFileKey } from "../../application/upload";
+import { parseReservedBytesFromFileKey } from "../../domain/media/upload";
 import { buildJobMessage, JOB_TRANSCRIBE_VIDEO } from "../../lib/job-message";
 import { armMaintenance } from "../../lib/task-scheduler";
 import { sha256Hex } from "../../shared/crypto";

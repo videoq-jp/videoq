@@ -1,38 +1,39 @@
+import { createUseCaseBus } from '../application/use-case-bus';
 import { createCourseService } from '../features/courses/service';
 import { createCourseRepository } from '../persistence/factory';
 import type { Bindings } from '../types/bindings';
 
 type Service = ReturnType<typeof createCourseService>;
-async function courseService(env: Bindings) {
-  return createCourseService(await createCourseRepository(env));
+export async function createCourseUseCases(env: Bindings) {
+  return createUseCaseBus(createCourseService(await createCourseRepository(env)));
 }
 export async function getCourse(env: Bindings, ...args: Parameters<Service["getCourse"]>) {
-  return (await courseService(env)).getCourse(...args);
+  return (await createCourseUseCases(env)).execute("getCourse", ...args);
 }
 export async function getSharedCourse(env: Bindings, ...args: Parameters<Service["getSharedCourse"]>) {
-  return (await courseService(env)).getSharedCourse(...args);
+  return (await createCourseUseCases(env)).execute("getSharedCourse", ...args);
 }
 export async function createUserCourse(env: Bindings, ...args: Parameters<Service["createUserCourse"]>) {
-  return (await courseService(env)).createUserCourse(...args);
+  return (await createCourseUseCases(env)).execute("createUserCourse", ...args);
 }
 export async function createUserCourseIdempotent(env: Bindings, ...args: Parameters<Service["createUserCourseIdempotent"]>) {
-  return (await courseService(env)).createUserCourseIdempotent(...args);
+  return (await createCourseUseCases(env)).execute("createUserCourseIdempotent", ...args);
 }
 export async function saveShareLink(env: Bindings, ...args: Parameters<Service["saveShareLink"]>) {
-  return (await courseService(env)).saveShareLink(...args);
+  return (await createCourseUseCases(env)).execute("saveShareLink", ...args);
 }
 export async function listCourses(env: Bindings, ...args: Parameters<Service["listCourses"]>) {
-  return (await courseService(env)).listCourses(...args);
+  return (await createCourseUseCases(env)).execute("listCourses", ...args);
 }
 export async function updateUserCourse(env: Bindings, ...args: Parameters<Service["updateUserCourse"]>) {
-  return (await courseService(env)).updateUserCourse(...args);
+  return (await createCourseUseCases(env)).execute("updateUserCourse", ...args);
 }
 export async function removeCourse(env: Bindings, ...args: Parameters<Service["removeCourse"]>) {
-  return (await courseService(env)).removeCourse(...args);
+  return (await createCourseUseCases(env)).execute("removeCourse", ...args);
 }
 export async function reorderUserCourses(env: Bindings, ...args: Parameters<Service["reorderUserCourses"]>) {
-  return (await courseService(env)).reorderUserCourses(...args);
+  return (await createCourseUseCases(env)).execute("reorderUserCourses", ...args);
 }
 export async function clearShareLink(env: Bindings, ...args: Parameters<Service["clearShareLink"]>) {
-  return (await courseService(env)).clearShareLink(...args);
+  return (await createCourseUseCases(env)).execute("clearShareLink", ...args);
 }

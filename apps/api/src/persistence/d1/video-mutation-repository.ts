@@ -3,7 +3,7 @@ import {
   videoCleanup,
   videoAbortRefundAllowed,
   videoTranscriptChanged,
-} from "../../application/video-mutation";
+} from "../../domain/media/video-mutation";
 import { videoMutationDrizzleLogic } from "../video-mutation-policy-sql";
 import { and, eq, sql, exists, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";

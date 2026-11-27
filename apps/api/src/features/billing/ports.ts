@@ -1,17 +1,8 @@
 import type { BillingCurrency, PaidLookupKey } from './catalog';
 
 /** Provider snapshots contain only facts required by billing policy. */
-export type BillingPrice = {
-  id: string;
-  lookupKey: string | null;
-  active: boolean;
-  recurring: boolean;
-  perUnit: boolean;
-  interval: string | null;
-  intervalCount: number | null;
-  amounts: Partial<Record<BillingCurrency, number | null>>;
-};
-export type BillingSubscription = { id: string; customerId: string | null; status: string; created: number; lookupKey?: string | null };
+export type { BillingPrice, BillingSubscription } from '../../domain/billing/subscription-policy';
+import type { BillingPrice, BillingSubscription } from '../../domain/billing/subscription-policy';
 export type BillingEventTarget = { userId?: string | null; customerId: string | null; subscriptionId: string };
 export type BillingEvent = { id: string; type: string; target?: BillingEventTarget };
 export type CheckoutRequest = {

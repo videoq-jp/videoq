@@ -7,20 +7,20 @@ import {
 import {
   materialTeacherConnectionAccess,
   materialTeacherConnectionStable,
-} from "../../application/lms-owner";
+} from "../../domain/lms/lms-owner";
 import {
   planResourceRemoval,
   resourceContentValues,
   resourceCourseTitle,
   resourceUploadReservationError,
-} from "../../application/resource-mutation";
+} from "../../domain/lms/resource-mutation";
 import {
   planResourceReconciliation,
   resourceCourseBindingMatches,
   resourceCourseOwnerMatches,
   resourceRevisionConflict,
   resourceVideoBindingMatches,
-} from "../../application/resource-reconciliation";
+} from "../../domain/lms/resource-reconciliation";
 import { postgresMaterialsLease } from "./materials-sync-repository";
 import { MaterialsLeaseLostError } from "../contracts/materials-sync-repository";
 import { and, inArray, eq, isNotNull, sql } from "drizzle-orm";

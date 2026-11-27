@@ -2,7 +2,7 @@ import { QueryBuilder, alias } from "drizzle-orm/pg-core";
 import {
   nativeCourseExternalAllowed,
   nativeCourseAccessAllowed,
-} from "../../application/native-course-access";
+} from "../../domain/learning/native-course-access";
 import { nativeCourseDrizzleLogic } from "../native-course-policy-sql";
 import {
   sql,

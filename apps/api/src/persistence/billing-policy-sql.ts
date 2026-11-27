@@ -1,5 +1,5 @@
 import { sql, type SQL, type SQLWrapper } from 'drizzle-orm';
-import type { BillingBanLogic, BillingEntitlementChoice } from '../application/billing-state';
+import type { BillingBanLogic, BillingEntitlementChoice } from '../domain/billing/billing-state';
 
 /** Column expressions are adapter-owned; the source literal is a closed union. */
 export const billingStringEntitlementChoice: BillingEntitlementChoice<string, string, string> = {

@@ -1,5 +1,5 @@
 import type { LmsResource, ResourceManifest } from './lms-resource';
-import type { UploadReservationFailure } from './quota-policy';
+import type { UploadReservationFailure } from '../billing/quota-policy';
 
 /** Storage is released by durable cleanup; only an unfinished upload's monthly
  * allowance can be refunded here, with its original period as a fence. */

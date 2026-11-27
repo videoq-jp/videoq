@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { learningConversationScope, learningConversationTurns, learningManagedMaterialScope, learningReportScope, learningTagScope, canUseLearningQa, type LearningOperationAccess } from '../src/features/lti/operation-policy';
-import { deniedCoursePermissions } from '../src/application/lms-authority';
+import { deniedCoursePermissions } from '../src/domain/lms/lms-authority';
 import { executeLearningMaterialOperation } from '../src/features/material-management/service';
 
 const access: LearningOperationAccess = {

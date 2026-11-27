@@ -1,5 +1,5 @@
 import { forbidden, unavailable } from '../../application/errors';
-import type { PrivacyAssertionClaims } from '../../application/privacy';
+import type { PrivacyAssertionClaims } from '../../domain/lms/privacy';
 import type { PrivacyAuthorizationRepository, PrivacyRegistration } from '../../persistence/contracts/privacy-authorization-repository';
 
 export interface PrivacyAuthorizationDependencies {

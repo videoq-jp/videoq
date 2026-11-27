@@ -1,7 +1,7 @@
 import type { ClassroomConfig, ClassroomCourse, ClassroomLaunch, ClassroomAccount, ClassroomContext, ClassroomAttachment } from '../../application/classroom';
 import type { LearningAuthorization } from '../../application/lti-authorization';
-import type { LtiRegistration } from '../../application/lti-registration';
-import { deniedCoursePermissions } from '../../application/lms-authority';
+import type { LtiRegistration } from '../../domain/lms/lti-registration';
+import { classroomLearningPermissions, classroomOwnerHistory } from '../../domain/lms/learning-features';
 import type { TeachingConnection } from '../../persistence/contracts/teaching-repository';
 import type { ChatRepository } from '../../persistence/contracts/chat-repository';
 import type { LearningMediaRepository } from '../../persistence/contracts/learning-media-repository';
@@ -71,8 +71,6 @@ export async function authorizeAttachment(deps: ClassroomAuthorizationDependenci
       subjectHash,
       courseId: binding.videoqCourseId, scopeVideoIds: videos.map(video => video.videoId), locale: 'ja',
       roles: [context.teacherContext ? 'teacher' : 'student'] },
-    current: { ownerHistory: !!context.teacherContext && connection?.teacherSubject === account.subject, videos, permissions: { ...deniedCoursePermissions, manageOwnHistory: true, viewTranscript: true,
-      viewQa: true, postQa: true, voteQa: true, deleteOwnQa: true,
-      moderateQa: !!context.teacherContext, instructorQa: !!context.teacherContext } },
+    current: { ownerHistory: classroomOwnerHistory(!!context.teacherContext, connection?.teacherSubject, account.subject), videos, permissions: classroomLearningPermissions(!!context.teacherContext) },
   };
 }

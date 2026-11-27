@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import fixtures from './fixtures/python-scene-splitting.json';
 import { createSceneEncoding } from '../src/integrations/search-index/tokenizer';
-import { parseSearchScenes, splitSearchScenes } from '../src/application/search-scene-splitting';
+import { parseSearchScenes} from '../src/domain/search/search-scene-splitting';
+import { splitSearchScenes } from '../src/application/scene-splitting';
 import { executeLeasedAccountDeletion, executeTranscriptIndex } from '../src/application/search-index-execution';
 const encoding = await createSceneEncoding('@cf/google/embeddinggemma-2', 'workers-ai');
 describe('Python scene splitting parity', () => {

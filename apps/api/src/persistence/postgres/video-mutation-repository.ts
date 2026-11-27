@@ -2,11 +2,11 @@ import {
   videoDeletionAllowed,
   videoCleanup,
   videoAbortRefundAllowed,
-} from "../../application/video-mutation";
+} from "../../domain/media/video-mutation";
 import {
   planVideoPatch,
   videoRefundBooleanLogic,
-} from "../../application/video-mutation";
+} from "../../domain/media/video-mutation";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { withDb, type Db } from "../../db/pool";
 import {

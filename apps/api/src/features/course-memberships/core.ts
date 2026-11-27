@@ -1,5 +1,5 @@
 import type { CourseMembershipDependencies } from './ports';
-import { invitationExpiresAt, effectiveInvitationStatus, maskInvitationEmail, planInvitationEmails } from '../../application/course-invitations';
+import { invitationExpiresAt, effectiveInvitationStatus, maskInvitationEmail, planInvitationEmails } from '../../domain/learning/course-invitations';
 
 type InviteResultStatus =
   | "queued"

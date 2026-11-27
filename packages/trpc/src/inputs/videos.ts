@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { isValidUploadPartEtag, MAX_UPLOAD_PARTS, MAX_VIDEO_UPLOAD_BYTES, TRANSCRIPTION_LANGUAGES } from "../video-upload";
+import { isValidUploadPartEtag, MAX_UPLOAD_PARTS, videoTitleSchema, uploadFilenameSchema, uploadContentTypeSchema, uploadFileSizeSchema, transcriptionLanguageSchema } from "../video-upload";
 
 const id = z.number().int().positive();
-const title = z.string().trim().min(1).max(255);
+const title = videoTitleSchema;
 
 export const videosInputSchemas = {
   "videos.list": z.object({
@@ -16,11 +16,11 @@ export const videosInputSchemas = {
   "videos.statusCounts": z.undefined(),
   "videos.get": z.object({ id }),
   "videos.requestUpload": z.object({
-    filename: z.string().trim().min(1).max(255),
-    contentType: z.string().trim().min(1).max(100),
-    fileSize: z.number().int().positive().max(MAX_VIDEO_UPLOAD_BYTES),
+    filename: uploadFilenameSchema,
+    contentType: uploadContentTypeSchema,
+    fileSize: uploadFileSizeSchema,
     multipart: z.boolean().optional(),
-    transcriptionLanguage: z.enum(Object.keys(TRANSCRIPTION_LANGUAGES) as [keyof typeof TRANSCRIPTION_LANGUAGES, ...Array<keyof typeof TRANSCRIPTION_LANGUAGES>]).optional(),
+    transcriptionLanguage: transcriptionLanguageSchema.optional(),
     title,
     description: z.string().default(""),
   }),

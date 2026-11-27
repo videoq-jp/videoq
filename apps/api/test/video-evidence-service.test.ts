@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { createVideoEvidenceService, type VisualEvidenceExecution } from '../src/features/evidence/video-evidence-service';
-import type { VisualInspectionResult } from '../src/application/visual-evidence';
+import type { VisualInspectionResult } from '../src/domain/media/visual-evidence';
 
 const video = { id: 1, title: 'Video', sourceType: 'uploaded', fileKey: 'private', transcript: '', transcriptTooLarge: false };
 const input = { video_id: 1, query: 'question', start_seconds: 0, end_seconds: 10 };

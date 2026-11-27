@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
-import { planVideoPatch, videoTranscriptChanged, videoDeletionAllowed, videoCleanup, videoAbortRefundAllowed, videoRefundBooleanLogic } from '../src/application/video-mutation';
-import { buildPendingUploadFileKey } from '../src/application/upload';
-import { videoStatusFilters, videoListOrder, countVideoStatuses, videoKeywordMatcher, videoUploadAbandoned } from '../src/application/video-catalog';
+import { planVideoPatch, videoTranscriptChanged, videoDeletionAllowed, videoCleanup, videoAbortRefundAllowed, videoRefundBooleanLogic } from '../src/domain/media/video-mutation';
+import { buildPendingUploadFileKey } from '../src/domain/media/upload';
+import { videoStatusFilters, videoListOrder, countVideoStatuses, videoKeywordMatcher, videoUploadAbandoned } from '../src/domain/media/video-catalog';
 
 it('updates only distinct fields and ties reindexing to a transcript change', () => {
   const fields = { title: 'new', description: '', transcript: 'same' };

@@ -1,1 +1,1 @@
-export * from '../../application/billing-catalog';
+export * from '../../domain/billing/billing-catalog';

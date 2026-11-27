@@ -1,5 +1,5 @@
 import { ApplicationError } from '../../application/errors';
-import { validResourceManifestSource } from '../../application/lms-resource';
+import { validResourceManifestSource } from '../../domain/lms/lms-resource';
 import { lmsIdentity, sourceRevision } from './contracts';
 import { z } from "zod";
 import { fileExtension, isAllowedContentType, isAllowedExtension } from "../../lib/upload";
@@ -27,7 +27,7 @@ export const resourceManifestSchema = z.object({
   youtubeVideoId: z.string().length(11).regex(/^(?=.*[A-Za-z0-9])[A-Za-z0-9_-]{11}$/).optional(),
 }).strict().refine(validResourceManifestSource,
 "Enabled materials require their source identity; source kinds cannot mix media or be deleted while enabled");
-export type { ResourceManifest } from "../../application/lms-resource";
+export type { ResourceManifest } from "../../domain/lms/lms-resource";
 
 export class LmsSyncError extends Error {
   constructor(public readonly status: 400 | 401 | 403 | 404 | 409 | 413, public readonly code: string) {

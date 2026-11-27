@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
-import type { ResourceManifest } from '../src/application/lms-resource';
+import type { ResourceManifest } from '../src/domain/lms/lms-resource';
 import {
   planResourceRemoval, resourceContentValues, resourceCourseTitle,
   resourceUploadError, resourceUploadReservationError, type ResourceUploadError,
-} from '../src/application/resource-mutation';
+} from '../src/domain/lms/resource-mutation';
 
 const manifest: ResourceManifest = { generation: 2, contextId: 'context', resourceLinkId: 'source', enabled: true, title: 'Video' };
 const previous = { contentHash: 'old', contentType: 'video/mp4', fileSize: 100, youtubeVideoId: 'abcdefghijk' };
