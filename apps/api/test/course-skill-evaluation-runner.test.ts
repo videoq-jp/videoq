@@ -44,6 +44,9 @@ it('prepares the same base commit and only enables each condition’s capabiliti
     const result = await executeComparisonSlot({ ...f, directory: f.root, ownerId: 'owner', courseId: 51, videoIds: [1], slot: { taskId: f.task.id, condition, repetition: 1, blindId: condition }, client, readExecutorVersion: () => Promise.resolve('unit-fixture') });
     expect(result).toMatchObject({ validity: 'valid', functional: true, baseCommit: f.manifest.baseCommits[f.task.id], inputTokens: 10, outputTokens: 2 });
     expect(hash(await readFile(result.detailPath, 'utf8'))).toBe(result.detailSha256);
+    const detail = JSON.parse(await readFile(result.detailPath, 'utf8'));
+    expect(detail.reviewFiles.files).toContainEqual({ path: 'src/main.mjs', content: f.task.reference!['src/main.mjs'] });
+    expect(detail.reviewFiles.files.some((file: { path: string }) => file.path.startsWith('.agents/'))).toBe(false);
   }
   expect(observed[0]).toMatchObject({ tools: [], bootstrap: false });
   expect(observed[1].tools).toEqual(['get_course_info', 'search_scenes', 'read_video_window']);

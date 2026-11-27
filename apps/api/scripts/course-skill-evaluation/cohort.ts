@@ -38,6 +38,19 @@ async function validateOutcome(value: CohortOutcome, timeoutMs: number, baseComm
   if (!hex(value.detailSha256) || (await stat(value.detailPath)).size > 32_000_000 || createHash('sha256').update(await readFile(value.detailPath)).digest('hex') !== value.detailSha256) throw new Error('COHORT_DETAIL_CHANGED');
 }
 
+/** Artifact verification only; never claims that a human has assessed quality. */
+export async function validateCompletedCohort(state: CohortState, cases: readonly EvaluationCase[]) {
+  validateManifest(state.manifest);
+  if (state.manifest.definitionHash !== digest(cases) || !state.manifest.baseCommits || Object.keys(state.manifest.baseCommits).length !== cases.length || cases.some(c => !/^[a-f0-9]{40}$/.test(state.manifest.baseCommits[c.id] ?? ''))) throw new Error('COHORT_REVIEW_DEFINITION_CHANGED');
+  const plan = comparisonPlan(cases, state.manifest.seed, state.manifest.repetitions);
+  if (state.version !== 1 || state.completed !== true || state.active !== null || state.humanAssessmentCompleted !== false || state.manifestHash !== digest(state.manifest)
+    || digest(state.plan) !== digest(plan) || state.results.length !== plan.length) throw new Error('COHORT_REVIEW_REQUIRES_COMPLETE_EXECUTION');
+  for (const [index, result] of state.results.entries()) {
+    if (digest(result.slot) !== digest(plan[index]) || result.inputsVerifiedAfterRun !== true || result.outcome.validity === 'infrastructure-failure') throw new Error('COHORT_REVIEW_INVALID_TRIAL');
+    await validateOutcome(result.outcome, state.manifest.timeoutMs, state.manifest.baseCommits[result.slot.taskId]);
+  }
+}
+
 /** Resume completed prefixes only. A crashed active slot is never silently rerun. */
 export async function runComparisonCohort(options: {
   directory: string; manifest: CohortManifest; cases: readonly EvaluationCase[]; maxTrials: number;

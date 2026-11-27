@@ -1,9 +1,34 @@
-import { mkdir, readFile, writeFile, mkdtemp, rm, realpath } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, mkdtemp, rm, realpath, readdir, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import type { EvaluationCase } from './cases';
+
+/** Freeze reviewable output; excludes retrieval instructions and Git internals. */
+export async function captureReviewFiles(workspace: string) {
+  const files: { path: string; content: string }[] = [], omitted: string[] = [];
+  let bytes = 0, entries = 0;
+  const visit = async (relative: string) => {
+    for (const entry of (await readdir(join(workspace, relative), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (['.git', '.agents', 'node_modules'].includes(entry.name)) continue;
+      if (++entries > 256) throw new Error('EVALUATION_REVIEW_FILE_LIMIT');
+      const path = relative ? `${relative}/${entry.name}` : entry.name;
+      if (entry.isSymbolicLink()) { omitted.push(path); continue; }
+      if (entry.isDirectory()) { await visit(path); continue; }
+      if (!entry.isFile()) { omitted.push(path); continue; }
+      const target = join(workspace, path);
+      if ((await stat(target)).size > 200_000) { omitted.push(path); continue; }
+      const content = await readFile(target);
+      if (content.includes(0)) { omitted.push(path); continue; }
+      bytes += content.length;
+      if (bytes > 2_000_000) throw new Error('EVALUATION_REVIEW_SIZE_LIMIT');
+      files.push({ path, content: content.toString('utf8') });
+    }
+  };
+  await visit('');
+  return { files, omitted };
+}
 
 export async function writeCaseFixture(workspace: string, files: Record<string, string>) {
   await mkdir(workspace, { recursive: true, mode: 0o700 });

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { copyFile, mkdir, realpath, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { runCodexTrial, codexVersion } from './codex';
-import { initializeCaseRepository, gradeCase } from './fixtures';
+import { initializeCaseRepository, gradeCase, captureReviewFiles } from './fixtures';
 import { startEvaluationMcp } from './mcp-server';
 import { assertPublicationVersions } from './publications';
 import type { CohortManifest, CohortOutcome, CohortSlot } from './cohort';
@@ -49,7 +49,8 @@ export async function executeComparisonSlot(options: {
     const outputTokens = measured ? units.reduce((n, u) => n + u!.output_tokens!, 0) : null;
     const overBudget = execution.timedOut || execution.elapsedMs > options.manifest.timeoutMs;
     const validity = overBudget ? 'budget-exceeded' : !execution.completed || (transport?.stats.failedRequests ?? 0) > 0 ? 'infrastructure-failure' : 'valid';
-    const detail = { slot: options.slot, baseCommit, execution, grade, calls: server?.calls ?? [], search: transport?.stats ?? null,
+    const reviewFiles = await captureReviewFiles(workspace);
+    const detail = { slot: options.slot, baseCommit, execution, grade, reviewFiles, calls: server?.calls ?? [], search: transport?.stats ?? null,
       humanCriteria: options.task.humanCriteria, humanAssessmentCompleted: false, monetaryCostUsd: null };
     const reports = join(options.directory, 'details'); await mkdir(reports, { recursive: true, mode: 0o700 });
     const detailPath = join(reports, `${options.slot.blindId}.json`), content = JSON.stringify(detail, null, 2) + '\n';
