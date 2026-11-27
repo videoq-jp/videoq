@@ -33,7 +33,7 @@ jobs:
           persist-credentials: false
       - name: Configure this disposable runner
         run: python3 .github/scripts/configure-onprem-ci-dns.py --docker
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build one native image with loaded and immutable OCI exports
         id: build
         env:
