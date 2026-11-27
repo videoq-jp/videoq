@@ -1,5 +1,5 @@
 import { currentSkillBuildPredicate, type SkillSqlDriver } from './course-skill-input-sql';
-import type { CourseSkillKnowledgeRepository, SkillBuildLease } from './contracts/course-skill-knowledge-repository';
+import { COURSE_SKILL_KNOWLEDGE_READ_BATCH_SIZE, type CourseSkillKnowledgeRepository, type SkillBuildLease } from './contracts/course-skill-knowledge-repository';
 import type { SkillKnowledgeChunk } from '../domain/learning/skill-knowledge';
 
 export function createSqlCourseSkillKnowledgeRepository(driver: SkillSqlDriver): CourseSkillKnowledgeRepository {
@@ -27,6 +27,15 @@ export function createSqlCourseSkillKnowledgeRepository(driver: SkillSqlDriver):
         WHERE k.key=? AND k.owner_id=? AND ${guard}
         AND EXISTS(SELECT 1 FROM video_course_members m WHERE m.course_id=b.course_id AND m.video_id=k.video_id)`, [lease.id, key, lease.ownerId, ...args(lease, now)]);
       return row ? JSON.parse(row.content) as SkillKnowledgeChunk : null;
+    },
+    async cachedMany(lease, keys, now) {
+      const unique = [...new Set(keys)];
+      if (unique.length > COURSE_SKILL_KNOWLEDGE_READ_BATCH_SIZE) throw new Error('INVALID_SKILL_KNOWLEDGE_BATCH');
+      if (!unique.length) return new Map();
+      const rows = await driver.all<{ key: string; content: string }>(`SELECT k.key,k.content FROM course_skill_knowledge_chunks k JOIN course_skill_builds b ON b.id=?
+        WHERE k.key IN (${unique.map(() => '?').join(',')}) AND k.owner_id=? AND ${guard}
+        AND EXISTS(SELECT 1 FROM video_course_members m WHERE m.course_id=b.course_id AND m.video_id=k.video_id)`, [lease.id, ...unique, lease.ownerId, ...args(lease, now)]);
+      return new Map(rows.map(row => [row.key, JSON.parse(row.content) as SkillKnowledgeChunk]));
     },
     async save(lease, key, chunk, now) {
       const content = JSON.stringify(chunk);

@@ -1,0 +1,86 @@
+{
+  "date": "2026-11-28",
+  "scope": "Bounded guarded knowledge reads for large courses; no model quality or production-runtime completion claim",
+  "platformReference": "https://developers.cloudflare.com/d1/platform/limits/",
+  "limitsVerified": {
+    "paidQueriesPerInvocation": 1000,
+    "maximumBoundParametersPerQuery": 100,
+    "batchCallCountsAsOneInvocationQuery": true
+  },
+  "before": {
+    "simulation": "Original factories with documented query ceiling on a local copy of frozen905-chunk DB",
+    "firstExceededRequest": 1001,
+    "recordedRequestsIncludingFailureHandling": 1003,
+    "actualProviderRequests": 0,
+    "originalDatabaseUnchanged": true,
+    "privateProofSha256": "ec66e919e5526ed36e9080ef2893a24745a1691f76c52020550987f9bdad1f6a"
+  },
+  "after": {
+    "simulation": "Revised factories with same local data copy and query ceiling; network/model forwarding forbidden",
+    "requests": 110,
+    "limitExceeded": false,
+    "firstModelOperation": "skill_draft",
+    "attemptedButBlockedModelRequests": 1,
+    "actualProviderRequests": 0,
+    "originalDatabaseUnchanged": true,
+    "privateProofSha256": "ec6b16c9832659ce9dc524681b8ca0550da4080eb6b3ea9a36dfc548f92d2924"
+  },
+  "change": {
+    "keysPerReadPage": 80,
+    "sourceOrderPreserved": true,
+    "duplicateKeysReadOnce": true,
+    "ownershipLeaseMembershipAndInputSnapshotGuardsRetained": true,
+    "singleReadFallbackRemainsSequential": true,
+    "databaseSchemaChanged": false,
+    "quotaOrFailureCountersReset": false
+  },
+  "verification": {
+    "initialContractRed": {
+      "failed": 1,
+      "passed": 19
+    },
+    "d1Regression": {
+      "files": 4,
+      "passed": 25
+    },
+    "postgres17Contract": {
+      "passed": 20,
+      "isolatedSyntheticDatabase": true,
+      "ownedContainerStopped": true
+    },
+    "synthetic905ChunkRegression": {
+      "knowledgeQueries": 12,
+      "totalCandidateAssemblyQueries": 13,
+      "maximumBindingsAsserted": 100,
+      "sourceOrderAndDeduplicationChecked": true,
+      "realModelCalls": 0
+    },
+    "apiTypecheckConfigurations": 3,
+    "changedFilesLint": "passed",
+    "remoteCiForThisChange": "not yet run"
+  },
+  "sourceHashes": [
+    {
+      "path": "apps/api/src/integrations/course-skill-candidates.ts",
+      "sha256": "32335786e3112dd414edd2e33d37ad9a989d19c8fe600d304ed24cc9989777dc"
+    },
+    {
+      "path": "apps/api/src/persistence/contracts/course-skill-knowledge-repository.ts",
+      "sha256": "0435447d8449771c2358e134024d5abd60802da11dc5b5c4fed17d39c14e6403"
+    },
+    {
+      "path": "apps/api/src/persistence/course-skill-knowledge-sql.ts",
+      "sha256": "d5259118ad54fd4e591b3c5f076d64a431d2f4ee2f64a78d213ac063811b4c19"
+    },
+    {
+      "path": "apps/api/test/persistence/contracts/course-skill-input.contract.ts",
+      "sha256": "b61551d2dc77642a83539eee6d3fe042f04147fa097a6a3b951aa662a9860d40"
+    },
+    {
+      "path": "apps/api/test/persistence/course-skill-knowledge-batch.d1.integration.test.ts",
+      "sha256": "b2c6c164c1a982fd39305342adbb0961cd1d4aeea44a16f093b38b8dc438d651"
+    }
+  ],
+  "productionWrites": 0,
+  "published": false
+}

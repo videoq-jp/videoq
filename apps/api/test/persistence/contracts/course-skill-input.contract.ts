@@ -220,9 +220,16 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         const chunk = { version: 1 as const, videoId: 1, analysisRevision: source.analysisRevision, chunkIndex: 0, cues: [], facts: [], model: 'fixture', promptVersion: '1' };
         expect(await f.knowledge.save(lease, 'knowledge-key', chunk, f.now())).toBe(true);
         expect(await f.knowledge.cached(lease, 'knowledge-key', f.now())).toEqual(chunk);
+        expect(await f.knowledge.save(lease, 'second-key', { ...chunk, chunkIndex: 1 }, f.now())).toBe(true);
+        expect(await f.knowledge.cachedMany!(lease, ['second-key', 'knowledge-key', 'second-key', 'missing'], f.now())).toEqual(new Map([
+          ['second-key', { ...chunk, chunkIndex: 1 }], ['knowledge-key', chunk],
+        ]));
+        expect(await f.knowledge.cachedMany!({ ...lease, ownerId: 'other' }, ['knowledge-key'], f.now())).toEqual(new Map());
+        expect(await f.knowledge.cachedMany!(lease, ['knowledge-key'], f.now() + 1001)).toEqual(new Map());
         await f.execute('DELETE FROM video_course_members WHERE course_id=1');
         expect(await f.knowledge.readPage(lease, 1, 0, f.now())).toBeNull();
         expect(await f.knowledge.cached(lease, 'knowledge-key', f.now())).toBeNull();
+        expect(await f.knowledge.cachedMany!(lease, ['knowledge-key', 'second-key'], f.now())).toEqual(new Map());
         expect(await f.knowledge.save(lease, 'other-key', chunk, f.now())).toBe(false);
       } finally { await f.dispose(); }
     });

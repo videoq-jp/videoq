@@ -4,7 +4,7 @@ import { createSqlCourseSkillCandidateRepository } from '../persistence/course-s
 import { createCourseSkillKnowledgeRepository } from './course-skill-knowledge';
 import { courseSkillDraftDependencies } from './course-skill-drafts';
 import { generateCourseSkillDrafts } from '../features/course-skills/draft-service';
-import type { SkillBuildLease } from '../persistence/contracts/course-skill-knowledge-repository';
+import { COURSE_SKILL_KNOWLEDGE_READ_BATCH_SIZE, type SkillBuildLease } from '../persistence/contracts/course-skill-knowledge-repository';
 import { supportedSkillFacts, type SkillTask } from '../domain/learning/course-skill-draft';
 import type { SkillKnowledgeChunk } from '../domain/learning/skill-knowledge';
 import type { generateCourseSkillJson } from './course-skill-model';
@@ -26,10 +26,17 @@ export async function generateAndSaveCourseSkillCandidates(env: Bindings, input:
   const knowledge = await createCourseSkillKnowledgeRepository(env);
   const repository = await createCourseSkillCandidateRepository(env);
   const chunks: SkillKnowledgeChunk[] = [];
-  for (const key of new Set(input.knowledgeKeys)) {
-    const chunk = await knowledge.cached(input.lease, key, Date.now());
-    if (!chunk) throw new Error('SKILL_INPUT_CHANGED');
-    chunks.push(chunk);
+  const keys = [...new Set(input.knowledgeKeys)];
+  for (let offset = 0; offset < keys.length; offset += COURSE_SKILL_KNOWLEDGE_READ_BATCH_SIZE) {
+    const page = keys.slice(offset, offset + COURSE_SKILL_KNOWLEDGE_READ_BATCH_SIZE);
+    const cached = knowledge.cachedMany ? await knowledge.cachedMany(input.lease, page, Date.now()) : undefined;
+    // SQL order is unspecified. Preserve the checkpoint's source order so that
+    // facts, task identities and previously persisted model-step keys stay stable.
+    for (const key of page) {
+      const chunk = cached ? cached.get(key) : await knowledge.cached(input.lease, key, Date.now());
+      if (!chunk) throw new Error('SKILL_INPUT_CHANGED');
+      chunks.push(chunk);
+    }
   }
   const previous = await repository.list(input.courseId, input.lease.ownerId);
   const existing = new Map<string, SkillTask>();
