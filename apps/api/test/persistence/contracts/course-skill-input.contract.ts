@@ -226,6 +226,21 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         expect(await f.knowledge.save(lease, 'other-key', chunk, f.now())).toBe(false);
       } finally { await f.dispose(); }
     });
+    it('carries the ready image run into the reader and fences a replacement run', async () => {
+      const f = await setup();
+      try {
+        await f.add(); await f.ready();
+        const runId = '11111111-1111-4111-8111-111111111111';
+        await f.execute("INSERT INTO video_visual_runs(video_id,run_id,status,file_key,duration_ms,chunk_count) VALUES(1,?,'ready','file.mp4',1000,1)", [runId]);
+        await f.service.configure(1, 'owner', enabledSkillSettings);
+        const [job] = await f.jobs();
+        const claim = await f.repository.claim(job.id, 'owner', 'lease', f.now(), 1000);
+        const lease = { id: job.id, ownerId: 'owner', token: 'lease', generation: claim!.generation };
+        expect(await f.knowledge.visualSource?.(lease, 1, f.now())).toMatchObject({ id: 1, fileKey: 'file.mp4', expectedRunId: runId });
+        await f.execute('UPDATE video_visual_runs SET run_id=? WHERE video_id=1', ['22222222-2222-4222-8222-222222222222']);
+        expect(await f.knowledge.visualSource?.(lease, 1, f.now())).toBeNull();
+      } finally { await f.dispose(); }
+    });
     it('persists review candidates with owner access and optimistic edit guards', async () => {
       const f = await setup();
       try {

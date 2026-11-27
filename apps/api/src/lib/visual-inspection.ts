@@ -53,7 +53,7 @@ export async function readSparseFrames(
     }
     return { frames, duration_seconds: plan.duration_seconds, sampling_interval_seconds: Math.max(5, plan.duration_seconds / plan.overview.length) };
   }
-  if (video.visualRunId !== undefined) return unpreparedVisualEvidence();
+  if (video.visualRunId !== undefined || video.expectedRunId !== undefined) return unpreparedVisualEvidence();
   const bytes = await readMediaBytes(env, frameCacheKey(video.fileKey), MAX_FRAME_CACHE_BYTES, signal);
   if (!bytes) return unpreparedVisualEvidence();
   const cache = cacheSchema.parse(JSON.parse(new TextDecoder().decode(bytes)));

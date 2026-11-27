@@ -8,6 +8,7 @@ export interface SkillKnowledgeDependencies {
   now(): number;
   model: string;
   promptVersion: string;
+  visualPolicyVersion?: string;
   chunkCharacters?: number;
   extract(cues: { id: string; startMs: number; endMs: number; text: string }[], language: 'ja' | 'en'): Promise<SkillKnowledge[]>;
   visuals?(cues: { id: string; startMs: number; endMs: number; text: string }[], facts: SkillKnowledge[]): Promise<{ id: string; timestampMs: number; jpegBase64: string }[]>;
@@ -48,7 +49,7 @@ export async function extractSkillKnowledge(
     if (cached.facts.some(f => f.requiresVisualEvidence) && deps.visuals && deps.extractVisual) {
       const frames = await deps.visuals(chunk.cues, cached.facts);
       if (frames.length) {
-        const visualKey = await deps.hash(JSON.stringify({ key, visualRevision: input.source.visualRevision, visualPolicyVersion: SKILL_VISUAL_EVIDENCE_POLICY_VERSION, frames: frames.map(({ id, timestampMs }) => ({ id, timestampMs })) }));
+        const visualKey = await deps.hash(JSON.stringify({ key, visualRevision: input.source.visualRevision, visualPolicyVersion: deps.visualPolicyVersion ?? SKILL_VISUAL_EVIDENCE_POLICY_VERSION, frames: frames.map(({ id, timestampMs }) => ({ id, timestampMs })) }));
         if (!await deps.repository.cached(input.lease, visualKey, deps.now())) {
           if (calls >= input.maxModelCalls) return { status: 'budget_exhausted' as const, keys, modelCalls: calls };
           await deps.beforeModel(); calls++;

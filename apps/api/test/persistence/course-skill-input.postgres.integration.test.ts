@@ -20,7 +20,7 @@ const url = process.env.PERSISTENCE_TEST_DATABASE_URL;
       CREATE TABLE videos(id bigint PRIMARY KEY,user_id text,title text,status text,transcript text,file text);
       CREATE TABLE video_course_members(id bigserial PRIMARY KEY,course_id bigint REFERENCES video_courses,video_id bigint REFERENCES videos,added_at text,"order" integer);
       CREATE TABLE video_course_memberships(course_id bigint,user_id text);
-      CREATE TABLE video_visual_runs(video_id bigint PRIMARY KEY,run_id uuid,status text,file_key text);
+      CREATE TABLE video_visual_runs(video_id bigint PRIMARY KEY,run_id uuid,status text,file_key text,duration_ms bigint,chunk_count integer);
       INSERT INTO video_courses(id,user_id) VALUES(1,'owner');
       INSERT INTO videos VALUES(1,'owner','Video','processing','','file.mp4'),(2,'owner','Video 2','processing','','file2.mp4');`);
     // The isolated fixture uses search_path; production migrations target public.

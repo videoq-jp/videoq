@@ -44,3 +44,19 @@ it("retains legacy PostgreSQL manifest reads",async()=>{
   await readVisualManifest(env,{id:1,fileKey:video.fileKey},signal);
   expect(readMediaBytes).toHaveBeenCalledWith(env,`${video.fileKey}.focus-v2.json`,32*1024,signal);
 });
+it('binds a legacy manifest to the ready database run before reading images', async () => {
+  const legacy = { id: 1, fileKey: video.fileKey, expectedRunId: runId };
+  vi.mocked(readMediaBytes).mockResolvedValue(encode({ ...manifest, chunk_versions: undefined }));
+  expect((await readVisualManifest(env, legacy, signal))?.run_id).toBe(runId);
+  vi.mocked(readMediaBytes).mockResolvedValue(encode({ ...manifest, run_id: crypto.randomUUID(), chunk_versions: undefined }));
+  await expect(readSparseFrames(env, legacy, 0, 1, signal, 1)).rejects.toThrow('Invalid visual chunk manifest');
+  expect(readMediaRange).not.toHaveBeenCalled();
+});
+it('does not replace a missing run-bound manifest with an unversioned frame or focus cache', async () => {
+  vi.mocked(readMediaBytes).mockResolvedValue(null);
+  const legacy = { id: 1, fileKey: video.fileKey, expectedRunId: runId };
+  expect(await readSparseFrames(env, legacy, 0, 1, signal, 1)).toHaveProperty('unavailable');
+  expect(await readFocusFrames(env, legacy, 0, 1, signal, 1)).toHaveProperty('unavailable');
+  expect(vi.mocked(readMediaBytes).mock.calls.map(call => call[1])).toEqual([`${video.fileKey}.focus-v2.json`, `${video.fileKey}.focus-v2.json`]);
+  expect(readMediaRange).not.toHaveBeenCalled();
+});

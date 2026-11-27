@@ -16,9 +16,11 @@ export function createSqlCourseSkillKnowledgeRepository(driver: SkillSqlDriver):
       return row ? { text: row.content, nextOffset: offset + Number(row.chars), done: offset + Number(row.chars) >= Number(row.total) } : null;
     },
     async visualSource(lease, videoId, now) {
-      const [row] = await driver.all<{ id: number; file: string; run_id: string; publication_version: string | null }>(`SELECT v.id,v.file,vr.run_id,${driver.dialect === 'd1' ? 'vr.publication_version' : 'NULL'} AS publication_version FROM videos v JOIN video_visual_runs vr ON vr.video_id=v.id AND vr.file_key=v.file AND vr.status='ready' JOIN course_skill_builds b ON b.id=? WHERE v.id=? AND v.user_id=? AND ${guard} AND EXISTS(SELECT 1 FROM video_course_members m WHERE m.course_id=b.course_id AND m.video_id=v.id)`, [lease.id, videoId, lease.ownerId, ...args(lease, now)]);
+      const [row] = await driver.all<{ id: number | string; file: string; run_id: string; publication_version: string | null }>(`SELECT v.id,v.file,vr.run_id,${driver.dialect === 'd1' ? 'vr.publication_version' : 'NULL'} AS publication_version FROM videos v JOIN video_visual_runs vr ON vr.video_id=v.id AND vr.file_key=v.file AND vr.status='ready' JOIN course_skill_builds b ON b.id=? WHERE v.id=? AND v.user_id=? AND ${guard} AND EXISTS(SELECT 1 FROM video_course_members m WHERE m.course_id=b.course_id AND m.video_id=v.id)`, [lease.id, videoId, lease.ownerId, ...args(lease, now)]);
       if (!row) return null;
-      return { id: row.id, fileKey: row.file, ...(driver.dialect === 'd1' ? { visualRunId: row.run_id, visualManifestVersion: row.publication_version } : {}) };
+      const id = Number(row.id); // PostgreSQL bigint values arrive as strings.
+      if (!Number.isSafeInteger(id) || id !== videoId) throw new Error('SKILL_INVALID_VISUAL_SOURCE');
+      return { id, fileKey: row.file, expectedRunId: row.run_id, ...(driver.dialect === 'd1' ? { visualRunId: row.run_id, visualManifestVersion: row.publication_version } : {}) };
     },
     async cached(lease, key, now) {
       const [row] = await driver.all<{ content: string }>(`SELECT k.content FROM course_skill_knowledge_chunks k JOIN course_skill_builds b ON b.id=?

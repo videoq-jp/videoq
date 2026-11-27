@@ -94,6 +94,8 @@ describe('subtitle-backed knowledge', () => {
     expect(() => verifySkillKnowledge([{ ...fact(), visualEvidence: [{ frameId: 'invented', observation: 'invented' }] }], chunk.cues, chunk.frames)).toThrow('SKILL_INVALID_VISUAL_EVIDENCE');
     await extractSkillKnowledge(deps, { ...input, source: { ...input.source, visualRevision: 'visual-r2' } });
     expect(visualCalls).toBe(2); expect(subtitleCalls).toBe(1);
+    await extractSkillKnowledge({ ...deps, visualPolicyVersion: 'cue-window-v1-postgres-run-v1' }, { ...input, source: { ...input.source, visualRevision: 'visual-r2' } });
+    expect(visualCalls).toBe(3); expect(subtitleCalls).toBe(1);
   });
 
 });

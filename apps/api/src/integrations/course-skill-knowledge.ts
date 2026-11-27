@@ -9,6 +9,7 @@ import { createSqlCourseSkillKnowledgeRepository } from '../persistence/course-s
 import { extractSkillKnowledge } from '../features/course-skills/knowledge-service';
 import type { SkillBuildLease } from '../persistence/contracts/course-skill-knowledge-repository';
 import type { CourseSkillSource } from '../persistence/contracts/course-skill-input-repository';
+import { SKILL_VISUAL_EVIDENCE_POLICY_VERSION } from '../domain/learning/skill-knowledge';
 
 export const COURSE_SKILL_KNOWLEDGE_PROMPT_VERSION = 'course-knowledge-v10';
 export const COURSE_SKILL_KNOWLEDGE_CHUNK_CHARACTERS = 3000;
@@ -70,6 +71,9 @@ export async function extractCourseSkillKnowledge(env: Bindings, input: {
   const repository = await createCourseSkillKnowledgeRepository(env);
   return extractSkillKnowledge({
     repository, model: model.model, promptVersion: COURSE_SKILL_KNOWLEDGE_PROMPT_VERSION, chunkCharacters: COURSE_SKILL_KNOWLEDGE_CHUNK_CHARACTERS, now: () => Date.now(),
+    // Discard PostgreSQL interpretations made before legacy manifest run IDs
+    // were checked. Subtitle and already run-bound D1 caches remain reusable.
+    visualPolicyVersion: persistenceBackend(env) === 'postgres' ? `${SKILL_VISUAL_EVIDENCE_POLICY_VERSION}-postgres-run-v1` : SKILL_VISUAL_EVIDENCE_POLICY_VERSION,
     hash: async value => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(n => n.toString(16).padStart(2, '0')).join(''),
     beforeModel: input.beforeModel ?? (() => Promise.resolve()),
     visuals: async (cues, facts) => {
