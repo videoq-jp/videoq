@@ -27,6 +27,18 @@ it('resumes an exact completed prefix without rerunning earlier slots', () => fi
   expect(new Set(run.mock.calls.map(c => c[0].blindId)).size).toBe(3);
   expect(next.completed).toBe(false); expect(next.humanAssessmentCompleted).toBe(false);
 }));
+it('stops between trials without invalidating the completed result or rerunning it on resume', () => fixture(async directory => {
+  const run = vi.fn().mockResolvedValue(outcome);
+  const shouldStop = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+  const stopped = await runComparisonCohort({ ...options(directory, run), maxTrials: 60, shouldStop });
+  expect(stopped.results).toHaveLength(1);
+  expect(stopped.results[0].outcome.validity).toBe('valid');
+  expect(stopped.active).toBeNull();
+  const resumed = await runComparisonCohort(options(directory, run));
+  expect(resumed.results).toHaveLength(2);
+  expect(run).toHaveBeenCalledTimes(2);
+  expect(resumed.results[0]).toEqual(stopped.results[0]);
+}));
 it('refuses changed sources, definitions or approved versions before invoking an executor', () => fixture(async directory => {
   await runComparisonCohort(options(directory));
   for (const changes of [{ sourceHashes: ['d'.repeat(64)] }, { definitionHash: 'e'.repeat(64) }, { approvedSkillHashes: ['f'.repeat(64)] }]) {

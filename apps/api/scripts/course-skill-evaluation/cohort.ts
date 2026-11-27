@@ -42,6 +42,7 @@ async function validateOutcome(value: CohortOutcome, timeoutMs: number, baseComm
 export async function runComparisonCohort(options: {
   directory: string; manifest: CohortManifest; cases: readonly EvaluationCase[]; maxTrials: number;
   verifyInputs: () => Promise<void>;
+  shouldStop?: () => Promise<boolean>;
   run: (slot: CohortSlot) => Promise<CohortOutcome>;
 }) {
   validateManifest(options.manifest);
@@ -72,6 +73,7 @@ export async function runComparisonCohort(options: {
       try { await rename(temporary, path); } catch (error) { await unlink(temporary).catch(() => undefined); throw error; }
     };
     for (let count = 0; count < options.maxTrials && state.results.length < plan.length; count++) {
+      if (await options.shouldStop?.()) break;
       await options.verifyInputs();
       const slot = plan[state.results.length];
       state.active = { slot, parentPid: process.pid, startedAt: new Date().toISOString() };

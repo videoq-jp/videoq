@@ -12,7 +12,7 @@ import { createCourseSkillCandidateRepository } from '../../src/integrations/cou
 import type { CourseSkillCandidateContent } from '../../src/persistence/contracts/course-skill-candidate-repository';
 
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
-const approvalSchema = z.object({ version: z.literal(1), scope: z.literal('local-evaluation-only'), status: z.literal('owner-approved'), courseId: z.number().int().positive(), ownerDecision: z.string().min(1).max(1000),
+export const approvalSchema = z.object({ version: z.literal(1), scope: z.literal('local-evaluation-only'), status: z.literal('owner-approved'), courseId: z.number().int().positive(), ownerDecision: z.string().min(1).max(1000),
   packages: z.array(z.object({ directory: z.string().min(1), dataSha256: hex, files: z.array(z.object({ path: z.enum(['SKILL.md', 'references/sources.md']), sha256: hex }).strict()).length(2) }).strict()).min(1).max(5),
 }).strict();
 const cue = z.object({ id: z.string().max(64), startMs: z.number().int().nonnegative(), endMs: z.number().int().nonnegative(), text: z.string().max(3000) }).strict();
