@@ -41,6 +41,8 @@ PGのjsonbとDOの履歴は旧数値と新しい予約付きentryを読み取れ
 | 入口/ユースケース/DBの挙動契約 | 実行したケースの結果と副作用 | 未実行の全仕様や全並行順序 |
 | negative control | 指定した変異を対象契約が検出できる | 全CI・全consumerのmutation score |
 
+登録済みの全TypeScript consumer（現行43ファイル・46組の正本との対応）について、実装を除去してimport/re-exportだけを残すメモリ上の変異を評価し、静的な到達検査が成功する限界を確認する。各組は台帳の契約試験パスとも照合する。
+
 course serviceの「呼ばない」「返却値を使わない」「旧検証へ置換」はimportをそのまま残し、実ソースを一時的にメモリで変異させて検証する。通常のcourse名契約も同じ挙動assertionを使う。ディスク上の実装は変異させない。tRPC/MCPのschemaは共通fixtureで別途実行する。
 
 他のconsumerに新しい配線や意味の変更を加える際は、台帳で対応する契約を確認し、該当入口を実行するケースと代表的な誤配線のnegative controlを追加する。現在はcourse serviceの3変異を計測した範囲であり、全consumerで同じ検出力を証明したとはしない。

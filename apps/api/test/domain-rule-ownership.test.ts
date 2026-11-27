@@ -32,17 +32,17 @@ function target(from: string, specifier: string): string | undefined {
     return entry ? `packages/${pkg}/` + (typeof entry === 'string' ? entry : entry.default).replace(/^\.\//, '') : undefined;
   }
 }
-function reaches(from: string, owner: string, seen = new Set<string>()): boolean {
+function reaches(from: string, owner: string, seen = new Set<string>(), graph = sources): boolean {
   if (from === owner) return true;
   if (seen.has(from)) return false;
   seen.add(from);
-  const source = sources.get(from);
+  const source = graph.get(from);
   if (!source) return false;
   return source.statements.some(node => {
     if (!(ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) || !node.moduleSpecifier || !ts.isStringLiteral(node.moduleSpecifier)) return false;
     if ((ts.isExportDeclaration(node) && node.isTypeOnly) || (ts.isImportDeclaration(node) && node.importClause?.isTypeOnly)) return false;
     const dependency = target(from, node.moduleSpecifier.text);
-    return dependency ? reaches(dependency, owner, seen) : false;
+    return dependency ? reaches(dependency, owner, seen, graph) : false;
   });
 }
 it('tracks canonical declarations, import reachability and contract file existence (not runtime calls)', () => {
@@ -81,4 +81,26 @@ it('keeps effectful search and delivery execution outside the canonical domain p
     }
     visit(source);
   }
+});
+
+it('evaluates import-only negative controls for every registered TypeScript consumer', () => {
+  let evaluated = 0;
+  for (const entry of catalog.rules) for (const rule of entry.rules) {
+    if (!rule.path.endsWith('.ts')) continue;
+    for (const consumer of rule.consumers) {
+      if (!consumer.endsWith('.ts')) continue;
+      const original = sources.get(consumer)!;
+      expect(original, consumer).toBeDefined();
+      // Remove executable implementations but preserve imports/re-exports.
+      // The static guard accepts this: runtime contracts carry that guarantee.
+      const edges = original.statements.filter(node => ts.isImportDeclaration(node) || ts.isExportDeclaration(node));
+      const replacement = ts.createSourceFile(consumer, edges.map(node => node.getText(original)).join('\n'), ts.ScriptTarget.Latest, true);
+      const graph = new Map(sources).set(consumer, replacement);
+      expect(replacement.statements.every(node => ts.isImportDeclaration(node) || ts.isExportDeclaration(node)), consumer).toBe(true);
+      expect(reaches(consumer, rule.path, new Set(), graph), `${consumer} still reaches ${rule.path} without implementations`).toBe(true);
+      for (const contract of entry.contracts) expect(existsSync(resolve(root, contract)), contract).toBe(true);
+      evaluated++;
+    }
+  }
+  expect(evaluated).toBeGreaterThan(0);
 });
