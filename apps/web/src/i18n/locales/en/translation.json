@@ -1525,6 +1525,8 @@
     "reject": "Reject candidate",
     "withdraw": "End publication",
     "saveBeforePublish": "Save your edits and review the checks before publishing.",
+    "candidateSuperseded": "A new candidate has replaced this version, so the displayed candidate cannot be saved or published. Unsaved edits remain on this screen. Open the latest candidate to review its content and sources.",
+    "reviewLatest": "Review latest candidate",
     "insufficient": "This task needs more supporting knowledge. It will be reconsidered when related videos are added.",
     "sourceRemoved": "Distribution is stopped because a source video changed or was removed.",
     "generationError": "Generation could not finish. Check settings and quota, then rebuild the candidates.",

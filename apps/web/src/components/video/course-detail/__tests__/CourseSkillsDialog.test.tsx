@@ -92,6 +92,24 @@ describe('course skill owner review', () => {
     fireEvent.change(screen.getByLabelText('courseSkills.name'), { target: { value: 'My pending edit' } }); fireEvent.click(button('save'));
     await screen.findByText('Candidate changed; reload'); expect(screen.getByLabelText('courseSkills.name')).toHaveValue('My pending edit'); expect(button('publish')).toBeDisabled();
   });
+  it('explains a replaced candidate, preserves pending edits and opens the latest version explicitly', async () => {
+    globalThis.__setTrpcHandler('courseSkills.get', async input => {
+      const id = (input as { candidateId: string }).candidateId;
+      return id === 'replacement' ? { ...structuredClone(detail), id, contentHash: 'b'.repeat(64), draft: { ...detail.draft!, title: 'Latest candidate' } } : structuredClone(detail);
+    });
+    render(<CourseSkillsDialog {...props()} />); await review();
+    fireEvent.change(screen.getByLabelText('courseSkills.name'), { target: { value: 'My pending correction' } });
+    list.candidates[0] = { ...list.candidates[0], id: 'replacement', title: 'Latest candidate', contentHash: 'b'.repeat(64) };
+    fireEvent.click(button('refresh'));
+    await screen.findByText('courseSkills.candidateSuperseded');
+    expect(screen.getByLabelText('courseSkills.name')).toHaveValue('My pending correction');
+    expect(button('publish')).toBeDisabled(); expect(button('save')).toBeDisabled();
+    expect(handlers.update).not.toHaveBeenCalled(); expect(handlers.publish).not.toHaveBeenCalled();
+    fireEvent.click(button('reviewLatest'));
+    await waitFor(() => expect(screen.getByLabelText('courseSkills.name')).toHaveValue('Latest candidate'));
+    expect(button('publish')).toBeEnabled();
+    expect(screen.queryByText('courseSkills.candidateSuperseded')).not.toBeInTheDocument();
+  });
   it('closes before seeking to the exact evidence time', async () => {
     const p = props(); render(<CourseSkillsDialog {...p} />); await review(); fireEvent.click(screen.getAllByRole('button', { name: 'courseSkills.playSource' })[0]);
     expect(p.onOpenChange).toHaveBeenCalledWith(false); expect(p.onPlay).toHaveBeenCalledWith(42, '12.5');

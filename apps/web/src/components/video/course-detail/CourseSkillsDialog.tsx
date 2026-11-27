@@ -87,6 +87,7 @@ export function CourseSkillsDialog({ courseId, isOpen, onOpenChange, onPlay }: {
   const settings = settingsDraft ?? list.data?.settings;
   const reviewed = detail.data;
   const selectedSummary = list.data?.candidates.find(c => c.id === selected);
+  const replacement = reviewed && list.data?.candidates.find(c => c.skillId === reviewed.skillId && c.id !== reviewed.id);
   const label = (state: string) => t(`courseSkills.states.${state}`, { defaultValue: t('courseSkills.states.unknown') });
   return <Dialog {...dialog.dialogProps} scroll="inner" width="min(58rem, 95vw)"><DialogContent>
     <DialogHeader><DialogHeading {...dialog.headingProps}>{t('courseSkills.title')}</DialogHeading></DialogHeader>
@@ -107,6 +108,7 @@ export function CourseSkillsDialog({ courseId, isOpen, onOpenChange, onPlay }: {
       </> : null}
       {selected && detail.isLoading ? <LoadingSpinner /> : null}
       {detail.error ? <ErrorMessage message={detail.error.message} /> : null}
+      {reviewed && list.data && !selectedSummary ? <div role="status" className="space-y-3 rounded border border-yellow-700 bg-yellow-50 p-3"><p>{t('courseSkills.candidateSuperseded')}</p>{replacement ? <Button variant="outline" disabled={operation.isPending} onClick={() => setSelected(replacement.id)}>{t('courseSkills.reviewLatest')}</Button> : null}</div> : null}
       {reviewed ? <SkillEditor key={`${reviewed.id}:${reviewed.contentHash}`} detail={reviewed} busy={operation.isPending} editable={selectedSummary?.editable ?? false} canPublish={selectedSummary?.canPublish ?? false}
         onSave={draft => operation.mutate({ kind: 'update', candidateId: reviewed.id, expectedHash: reviewed.contentHash, draft })}
         onPublish={() => operation.mutate({ kind: 'publish', candidateId: reviewed.id, expectedHash: reviewed.contentHash })}
