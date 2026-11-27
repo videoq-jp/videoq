@@ -1,26 +1,15 @@
-import { allocateUniqueUsername } from './username';
 import type { SignupQuotaDefaults } from '../billing/signup-quota';
 
-type RegistrationInput = {
+export type RegistrationInput = {
   username?: unknown; displayUsername?: unknown; name?: unknown; email: string;
 };
 
-/** Account defaults apply to every creation path, independent of auth provider. */
-export async function initializeAccount<User extends RegistrationInput>(
-  user: User, q: SignupQuotaDefaults,
-  deps: { usernameExists: (candidate: string) => Promise<boolean>; newId: () => string },
-) {
-  let username =
-    typeof user.username === "string" && user.username.trim()
-      ? user.username.trim()
-      : undefined;
-  if (!username) {
-    username = await allocateUniqueUsername(
-      deps.usernameExists,
-      typeof user.email === "string" ? user.email : "user",
-      deps.newId,
-    );
-  }
+export function registrationUsername(user: RegistrationInput): string | undefined {
+  return typeof user.username === 'string' && user.username.trim() ? user.username.trim() : undefined;
+}
+
+/** Account defaults are pure facts, independent of the auth provider. */
+export function accountWithDefaults<User extends RegistrationInput>(user: User, q: SignupQuotaDefaults, username: string) {
   const displayUsername =
     typeof user.displayUsername === "string" && user.displayUsername.trim()
       ? user.displayUsername
