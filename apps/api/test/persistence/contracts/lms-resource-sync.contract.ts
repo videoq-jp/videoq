@@ -37,9 +37,9 @@ export function lmsResourceSyncContract(name:string,setup:()=>Promise<Fixture>){
    const m=manifest();await expect(syncLmsResource(f.env,grant,'invalid',{...m,file:{...m.file!,size:-1}})).rejects.toThrow('positive safe integer');
    expect(await f.count('videos')).toBe(0);expect(await f.count('lms_resources')).toBe(0);expect(await f.quota()).toEqual({storage:0,upload:0});
   });
-  it.each(['title','courseTitle','contextId','resourceLinkId','filename','externalId'] as const)('rejects NUL %s before allocating resources or reserving quota',async field=>{
+  it.each(['title','courseTitle','contextId','resourceLinkId','filename','contentType','contentHash','externalId'] as const)('rejects NUL %s before allocating resources or reserving quota',async field=>{
    const nul='Bad'+String.fromCharCode(0)+'text',m=manifest();
-   const invalid=field==='filename'?{...m,file:{...m.file!,filename:nul+'.mp4'}}:field==='externalId'?m:{...m,[field]:nul};
+   const invalid=field==='filename'||field==='contentType'||field==='contentHash'?{...m,file:{...m.file!,[field]:field==='filename'?nul+'.mp4':nul}}:field==='externalId'?m:{...m,[field]:nul};
    if(field!=='externalId')expect(resourceManifestSchema.safeParse(invalid).success).toBe(false);
    await expect(sync(invalid,field==='externalId'?nul:'source')).rejects.toMatchObject({status:400,code:'INVALID_MANIFEST'});
    expect(await f.count('videos')).toBe(0);expect(await f.count('lms_resources')).toBe(0);

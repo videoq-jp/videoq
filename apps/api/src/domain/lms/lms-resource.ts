@@ -27,7 +27,7 @@ export function validResourceManifestSource(value: Pick<ResourceManifest,
 
 /** Validate newly supplied persisted text without normalizing opaque identities or free text. */
 export function resourceManifestTextFailure(value: ResourceManifest): string | null {
-  for (const text of [value.contextId, value.resourceLinkId, value.title, value.courseTitle, value.file?.filename]) {
+  for (const text of [value.contextId, value.resourceLinkId, value.title, value.courseTitle, value.file?.filename, value.file?.contentType, value.file?.contentHash, value.youtubeVideoId]) {
     if (text !== undefined) {
       const failure = textValueFailure(text);
       if (failure) return failure;

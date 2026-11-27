@@ -20,6 +20,10 @@ export function materialManagementContract(name:string,setup:()=>Promise<Materia
   it('changes description without reprocessing and keeps canonical title/media untouched',async()=>{
    const result=await update({description:'Teaching notes'});expect(result.material).toMatchObject({description:'Teaching notes',title:'first',transcript:materialSrt,status:'completed'});expect(result.externalTaskId).toBeNull();expect(await f.tasks()).toHaveLength(0);
   });
+  it('preserves Unicode and whitespace in newly supplied teaching notes',async()=>{
+   const description='  日本語 😀 e\u0301\n\tremain  ';
+   expect((await update({description})).material.description).toBe(description);
+  });
   it('queues transcript indexing once and handles unchanged and explicitly cleared transcripts',async()=>{
    expect((await update({transcript:materialSrt})).externalTaskId).toBeNull();
    const result=await update({transcript:materialSrt.replace('Original','Edited')});expect(result.material).toMatchObject({status:'indexing',canEdit:false});expect((await f.tasks())[0].payload.message).toMatchObject({type:'index_video_transcript',payload:{video_id:scope.videoId}});
