@@ -14,7 +14,8 @@ const assessmentSchema = z.object({
 }).strict();
 const hash = (raw: string) => createHash('sha256').update(raw).digest('hex');
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
-type AssessmentRow = CohortOutcome & CohortSlot & { kind: EvaluationCase['kind']; criteriaMet: number; criteriaTotal: number; misapplied: boolean; unsupportedClaim: boolean; notes: string };
+type AssessmentRow = CohortOutcome & CohortSlot & { kind: EvaluationCase['kind']; criteriaMet: number; criteriaTotal: number; misapplied: boolean; unsupportedClaim: boolean; notes: string; toolCalls: { name: string; success: boolean }[] };
+const callSchema = z.array(z.object({ name: z.enum(['get_course_info', 'search_scenes', 'read_video_window', 'list_course_skills', 'get_course_skill', 'read_course_skill_resource']), success: z.boolean() }));
 function distribution(values: number[]) {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b), n = sorted.length;
@@ -38,16 +39,21 @@ export async function createAssessmentReport(options: { directory: string; revie
     const packet = bundle.packets.find(p => p.blindId === result.slot.blindId), score = assessment.assessments.find(a => a.blindId === result.slot.blindId);
     const raw = await readFile(result.outcome.detailPath, 'utf8');
     if (hash(raw) !== result.outcome.detailSha256) throw new Error('COHORT_DETAIL_CHANGED');
-    const detail = JSON.parse(raw) as { execution: { answer: string }; reviewFiles: { files: unknown; omitted: unknown } };
+    const detail = JSON.parse(raw) as { execution: { answer: string }; reviewFiles: { files: unknown; omitted: unknown }; calls: unknown };
+    const toolCalls = callSchema.parse(detail.calls);
     if (!packet || !score || packet.taskId !== task.id || packet.prompt !== task.prompt || !same(packet.criteria, task.humanCriteria) || !same(score.criteria.map(c => c.criterion), task.humanCriteria)
       || packet.answer !== detail.execution.answer || !same(packet.files, detail.reviewFiles.files) || !same(packet.omitted, detail.reviewFiles.omitted)) throw new Error('ASSESSMENT_CONTENT_CHANGED');
     rows.push({ taskId: task.id, kind: task.kind, condition: result.slot.condition, repetition: result.slot.repetition, blindId: result.slot.blindId, ...result.outcome,
-      criteriaMet: score.criteria.filter(c => c.met).length, criteriaTotal: score.criteria.length, misapplied: score.misapplied, unsupportedClaim: score.unsupportedClaim, notes: score.notes });
+      criteriaMet: score.criteria.filter(c => c.met).length, criteriaTotal: score.criteria.length, misapplied: score.misapplied, unsupportedClaim: score.unsupportedClaim, notes: score.notes, toolCalls });
   }
   const conditions = (['A', 'B', 'C'] as const).map(condition => {
     const selected = rows.filter(r => r.condition === condition), code = selected.filter(r => r.kind === 'code');
     if (code.some(r => r.functional === null)) throw new Error('ASSESSMENT_CODE_RESULT_MISSING');
+    const successfulCallsByName: Record<string, number> = {};
+    for (const row of selected) for (const call of row.toolCalls) if (call.success) successfulCallsByName[call.name] = (successfulCallsByName[call.name] ?? 0) + 1;
     return { condition, trials: selected.length, functional: { passed: code.filter(r => r.functional).length, total: code.length }, timeouts: selected.filter(r => r.validity === 'budget-exceeded').length,
+      toolUse: { trialsWithSuccessfulSearch: selected.filter(r => r.toolCalls.some(c => c.name === 'search_scenes' && c.success)).length,
+        trialsWithSuccessfulResourceRead: selected.filter(r => r.toolCalls.some(c => c.name === 'read_course_skill_resource' && c.success)).length, successfulCallsByName },
       human: { misapplied: selected.filter(r => r.misapplied).length, unsupportedClaims: selected.filter(r => r.unsupportedClaim).length, total: selected.length, criteriaMet: selected.reduce((n, r) => n + r.criteriaMet, 0), criteriaTotal: selected.reduce((n, r) => n + r.criteriaTotal, 0) },
       elapsedMs: distribution(selected.map(r => r.elapsedMs)), inputTokens: distribution(selected.flatMap(r => r.inputTokens === null ? [] : [r.inputTokens])), outputTokens: distribution(selected.flatMap(r => r.outputTokens === null ? [] : [r.outputTokens])), monetaryCostUsd: null };
   });

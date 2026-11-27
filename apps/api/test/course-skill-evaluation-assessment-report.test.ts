@@ -16,7 +16,8 @@ async function fixture(run: (f: Awaited<ReturnType<typeof setup>>) => Promise<vo
 async function setup(directory: string) {
   const manifest: CohortManifest = { version: 1, seed: 'synthetic-report-fixture', repetitions: 2, definitionHash: hash(JSON.stringify(evaluationCases)), bootstrapHash: 'a'.repeat(64), sourceHashes: ['b'.repeat(64)], approvedSkillHashes: ['c'.repeat(64)], executorVersion: 'synthetic', model: 'synthetic', reasoning: 'medium', contextWindow: 32768, timeoutMs: 1000, baseCommits: Object.fromEntries(evaluationCases.map(c => [c.id, '1'.repeat(40)])) };
   await runComparisonCohort({ directory, manifest, cases: evaluationCases, maxTrials: 60, verifyInputs: async () => undefined, run: async slot => {
-    const detailPath = join(directory, `${slot.blindId}.json`), body = JSON.stringify({ execution: { answer: 'Synthetic unit answer' }, reviewFiles: { files: [], omitted: [] } });
+    const detailPath = join(directory, `${slot.blindId}.json`), body = JSON.stringify({ execution: { answer: 'Synthetic unit answer' }, reviewFiles: { files: [], omitted: [] },
+      calls: slot.condition === 'A' ? [] : [{ name: slot.condition === 'B' ? 'search_scenes' : 'read_course_skill_resource', success: true }] });
     await writeFile(detailPath, body);
     return { validity: 'valid', functional: evaluationCases.find(c => c.id === slot.taskId)!.kind === 'code' ? slot.condition !== 'A' : null, elapsedMs: slot.condition === 'A' ? 10 : 20, inputTokens: slot.condition === 'A' ? null : 3, outputTokens: 2, baseCommit: '1'.repeat(40), detailPath, detailSha256: hash(body) };
   } });
@@ -36,6 +37,9 @@ test('keeps machine and human denominators separate and preserves missing usage'
   expect(report.conditions[1].inputTokens?.count).toBe(20);
   expect(report.conditions.reduce((n, c) => n + c.human.misapplied, 0)).toBe(1);
   expect(report.conditions.every(c => c.monetaryCostUsd === null)).toBe(true);
+  expect(report.conditions[0].toolUse.trialsWithSuccessfulResourceRead).toBe(0);
+  expect(report.conditions[1].toolUse.trialsWithSuccessfulSearch).toBe(20);
+  expect(report.conditions[2].toolUse.trialsWithSuccessfulResourceRead).toBe(20);
   await expect(createAssessmentReport(f)).rejects.toThrow();
 }));
 test('cannot count an empty review template as a human judgment', () => fixture(async f => {
