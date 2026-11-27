@@ -53,4 +53,33 @@ describe('subtitle-backed knowledge', () => {
     expect(saved).toBe(false);
     await expect(extractSkillKnowledge({ ...deps, extract: () => Promise.resolve([fact()]) }, input)).rejects.toThrow('SKILL_INPUT_CHANGED');
   });
+  it('resumes visual reading from cached subtitles, validates frame IDs and saves no image bytes', async () => {
+    const cache = new Map<string, SkillKnowledgeChunk>();
+    let subtitleCalls = 0, visualCalls = 0;
+    const input = { lease: { id: 'build', ownerId: 'owner', token: 'lease', generation: 1 }, source: { membershipId: 1, videoId: 1, title: 'Title', status: 'completed', analysisRevision: 'r1', visualRevision: 'visual-r1', ready: true }, language: 'ja' as const, policyVersion: '1', maxModelCalls: 1 };
+    const frames = [{ id: 'frame-1', timestampMs: 2000, jpegBase64: 'PRIVATE_IMAGE_BYTES' }];
+    const deps = { repository: {
+      readPage: (_lease: unknown, _video: number, offset: number) => pages(srt, 12000)(offset),
+      cached: (_lease: unknown, key: string) => Promise.resolve(cache.get(key) ?? null),
+      save: (_lease: unknown, key: string, chunk: SkillKnowledgeChunk) => { cache.set(key, chunk); return Promise.resolve(true); },
+    }, hash: async (value: string) => value, now: () => 1000, model: 'fixture', promptVersion: '2', beforeModel: async () => undefined,
+      extract: async () => { subtitleCalls++; return [{ ...fact(), requiresVisualEvidence: true }]; },
+      visuals: async () => frames,
+      extractVisual: async () => { visualCalls++; return [{ ...fact(), requiresVisualEvidence: true, visualEvidence: [{ frameId: 'frame-1', observation: 'An idempotency key is shown.' }] }]; },
+    };
+    expect((await extractSkillKnowledge(deps, input)).status).toBe('budget_exhausted');
+    const result = await extractSkillKnowledge(deps, input);
+    expect(result.status).toBe('completed');
+    expect(subtitleCalls).toBe(1); expect(visualCalls).toBe(1);
+    const chunk = cache.get(result.keys[0])!;
+    expect(chunk.facts[0].status).toBe('supported');
+    expect(chunk.frames).toEqual([{ id: 'frame-1', timestampMs: 2000 }]);
+    expect(JSON.stringify([...cache.values()])).not.toContain('PRIVATE_IMAGE_BYTES');
+    await extractSkillKnowledge(deps, input);
+    expect(visualCalls).toBe(1);
+    expect(() => verifySkillKnowledge([{ ...fact(), visualEvidence: [{ frameId: 'invented', observation: 'invented' }] }], chunk.cues, chunk.frames)).toThrow('SKILL_INVALID_VISUAL_EVIDENCE');
+    await extractSkillKnowledge(deps, { ...input, source: { ...input.source, visualRevision: 'visual-r2' } });
+    expect(visualCalls).toBe(2); expect(subtitleCalls).toBe(1);
+  });
+
 });

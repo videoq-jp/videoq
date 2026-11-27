@@ -14,7 +14,7 @@ export function currentSkillBuildPredicate(driver: SkillSqlDriver): string {
     AND ${skillSourceState(driver.dialect)}=${jsonSource})`;
 }
 type InputRow = {
-  course_id: number; owner_id: string; revision: number; source_state: string;
+  course_id: number; owner_id: string; revision: number; generation_epoch: number; source_state: string;
   generation_enabled: number; distribution_enabled: number; language: 'ja' | 'en'; policy_version: string;
 };
 type BuildRow = {
@@ -59,14 +59,16 @@ export function createSqlCourseSkillInputRepository(driver: SkillSqlDriver): Cou
       ON CONFLICT(video_id) DO NOTHING`, [courseId, ownerId, courseId, ownerId]);
   }
   return {
-    async configure(courseId, ownerId, settings) {
+    async configure(courseId, ownerId, settings, forceGeneration = false) {
       await seed(courseId, ownerId);
       const rows = await driver.all(`INSERT INTO course_skill_inputs(course_id,generation_enabled,distribution_enabled,policy_version,language)
         SELECT c.id,?,?,?,? FROM video_courses c WHERE c.id IN (${ownedCourse})
         ON CONFLICT(course_id) DO UPDATE SET generation_enabled=excluded.generation_enabled,
           distribution_enabled=excluded.distribution_enabled, policy_version=excluded.policy_version,language=excluded.language,
-          revision=course_skill_inputs.revision+1,observed_input='',next_check_at=0
-        RETURNING course_id`, [Number(settings.generationEnabled), Number(settings.distributionEnabled), settings.policyVersion, settings.language, courseId, ownerId]);
+          revision=course_skill_inputs.revision+CASE WHEN course_skill_inputs.generation_enabled<>excluded.generation_enabled OR course_skill_inputs.policy_version<>excluded.policy_version OR course_skill_inputs.language<>excluded.language OR ?=1 THEN 1 ELSE 0 END,
+          generation_epoch=course_skill_inputs.generation_epoch+CASE WHEN course_skill_inputs.generation_enabled<>excluded.generation_enabled OR course_skill_inputs.policy_version<>excluded.policy_version OR course_skill_inputs.language<>excluded.language OR ?=1 THEN 1 ELSE 0 END,
+          next_check_at=0
+        RETURNING course_id`, [Number(settings.generationEnabled), Number(settings.distributionEnabled), settings.policyVersion, settings.language, courseId, ownerId, Number(forceGeneration), Number(forceGeneration)]);
       return rows.length > 0;
     },
     async snapshot(courseId, ownerId) {
@@ -76,7 +78,7 @@ export function createSqlCourseSkillInputRepository(driver: SkillSqlDriver): Cou
         WHERE s.course_id=? AND ${managed}`, [courseId, ownerId]);
       if (!row) return null;
       return {
-        courseId: Number(row.course_id), ownerId: row.owner_id, revision: row.revision, sourceState: row.source_state,
+        courseId: Number(row.course_id), ownerId: row.owner_id, revision: row.revision, generationEpoch: row.generation_epoch, sourceState: row.source_state,
         sources: sources(row.source_state), settings: {
           generationEnabled: row.generation_enabled === 1, distributionEnabled: row.distribution_enabled === 1,
           policyVersion: row.policy_version, language: row.language,
@@ -111,7 +113,7 @@ export function createSqlCourseSkillInputRepository(driver: SkillSqlDriver): Cou
           AND s.policy_version=? AND s.language=? AND s.distribution_enabled=? AND ${managed} AND ${source}=?
           ON CONFLICT(course_id,input_key) DO UPDATE SET revision=excluded.revision,
             state=CASE WHEN course_skill_builds.state='completed' THEN 'completed' ELSE 'queued' END,
-            lease_token=NULL,lease_until=0,generation=course_skill_builds.generation+1
+            lease_token=NULL,lease_until=0,generation=course_skill_builds.generation+1,checkpoint=''
           WHERE course_skill_builds.revision<>excluded.revision`,
         build.id, build.inputKey, build.input, now, snapshot.courseId, snapshot.revision, snapshot.revision + 1,
         snapshot.sourceState, settings.policyVersion, settings.language, Number(settings.distributionEnabled), snapshot.ownerId, snapshot.sourceState));
@@ -121,12 +123,12 @@ export function createSqlCourseSkillInputRepository(driver: SkillSqlDriver): Cou
     async claim(id, ownerId, token, now, leaseMs) {
       if (!token || !Number.isSafeInteger(leaseMs) || leaseMs < 1 || leaseMs > 900_000) throw new Error('INVALID_SKILL_LEASE');
       const [row] = await driver.all<BuildRow>(`UPDATE course_skill_builds AS b SET state='running',lease_token=?,lease_until=?,generation=generation+1
-        WHERE b.id=? AND (state='queued' OR state='running' AND lease_until<=?) AND ${current} RETURNING *`, [token, now + leaseMs, id, now, ownerId]);
+        WHERE b.id=? AND state IN ('queued','running') AND lease_until<=? AND ${current} RETURNING *`, [token, now + leaseMs, id, now, ownerId]);
       return row ? { id: row.id, courseId: Number(row.course_id), revision: row.revision, inputKey: row.input_key, input: row.input,
         state: row.state, leaseToken: row.lease_token, leaseUntil: Number(row.lease_until), generation: row.generation, checkpoint: row.checkpoint } : null;
     },
     async checkpoint(id, ownerId, token, generation, value, now) {
-      if (value.length > 16_000) throw new Error('SKILL_CHECKPOINT_TOO_LARGE');
+      if (value.length > 64_000) throw new Error('SKILL_CHECKPOINT_TOO_LARGE');
       const rows = await driver.all(`UPDATE course_skill_builds AS b SET checkpoint=? WHERE b.id=?
         AND state='running' AND lease_token=? AND generation=? AND lease_until>? AND ${current} RETURNING id`, [value, id, token, generation, now, ownerId]);
       return rows.length > 0;

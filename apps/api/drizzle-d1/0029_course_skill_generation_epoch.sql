@@ -1,0 +1,1 @@
+ALTER TABLE `course_skill_inputs` ADD `generation_epoch` integer DEFAULT 0 NOT NULL;

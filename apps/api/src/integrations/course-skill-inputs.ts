@@ -19,8 +19,8 @@ export async function createCourseSkillInputs(env: Bindings) {
     hash: async value => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(v => v.toString(16).padStart(2, '0')).join(''),
     id: () => crypto.randomUUID(), now: () => Date.now(),
   });
-  return { ...service, configure: async (courseId: number, ownerId: string, settings: CourseSkillSettings) => {
-    const applied = await service.configure(courseId, ownerId, settings);
+  return { ...service, configure: async (courseId: number, ownerId: string, settings: CourseSkillSettings, forceGeneration = false) => {
+    const applied = await service.configure(courseId, ownerId, settings, forceGeneration);
     if (applied && settings.generationEnabled) await armMaintenance(env, Date.now() + 60_000);
     return applied;
   } };
@@ -33,12 +33,15 @@ export async function reconcileCourseSkillInputs(env: Bindings) {
 
 /** Notifications accelerate durable polling; never fail an already committed business operation. */
 export async function notifyCourseSkillInput(env: Bindings, courseId: number, ownerId: string): Promise<void> {
+  // PostgreSQL uses the durable scan so ordinary video writes keep their single connection.
+  if (persistenceBackend(env) !== 'd1') return;
   try {
     const result = await (await createCourseSkillInputs(env)).reconcile(courseId, ownerId);
     if (result.status !== 'disabled') await armMaintenance(env, Date.now() + 60_000);
   } catch { console.error(JSON.stringify({ event: 'course_skill_input_notification_failed', courseId })); }
 }
 export async function notifyVideoSkillInput(env: Bindings, videoId: number): Promise<void> {
+  if (persistenceBackend(env) !== 'd1') return;
   try {
     const repository = await createCourseSkillInputRepository(env);
     for (const course of await repository.affected(videoId)) await notifyCourseSkillInput(env, Number(course.courseId), course.ownerId);

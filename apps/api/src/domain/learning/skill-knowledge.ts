@@ -6,19 +6,23 @@ export type SkillKnowledge = {
   claim: string; appliesWhen: string[]; exceptions: string[];
   evidence: { cueId: string; quote: string }[];
   requiresVisualEvidence: boolean;
+  visualEvidence?: { frameId: string; observation: string }[];
   versionContext: { language: string | null; framework: string | null; version: string | null };
 };
 export type SkillKnowledgeChunk = {
   version: 1; videoId: number; analysisRevision: string; chunkIndex: number;
   cues: SkillCue[]; facts: (SkillKnowledge & { id: string; status: 'supported' | 'needs_visual_review' })[];
   model: string; promptVersion: string;
+  frames?: { id: string; timestampMs: number }[];
 };
 
 /** Accept only claims with exact evidence in the server-selected subtitle window. */
-export function verifySkillKnowledge(facts: SkillKnowledge[], cues: readonly SkillCue[]): void {
+export function verifySkillKnowledge(facts: SkillKnowledge[], cues: readonly SkillCue[], frames: readonly { id: string; timestampMs: number }[] = []): void {
   const byId = new Map(cues.map(c => [c.id, c]));
   if (facts.length > 40) throw new Error('SKILL_TOO_MANY_FACTS');
+  const frameIds = new Set(frames.map(f => f.id));
   for (const fact of facts) {
+    if (fact.visualEvidence?.some(e => !frameIds.has(e.frameId) || !e.observation.trim())) throw new Error('SKILL_INVALID_VISUAL_EVIDENCE');
     if (!fact.claim.trim() || fact.evidence.length === 0) throw new Error('SKILL_UNSUPPORTED_FACT');
     for (const evidence of fact.evidence) {
       const cue = byId.get(evidence.cueId);

@@ -11,6 +11,7 @@ function setup() {
   const read = vi.fn(() => Promise.resolve(removed ? null : { path: 'SKILL.md', content: 'skill content', digest: 'sha256:fixture', size: 12 }));
   const repository: CourseSkillPublicationRepository = {
     approve: () => Promise.resolve(false), stage: () => Promise.resolve(false), publish: () => Promise.resolve(false), withdraw: () => Promise.resolve(false),
+    managed: () => Promise.resolve([]),
     get: (_id, user) => Promise.resolve(!removed && user === 'owner' ? p : null), list: user => Promise.resolve(!removed && user === 'owner' ? [p] : []), read,
   };
   const tools = vi.fn(() => Promise.resolve({ tools: [] }));

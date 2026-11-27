@@ -1,4 +1,5 @@
 import { qaHandlers } from './handlers/qa';
+import { courseSkillHandlers } from './handlers/course-skills';
 import { requireFeature } from "../lib/deployment";
 import type { Context } from "hono";
 import { TRPCError } from "@trpc/server";
@@ -29,6 +30,7 @@ export async function createTrpcContext(c: Context<AppEnv>): Promise<TrpcContext
   const userId = auth.kind === "ok" ? auth.userId : null;
 
   const handlers = {
+    ...courseSkillHandlers(c, userId),
     ...accountHandlers(c, userId),
     ...adminHandlers(c, userId),
     ...billingHandlers(c, userId),

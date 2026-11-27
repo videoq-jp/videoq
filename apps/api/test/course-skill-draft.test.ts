@@ -46,4 +46,10 @@ describe('task-based course skills', () => {
     const result = await generateCourseSkillDrafts({ ...deps, audit: () => Promise.resolve({ supported: false, issues: ['適用条件に不足'] }) }, [chunk]);
     expect(result.candidates[0].issues).toContain('SKILL_SEMANTIC_REVIEW_REQUIRED');
   });
+  it('does not synthesize unaffected tasks but can explicitly rebuild them', async () => {
+    const existing = [{ skillId: 'existing', slug: draft.slug, objective: draft.title, factIds: chunk.facts.map(f => f.id) }];
+    const planner = { ...deps, plan: () => Promise.resolve({ proposals: [{ existingSkillId: 'existing', slug: draft.slug, objective: draft.title, factIds: chunk.facts.map(f => f.id) }], issues: [] }) };
+    expect((await generateCourseSkillDrafts(planner, [chunk], existing)).candidates).toHaveLength(0);
+    expect((await generateCourseSkillDrafts(planner, [chunk], existing, { force: true })).candidates).toHaveLength(1);
+  });
 });

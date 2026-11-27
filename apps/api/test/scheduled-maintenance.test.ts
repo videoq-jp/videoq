@@ -20,6 +20,7 @@ const lti = vi.hoisted(() => ({ pruneLtiCredentials: vi.fn() }));
 const scheduler = vi.hoisted(() => ({ refreshMaintenanceSchedule: vi.fn() }));
 const skills = vi.hoisted(() => ({ reconcileCourseSkillInputs: vi.fn() }));
 vi.mock('../src/integrations/course-skill-inputs', () => skills);
+vi.mock('../src/integrations/course-skill-execution', () => ({ executeNextCourseSkillBuild: () => Promise.resolve({ claimed: 0 }) }));
 
 vi.mock("../src/lib/external-tasks", () => tasks);
 vi.mock("../src/lib/upload-reconcile", () => uploads);

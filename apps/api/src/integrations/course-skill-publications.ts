@@ -22,9 +22,9 @@ export async function publishCourseSkillCandidate(env: Bindings, input: { course
   const candidate = (await candidates.list(input.courseId, input.ownerId)).find(c => c.id === input.candidateId);
   if (!candidate || candidate.contentHash !== input.expectedHash || !candidate.content.draft || candidate.content.issues.length) throw new Error('SKILL_CANDIDATE_NOT_READY');
   const repository = await createCourseSkillPublicationRepository(env);
-  const rendered = renderCourseSkill(input.courseId, candidate.content.draft, candidate.content.facts);
+  const rendered = renderCourseSkill(input.courseId, candidate.content.draft, candidate.content.facts, candidate.content.generation?.language);
   const id = `${candidate.id}-${candidate.contentHash}`;
-  const already = await repository.get(id, input.ownerId);
+  const already = (await repository.managed(input.courseId, input.ownerId)).find(p => p.id === id && p.state === 'active' && p.validSources);
   if (already) return { revisionId: id };
   if (!await repository.approve(candidate.id, input.ownerId, input.expectedHash)) throw new Error('SKILL_CANDIDATE_CHANGED');
   const snapshot = await (await createCourseSkillInputRepository(env)).snapshot(input.courseId, input.ownerId);

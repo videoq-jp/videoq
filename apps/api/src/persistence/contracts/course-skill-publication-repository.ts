@@ -10,4 +10,5 @@ export interface CourseSkillPublicationRepository {
   get(id: string, userId: string): Promise<CourseSkillPublication | null>;
   read(id: string, path: string, userId: string): Promise<SkillPublicationFile | null>;
   withdraw(courseId: number, skillId: string, ownerId: string): Promise<boolean>;
+  managed(courseId: number, ownerId: string): Promise<{ id: string; skillId: string; state: string; validSources: boolean }[]>;
 }

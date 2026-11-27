@@ -9,7 +9,7 @@ export type CourseSkillSource = {
   analysisRevision: string; visualRevision: string; ready: boolean;
 };
 export type CourseSkillSnapshot = {
-  courseId: number; ownerId: string; revision: number; sourceState: string;
+  courseId: number; ownerId: string; revision: number; generationEpoch: number; sourceState: string;
   settings: CourseSkillSettings; sources: CourseSkillSource[];
 };
 export type CourseSkillBuild = {
@@ -17,7 +17,7 @@ export type CourseSkillBuild = {
   state: string; leaseToken: string | null; leaseUntil: number; generation: number; checkpoint: string;
 };
 export interface CourseSkillInputRepository {
-  configure(courseId: number, ownerId: string, settings: CourseSkillSettings): Promise<boolean>;
+  configure(courseId: number, ownerId: string, settings: CourseSkillSettings, forceGeneration?: boolean): Promise<boolean>;
   /** Authoritative source state and settings read in one database snapshot. */
   snapshot(courseId: number, ownerId: string): Promise<CourseSkillSnapshot | null>;
   due(now: number, limit: number): Promise<{ courseId: number; ownerId: string }[]>;

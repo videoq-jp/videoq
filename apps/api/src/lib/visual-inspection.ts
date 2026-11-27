@@ -34,7 +34,7 @@ export { selectClipFrames } from '../domain/conversation/video-evidence';
 import type { VisualMode, VisualInspectionResult } from "../domain/media/visual-evidence";
 export type { VisualMode } from "../domain/media/visual-evidence";
 
-async function readSparseFrames(
+export async function readSparseFrames(
   env: Bindings, video: VisualVideo,
   start: number, end: number, signal: AbortSignal, limit: number,
 ): Promise<FrameSelection> {

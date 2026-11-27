@@ -5,6 +5,7 @@ import { createD1SkillSqlDriver } from '../../src/persistence/d1/course-skill-in
 import { createSqlCourseSkillKnowledgeRepository } from '../../src/persistence/course-skill-knowledge-sql';
 import { createSqlCourseSkillCandidateRepository } from '../../src/persistence/course-skill-candidate-sql';
 import { createSqlCourseSkillPublicationRepository } from '../../src/persistence/course-skill-publication-sql';
+import { createSqlCourseSkillExecutionRepository } from '../../src/persistence/course-skill-execution-sql';
 
 courseSkillInputContract('D1 course skill inputs', async () => {
   const f = await createD1Fixture();
@@ -17,6 +18,7 @@ courseSkillInputContract('D1 course skill inputs', async () => {
     knowledge: createSqlCourseSkillKnowledgeRepository(createD1SkillSqlDriver(f.database)),
     candidates: createSqlCourseSkillCandidateRepository(createD1SkillSqlDriver(f.database)),
     publications: createSqlCourseSkillPublicationRepository(createD1SkillSqlDriver(f.database)),
+    execution: createSqlCourseSkillExecutionRepository(createD1SkillSqlDriver(f.database)),
     jobs: async () => (await f.database.prepare('SELECT id,input FROM course_skill_builds ORDER BY created_at,id').all<{ id: string; input: string }>()).results,
     dispose: f.dispose };
 });

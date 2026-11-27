@@ -7,6 +7,7 @@ import { generateCourseSkillDrafts } from '../features/course-skills/draft-servi
 import type { SkillBuildLease } from '../persistence/contracts/course-skill-knowledge-repository';
 import type { SkillTask } from '../domain/learning/course-skill-draft';
 import type { SkillKnowledgeChunk } from '../domain/learning/skill-knowledge';
+import type { generateCourseSkillJson } from './course-skill-model';
 
 export async function createCourseSkillCandidateRepository(env: Bindings) {
   if (persistenceBackend(env) === 'd1') {
@@ -20,8 +21,8 @@ export async function createCourseSkillCandidateRepository(env: Bindings) {
 
 /** Only server-issued cache keys are accepted; knowledge reads revalidate the build lease. */
 export async function generateAndSaveCourseSkillCandidates(env: Bindings, input: {
-  lease: SkillBuildLease; courseId: number; language: 'ja' | 'en'; knowledgeKeys: string[];
-}) {
+  lease: SkillBuildLease; courseId: number; language: 'ja' | 'en'; generationEpoch: number; knowledgeKeys: string[];
+}, generate?: typeof generateCourseSkillJson) {
   const knowledge = await createCourseSkillKnowledgeRepository(env);
   const repository = await createCourseSkillCandidateRepository(env);
   const chunks: SkillKnowledgeChunk[] = [];
@@ -33,9 +34,16 @@ export async function generateAndSaveCourseSkillCandidates(env: Bindings, input:
   const previous = await repository.list(input.courseId, input.lease.ownerId);
   const existing = new Map<string, SkillTask>();
   for (const candidate of previous) existing.set(candidate.skillId, candidate.content.task);
-  const result = await generateCourseSkillDrafts(courseSkillDraftDependencies(env, input.lease.ownerId, input.language), chunks, [...existing.values()]);
+  const dependencies = courseSkillDraftDependencies(env, input.lease.ownerId, input.language, generate);
+  let taskIndex = 0;
+  dependencies.id = () => { let id: string; do { id = `${input.lease.id}-${taskIndex++}`; } while (existing.has(id)); return id; };
+  const latest = new Map(previous.map(candidate => [candidate.skillId, candidate]));
+  const force = [...latest.values()].some(c => (c.content.generation?.epoch ?? 0) < input.generationEpoch);
+  const result = await generateCourseSkillDrafts(dependencies, chunks, [...existing.values()], { force });
   for (const candidate of result.candidates) {
-    const content = { ...candidate, issues: [...result.issues, ...candidate.issues] };
+    const content = { ...candidate, issues: [...result.issues, ...candidate.issues], generation: {
+      knowledgeModels: [...new Set(chunks.map(c => c.model))], knowledgePromptVersions: [...new Set(chunks.map(c => c.promptVersion))], draftPromptVersion: 'course-draft-v1', language: input.language, epoch: input.generationEpoch,
+    } };
     const contentHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(content))))].map(n => n.toString(16).padStart(2, '0')).join('');
     if (!await repository.save(input.lease, { id: crypto.randomUUID(), content, contentHash }, Date.now())) throw new Error('SKILL_INPUT_CHANGED');
   }

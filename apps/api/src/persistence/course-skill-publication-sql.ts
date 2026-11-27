@@ -25,12 +25,12 @@ export function createSqlCourseSkillPublicationRepository(driver: SkillSqlDriver
     async approve(candidateId, ownerId, expectedHash) {
       const rows = await driver.all(`UPDATE course_skill_candidates AS k SET status='approved',approved_hash=content_hash
         WHERE k.id=? AND k.content_hash=? AND ${hasDraft} AND k.status<>'published'
-        AND EXISTS(SELECT 1 FROM course_skill_builds b WHERE b.id=k.build_id AND ${current}) RETURNING id`, [candidateId, expectedHash, ownerId]);
+        AND EXISTS(SELECT 1 FROM course_skill_builds b WHERE b.id=k.build_id AND b.state='completed' AND ${current}) RETURNING id`, [candidateId, expectedHash, ownerId]);
       return rows.length > 0;
     },
     async stage(ownerId, input) {
       const [candidate] = await driver.all<{ content: string; input: string }>(`SELECT k.content,b.input FROM course_skill_candidates k JOIN course_skill_builds b ON b.id=k.build_id
-        WHERE k.id=? AND k.content_hash=? AND k.approved_hash=k.content_hash AND ${current}`, [input.candidateId, input.expectedHash, ownerId]);
+        WHERE k.id=? AND k.content_hash=? AND k.approved_hash=k.content_hash AND b.state='completed' AND ${current}`, [input.candidateId, input.expectedHash, ownerId]);
       if (!candidate) return false;
       const content = JSON.parse(candidate.content) as { facts: { videoId: number }[] };
       const snapshot = JSON.parse(candidate.input) as { sourceState: string };
@@ -48,7 +48,7 @@ export function createSqlCourseSkillPublicationRepository(driver: SkillSqlDriver
       const manifest = JSON.stringify(input.files.map(({ path, digest, size }) => ({ path, digest, size })));
       const statements = [stmt(`INSERT INTO course_skill_publications(id,candidate_id,course_id,skill_id,name,description,content_hash,sources,manifest)
         SELECT ?,k.id,k.course_id,k.skill_id,?,?,?,?,? FROM course_skill_candidates k JOIN course_skill_builds b ON b.id=k.build_id
-        WHERE k.id=? AND k.content_hash=? AND k.approved_hash=k.content_hash AND k.status='approved' AND ${current}
+        WHERE k.id=? AND k.content_hash=? AND k.approved_hash=k.content_hash AND k.status='approved' AND b.state='completed' AND ${current}
         ON CONFLICT(id) DO NOTHING RETURNING id`, input.id, input.name, input.description, input.expectedHash, input.sources, manifest, input.candidateId, input.expectedHash, ownerId)];
       for (const f of input.files) statements.push(stmt(`INSERT INTO course_skill_files(revision_id,path,content,digest,size)
         SELECT p.id,?,?,?,? FROM course_skill_publications p WHERE p.id=? AND p.content_hash=? AND p.state='staged' AND ${owner}
@@ -65,7 +65,7 @@ export function createSqlCourseSkillPublicationRepository(driver: SkillSqlDriver
       const results = await driver.batch([
         stmt(`UPDATE course_skill_publications AS p SET state='active' WHERE p.id=? AND p.content_hash=? AND p.state='staged'
           AND ${completeFiles} AND EXISTS(SELECT 1 FROM course_skill_candidates k JOIN course_skill_builds b ON b.id=k.build_id
-            WHERE k.id=p.candidate_id AND k.content_hash=p.content_hash AND k.approved_hash=k.content_hash AND k.status='approved' AND ${current}) RETURNING id`, id, expectedHash, ownerId),
+            WHERE k.id=p.candidate_id AND k.content_hash=p.content_hash AND k.approved_hash=k.content_hash AND k.status='approved' AND b.state='completed' AND ${current}) RETURNING id`, id, expectedHash, ownerId),
         stmt(`INSERT INTO course_skill_heads(course_id,skill_id,revision_id)
           SELECT p.course_id,p.skill_id,p.id FROM course_skill_publications p WHERE p.id=? AND p.content_hash=? AND p.state='active' AND ${owner}
           ON CONFLICT(course_id,skill_id) DO UPDATE SET revision_id=excluded.revision_id`, id, expectedHash, ownerId),
@@ -96,6 +96,13 @@ export function createSqlCourseSkillPublicationRepository(driver: SkillSqlDriver
     async withdraw(courseId, skillId, ownerId) {
       const rows = await driver.all(`UPDATE course_skill_publications AS p SET state='revoked' WHERE p.course_id=? AND p.skill_id=? AND ${owner} RETURNING id`, [courseId, skillId, ownerId]);
       return rows.length > 0;
+    },
+    async managed(courseId, ownerId) {
+      const rows = await driver.all<{ id: string; skill_id: string; state: string; valid_sources: number }>(`SELECT p.id,p.skill_id,p.state,
+        CASE WHEN ${sourceCurrent} THEN 1 ELSE 0 END AS valid_sources FROM course_skill_publications p
+        JOIN course_skill_heads h ON h.revision_id=p.id JOIN course_skill_inputs s ON s.course_id=p.course_id
+        WHERE p.course_id=? AND ${owner}`, [courseId, ownerId]);
+      return rows.map(row => ({ id: row.id, skillId: row.skill_id, state: row.state, validSources: row.valid_sources === 1 }));
     },
   };
 }

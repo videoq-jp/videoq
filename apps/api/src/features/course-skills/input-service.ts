@@ -12,7 +12,7 @@ export function courseSkillInputService(deps: SkillInputDependencies) {
     const snapshot = await deps.repository.snapshot(courseId, ownerId);
     if (!snapshot || !snapshot.settings.generationEnabled) return { status: 'disabled' } as const;
     // The source projection is bounded metadata. Never put transcripts in a queue envelope.
-    const input = JSON.stringify({ version: 1, courseId, ownerId, sourceState: snapshot.sourceState, settings: snapshot.settings, sources: snapshot.sources.filter(s => s.ready) });
+    const input = JSON.stringify({ version: 1, courseId, ownerId, generationEpoch: snapshot.generationEpoch, sourceState: snapshot.sourceState, settings: { ...snapshot.settings, distributionEnabled: false }, sources: snapshot.sources.filter(s => s.ready) });
     if (input.length > 256_000) throw new Error('SKILL_INPUT_TOO_LARGE');
     const ready = snapshot.sources.some(s => s.ready);
     const build = ready ? { id: deps.id(), inputKey: await deps.hash(input), input } : null;
@@ -21,9 +21,9 @@ export function courseSkillInputService(deps: SkillInputDependencies) {
   }
   return {
     reconcile,
-    async configure(courseId: number, ownerId: string, settings: CourseSkillSettings) {
+    async configure(courseId: number, ownerId: string, settings: CourseSkillSettings, forceGeneration = false) {
       if (!settings.policyVersion.trim() || settings.policyVersion.length > 128 || !['ja', 'en'].includes(settings.language)) throw new Error('INVALID_SKILL_SETTINGS');
-      if (!await deps.repository.configure(courseId, ownerId, settings)) return false;
+      if (!await deps.repository.configure(courseId, ownerId, settings, forceGeneration)) return false;
       await reconcile(courseId, ownerId);
       return true;
     },

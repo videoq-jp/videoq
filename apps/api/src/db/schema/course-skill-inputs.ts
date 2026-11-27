@@ -9,6 +9,7 @@ export const courseSkillInputs = pgTable('course_skill_inputs', {
   policyVersion: text('policy_version').notNull().default('1'),
   language: text('language').notNull().default('ja'),
   revision: integer('revision').notNull().default(0),
+  generationEpoch: integer('generation_epoch').notNull().default(0),
   observedInput: text('observed_input').notNull().default(''),
   nextCheckAt: bigint('next_check_at', { mode: 'number' }).notNull().default(0),
 }, table => [index('course_skill_inputs_due_idx').on(table.generationEnabled, table.nextCheckAt)]);

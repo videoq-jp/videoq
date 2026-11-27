@@ -61,8 +61,10 @@ function sweepProgressed(results: Record<string, unknown>): boolean {
   const sceneIndex = results.sceneIndex as { claimed?: number; reconciled?: number; verified?: number; repairQueued?: number } | undefined;
   const policy = results.operationalPolicy as { delivered?: number } | undefined;
   const invitations = results.staleInvitations as { failed?: number } | undefined;
+  const skills = results.courseSkills as { claimed?: number } | undefined;
   return (
     (policy?.delivered ?? 0) > 0 ||
+    (skills?.claimed ?? 0) > 0 ||
     (materials?.synchronized ?? 0) > 0 ||
     (tasks?.claimed ?? 0) > 0 ||
     (sceneIndex?.claimed ?? 0) > 0 || (sceneIndex?.reconciled ?? 0) > 0 || (sceneIndex?.verified ?? 0) > 0 || (sceneIndex?.repairQueued ?? 0) > 0 ||

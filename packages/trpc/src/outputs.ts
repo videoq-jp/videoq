@@ -1,4 +1,5 @@
 import { qaOutputSchemas } from './qa';
+import { courseSkillsOutputSchemas } from './course-skills';
 import { z } from "zod";
 import type { inputSchemas } from "./inputs";
 import * as models from "./model-schemas";
@@ -14,6 +15,7 @@ const addedItemsSchema = messageSchema.extend({ added_count: z.number(), skipped
 const recoveryHash=z.string().regex(/^[a-f0-9]{64}$/);
 const recoveryInspection=z.object({target:z.string(),fingerprint:recoveryHash,inspection:recoveryHash,workflowId:recoveryHash,status:z.enum(['errored','terminated']),payloadHash:recoveryHash,sourceHash:recoveryHash.nullable(),artifacts:z.array(z.object({key_hash:recoveryHash,content_hash:recoveryHash})),ledger:z.object({job_type:z.string(),payload_sha256:recoveryHash,status:z.string(),attempts:z.number(),lease_until:z.string().nullable()}).nullable()});
 export const outputSchemas = {
+  ...courseSkillsOutputSchemas,
   'admin.inspectSearchRecovery': recoveryInspection,
   'admin.restartSearchWorkflow': z.object({auditId:z.string(),workflowId:recoveryHash,inspection:recoveryHash,outcome:z.literal('restart_accepted')}),
   ...qaOutputSchemas,

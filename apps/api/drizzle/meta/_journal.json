@@ -512,6 +512,20 @@
       "when": 1795759226110,
       "tag": "0072_course_skill_publications",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795760064121,
+      "tag": "0073_course_skill_steps",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1795760339465,
+      "tag": "0074_course_skill_generation_epoch",
+      "breakpoints": true
     }
   ]
 }

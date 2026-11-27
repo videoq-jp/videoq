@@ -9,10 +9,11 @@ import { AnswerCostLedger, startAnswerCostLedger, finishAnswerCostLedger } from 
 
 /** One bounded, metered provider call. Source text never appears in propagated errors. */
 export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bindings, ownerId: string, options: {
-  name: string; system: string; input: unknown; schema: Schema;
+  name: string; system: string; input: unknown; schema: Schema; images?: { id: string; jpegBase64: string }[];
 }): Promise<z.output<Schema>> {
   const input = JSON.stringify(options.input);
   if (input.length > 200_000) throw new Error('SKILL_MODEL_INPUT_TOO_LARGE');
+  if (options.images && (options.images.length > 8 || options.images.some(image => !/^\/9j\/[A-Za-z0-9+/]*={0,2}$/.test(image.jpegBase64) || image.jpegBase64.length > 349_528))) throw new Error('SKILL_INVALID_MODEL_IMAGES');
   const admitted = await reserveAiAnswerUsage(env, ownerId);
   if (!('reservation' in admitted)) throw new Error('SKILL_QUOTA_EXCEEDED');
   const ledger = new AnswerCostLedger();
@@ -22,7 +23,7 @@ export async function generateCourseSkillJson<Schema extends z.ZodType>(env: Bin
     started = true;
     const model = createChatModel(env, { timeoutMs: llmTimeoutMs(env), maxTokens: 8000, purpose: 'skill_generation', costLedger: ledger });
     invoked = true;
-    const message = await model.invoke([new SystemMessage(options.system), new HumanMessage(input)], {
+    const message = await model.invoke([new SystemMessage(options.system), new HumanMessage(options.images?.length ? { content: [{ type: 'text', text: input }, ...options.images.flatMap(image => [{ type: 'text' as const, text: `frame_id=${image.id}` }, { type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${image.jpegBase64}`, detail: 'high' as const } }])] } : input)], {
       response_format: { type: 'json_schema', json_schema: { name: options.name, strict: true, schema: z.toJSONSchema(options.schema) } },
     });
     assertCompletedAnswer(message);

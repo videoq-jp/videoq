@@ -3,6 +3,8 @@ export * from './course-skill-inputs';
 export * from './course-skill-knowledge';
 export * from './course-skill-candidates';
 export * from './course-skill-publications';
+export * from './course-skill-steps';
+import * as courseSkillSteps from './course-skill-steps';
 import * as courseSkillPublications from './course-skill-publications';
 import * as courseSkillCandidates from './course-skill-candidates';
 import * as courseSkillKnowledge from './course-skill-knowledge';
@@ -18,4 +20,4 @@ import * as betterAuth from "./better-auth";
 import * as lms from "./lms";
 
 /** drizzle(client, { schema }) uses only application-owned tables. */
-export const schema = { ...courseSkillPublications, ...courseSkillCandidates, ...courseSkillKnowledge, ...courseSkillInputs, ...agentSkills, ...modern, ...betterAuth, ...lms };
+export const schema = { ...courseSkillSteps, ...courseSkillPublications, ...courseSkillCandidates, ...courseSkillKnowledge, ...courseSkillInputs, ...agentSkills, ...modern, ...betterAuth, ...lms };

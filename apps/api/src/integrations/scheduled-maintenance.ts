@@ -26,6 +26,7 @@ import * as workflow from '../features/maintenance/service';
 import { observeOperationalPolicy } from './operational-policy/observe';
 import type { MaintenanceDependencies } from '../features/maintenance/ports';
 import { reconcileCourseSkillInputs } from './course-skill-inputs';
+import { executeNextCourseSkillBuild } from './course-skill-execution';
 const { INVITATION_QUEUED_STALE_MS } = workflow;
 export { RETENTION_CRON, INVITATION_QUEUED_STALE_MS } from '../features/maintenance/service';
 export const MAINTENANCE_WINDOWS: MaintenanceWindows = {
@@ -40,7 +41,11 @@ function dependencies(env: Bindings): MaintenanceDependencies {
     sweepMaterials: () => sweepMaterials(env), reconcileUploads: () => reconcileAbandonedUploads(env),
     failInvitations: (now, grace) => failInvitationsWithoutLiveDelivery(env, now, grace),
     observePolicy: now => observeOperationalPolicy(env, now),
-    reconcileSkills: () => reconcileCourseSkillInputs(env),
+    reconcileSkills: async () => {
+      const inputs = await reconcileCourseSkillInputs(env);
+      const execution = await executeNextCourseSkillBuild(env);
+      return { ...inputs, ...execution };
+    },
     health: () => getExternalTaskHealth(env), pruneHistory: () => pruneDeliveryHistory(env),
     pruneIdempotency: () => pruneMcpIdempotencyRecords(env), pruneConversations: () => pruneConversations(env),
     pruneCredentials: () => pruneLtiCredentials(env), pruneAudit: now => pruneLtiAudit(env, now),

@@ -6,6 +6,12 @@ import type { CourseSkillCandidateRepository } from '../../../src/persistence/co
 import type { CourseSkillPublicationRepository } from '../../../src/persistence/contracts/course-skill-publication-repository';
 import { renderCourseSkill } from '../../../src/domain/learning/course-skill-draft';
 import type { SkillDraft } from '@videoq/domain/agent-skills';
+import type { CourseSkillExecutionRepository } from '../../../src/persistence/contracts/course-skill-execution-repository';
+import { runCourseSkillBuild, SkillStepBudgetExceeded } from '../../../src/features/course-skills/execution-service';
+
+import { extractSkillKnowledge } from '../../../src/features/course-skills/knowledge-service';
+import { generateCourseSkillDrafts } from '../../../src/features/course-skills/draft-service';
+import { createMcpSkillsService } from '../../../src/features/mcp/skills-service';
 
 export const enabledSkillSettings: CourseSkillSettings = { generationEnabled: true, distributionEnabled: false, policyVersion: '1', language: 'ja' };
 export type SkillInputFixture = {
@@ -13,6 +19,7 @@ export type SkillInputFixture = {
   knowledge: CourseSkillKnowledgeRepository;
   candidates: CourseSkillCandidateRepository;
   publications: CourseSkillPublicationRepository;
+  execution: CourseSkillExecutionRepository;
   execute(sql: string, values?: (string | number)[]): Promise<void>;
   jobs(): Promise<{ id: string; input: string }[]>;
   dispose(): Promise<void>;
@@ -119,6 +126,58 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         expect(await f.repository.complete(job.id, 'owner', 'first', first!.generation, f.now())).toBe(false);
       } finally { await f.dispose(); }
     });
+    it('distribution changes preserve generation identity, while explicit rebuild starts a new input epoch', async () => {
+      const f = await setup();
+      try {
+        await f.add(); await f.ready(); await f.service.configure(1, 'owner', enabledSkillSettings);
+        const [job] = await f.jobs(); const snapshot = (await f.repository.snapshot(1, 'owner'))!;
+        const claim = await f.repository.claim(job.id, 'owner', 'lease', f.now(), 1000);
+        await f.service.configure(1, 'owner', { ...enabledSkillSettings, distributionEnabled: true });
+        expect(await f.jobs()).toHaveLength(1);
+        expect(await f.repository.checkpoint(job.id, 'owner', 'lease', claim!.generation, 'still-running', f.now())).toBe(true);
+        expect((await f.repository.snapshot(1, 'owner'))!.generationEpoch).toBe(snapshot.generationEpoch);
+        await f.service.configure(1, 'owner', { ...enabledSkillSettings, distributionEnabled: true }, true);
+        expect(await f.jobs()).toHaveLength(2);
+        expect((await f.repository.snapshot(1, 'owner'))!.generationEpoch).toBeGreaterThan(snapshot.generationEpoch);
+      } finally { await f.dispose(); }
+    });
+    it('persists bounded model steps and honors requeue delays and lease fencing', async () => {
+      const f = await setup();
+      try {
+        await f.add(); await f.ready(); await f.service.configure(1, 'owner', enabledSkillSettings);
+        const pending = await f.execution.pending(f.now()); expect(pending).not.toBeNull();
+        const claim = await f.repository.claim(pending!.id, 'owner', 'lease', f.now(), 1000);
+        const lease = { id: claim!.id, ownerId: 'owner', token: 'lease', generation: claim!.generation };
+        expect(await f.execution.saveStep(lease, 'step-key', '{"decision":"cached"}', f.now())).toBe(true);
+        expect(await f.execution.readStep(lease, 'step-key', f.now())).toBe('{"decision":"cached"}');
+        expect(await f.execution.release(lease, 'checkpoint', 'queued', f.now(), 1000)).toBe(true);
+        expect(await f.execution.pending(f.now())).toBeNull();
+        f.advance();
+        const next = await f.repository.claim(pending!.id, 'owner', 'next', f.now(), 1000);
+        const replacement = { ...lease, token: 'next', generation: next!.generation };
+        expect(await f.execution.readStep(replacement, 'step-key', f.now())).toBe('{"decision":"cached"}');
+        expect(await f.execution.readStep(lease, 'step-key', f.now())).toBeNull();
+        await f.execute('DELETE FROM video_course_members WHERE course_id=1');
+        expect(await f.execution.readStep(replacement, 'step-key', f.now())).toBeNull();
+        expect(await f.execution.saveStep(replacement, 'stale', '{}', f.now())).toBe(false);
+      } finally { await f.dispose(); }
+    });
+    it('resumes extraction and planning across bounded ticks without counting budget yields as failures', async () => {
+      const f = await setup();
+      try {
+        await f.add(); await f.ready(); await f.service.configure(1, 'owner', enabledSkillSettings);
+        let drafted = false;
+        const deps = { inputs: f.repository, execution: f.execution, id: () => crypto.randomUUID(), now: f.now,
+          extract: (_lease: unknown, _input: unknown, _source: unknown, budget: { spent: number }) => { budget.spent++; return Promise.resolve({ status: 'completed' as const, keys: ['knowledge-key'] }); },
+          draft: (_lease: unknown, _input: unknown, keys: string[], budget: { spent: number }) => { expect(keys).toEqual(['knowledge-key']); budget.spent++; if (!drafted) { drafted = true; return Promise.reject(new SkillStepBudgetExceeded()); } return Promise.resolve(); },
+        };
+        expect(await runCourseSkillBuild(deps)).toMatchObject({ claimed: 1, phase: 'planning', failed: false });
+        f.advance(); expect(await runCourseSkillBuild(deps)).toMatchObject({ claimed: 1, phase: 'planning', failed: false });
+        f.advance(); expect(await runCourseSkillBuild(deps)).toMatchObject({ claimed: 1, phase: 'review_required', failed: false });
+        const [progress] = await f.execution.progress(1, 'owner');
+        expect(progress.state).toBe('completed'); expect(JSON.parse(progress.checkpoint)).toMatchObject({ phase: 'review_required', attempts: 0, modelCalls: 3 });
+      } finally { await f.dispose(); }
+    });
     it('reads bounded source pages and fences cached knowledge after removal', async () => {
       const f = await setup();
       try {
@@ -130,6 +189,7 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         const page = await f.knowledge.readPage(lease, 1, 0, f.now());
         expect(page?.text).toContain('Sample knowledge');
         expect(page?.done).toBe(true);
+        expect(await f.knowledge.visualSource?.(lease, 1, f.now())).toBeNull();
         expect(await f.knowledge.readPage({ ...lease, ownerId: 'other' }, 1, 0, f.now())).toBeNull();
         const chunk = { version: 1 as const, videoId: 1, analysisRevision: source.analysisRevision, chunkIndex: 0, cues: [], facts: [], model: 'fixture', promptVersion: '1' };
         expect(await f.knowledge.save(lease, 'knowledge-key', chunk, f.now())).toBe(true);
@@ -149,6 +209,7 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         const lease = { id: job.id, ownerId: 'owner', token: 'lease', generation: claim!.generation };
         const content = { task: { skillId: 'skill-a', slug: 'review-retry', objective: '再試行を調べる', factIds: [] }, draft: null, facts: [], issues: ['SKILL_INSUFFICIENT_TASK_KNOWLEDGE'] };
         expect(await f.candidates.save(lease, { id: 'candidate-a', content, contentHash: 'hash-a' }, f.now())).toBe(true);
+        expect(await f.repository.complete(job.id, 'owner', 'lease', claim!.generation, f.now())).toBe(true);
         expect(await f.candidates.list(1, 'other')).toHaveLength(0);
         expect((await f.candidates.list(1, 'owner'))[0].content).toEqual(content);
         expect(await f.candidates.edit('candidate-a', 'owner', 'wrong-hash', content, 'hash-b')).toBe(false);
@@ -169,6 +230,8 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
       const facts = [{ id: 'f1', videoId: 1, analysisRevision: snapshot.sources[0].analysisRevision, cues: [{ id: 'cue-0', startMs: 1000, endMs: 4000, text: 'Sample knowledge' }], kind: 'principle' as const, claim: 'Sample knowledge', appliesWhen: [], exceptions: [], evidence: [{ cueId: 'cue-0', quote: 'Sample knowledge' }], requiresVisualEvidence: false, status: 'supported' as const, versionContext: { language: null, framework: null, version: null } }];
       const content = { task: { skillId: 'published-skill', slug: draft.slug, objective: draft.title, factIds: ['f1'] }, draft, facts, issues: [] };
       expect(await f.candidates.save(lease, { id: 'candidate', content, contentHash: 'reviewed-hash' }, f.now())).toBe(true);
+      expect(await f.publications.approve('candidate', 'owner', 'reviewed-hash')).toBe(false);
+      expect(await f.repository.complete(job.id, 'owner', 'lease', claim!.generation, f.now())).toBe(true);
       expect(await f.publications.approve('candidate', 'other', 'reviewed-hash')).toBe(false);
       expect(await f.publications.approve('candidate', 'owner', 'wrong-hash')).toBe(false);
       expect(await f.publications.approve('candidate', 'owner', 'reviewed-hash')).toBe(true);
@@ -197,6 +260,49 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         expect(await f.publications.read('publication', 'SKILL.md', 'owner')).toBeNull();
         expect(await f.publications.read('publication', 'references/sources.md', 'owner')).toBeNull();
         expect(await f.publications.list('owner', 20, '')).toHaveLength(0);
+      } finally { await f.dispose(); }
+    });
+    it('runs prepared sources through extraction, review, MCP retrieval and membership removal/re-addition', async () => {
+      const f = await setup();
+      try {
+        await f.add(); await f.ready();
+        await f.service.configure(1, 'owner', { ...enabledSkillSettings, distributionEnabled: true });
+        const hash = async (value: string) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(n => n.toString(16).padStart(2, '0')).join('');
+        let calls = 0;
+        const dependencies = { inputs: f.repository, execution: f.execution, now: f.now, id: () => crypto.randomUUID(),
+          extract: async (lease: Parameters<typeof f.knowledge.cached>[0], input: { settings: CourseSkillSettings }, source: Parameters<typeof extractSkillKnowledge>[1]['source']) => extractSkillKnowledge({ repository: f.knowledge, hash, now: f.now, model: 'fixture', promptVersion: '1', beforeModel: async () => { calls++; },
+            extract: async cues => (['principle', 'procedure', 'verification'] as const).map(kind => ({ kind, claim: 'Sample knowledge', appliesWhen: ['Review retry behavior'], exceptions: [], evidence: [{ cueId: cues[0].id, quote: 'Sample knowledge' }], requiresVisualEvidence: false, versionContext: { language: null, framework: null, version: null } })),
+          }, { lease, source, language: input.settings.language, policyVersion: '1', maxModelCalls: 1 }),
+          draft: async (lease: Parameters<typeof f.knowledge.cached>[0], _input: unknown, keys: string[]) => {
+            const chunks = await Promise.all(keys.map(key => f.knowledge.cached(lease, key, f.now())));
+            const result = await generateCourseSkillDrafts({ id: () => 'e2e-skill',
+              plan: async facts => ({ proposals: [{ existingSkillId: null, slug: 'review-retry', objective: 'Review retries', factIds: facts.map(f => f.id) }], issues: [] }),
+              synthesize: async (task, facts) => ({ slug: task.slug, title: 'Review retries', description: 'Review retry guarantees before changing code.', useWhen: ['Review retries'], doNotUseWhen: [], criteria: [{ decision: 'Check assumptions', factIds: [facts[0].id] }], steps: [{ action: 'Inspect code', expectedResult: 'Guarantees documented', factIds: [facts[1].id] }], exceptions: [], checks: [{ check: 'Verify repeated requests', factIds: [facts[2].id] }], examples: [] }),
+              audit: async () => ({ supported: true, issues: [] }),
+            }, chunks.filter(c => c !== null));
+            for (const content of result.candidates) expect(await f.candidates.save(lease, { id: 'e2e-candidate', content, contentHash: await hash(JSON.stringify(content)) }, f.now())).toBe(true);
+          },
+        };
+        expect(await runCourseSkillBuild(dependencies)).toMatchObject({ phase: 'planning' });
+        f.advance();
+        expect(await runCourseSkillBuild(dependencies)).toMatchObject({ phase: 'review_required' });
+        expect(calls).toBe(1);
+        const [candidate] = await f.candidates.list(1, 'owner');
+        expect(await f.publications.approve(candidate.id, 'owner', candidate.contentHash)).toBe(true);
+        const rendered = renderCourseSkill(1, candidate.content.draft!, candidate.content.facts, 'en');
+        const files = await Promise.all(rendered.files.map(async file => ({ ...file, size: new TextEncoder().encode(file.content).byteLength, digest: `sha256:${await hash(file.content)}` })));
+        expect(await f.publications.stage('owner', { id: 'e2e-publication', candidateId: candidate.id, expectedHash: candidate.contentHash, name: rendered.name, description: rendered.description, sources: (await f.repository.snapshot(1, 'owner'))!.sourceState, files })).toBe(true);
+        expect(await f.publications.publish('e2e-publication', 'owner', candidate.contentHash)).toBe(true);
+        const mcp = createMcpSkillsService(f.publications, 'owner');
+        const [entry] = (await mcp.list()).skills;
+        expect((await mcp.read(entry.uri)).contents[0].text).toContain('## Verification');
+        expect((await createMcpSkillsService(f.publications, 'other').list()).skills).toHaveLength(0);
+        await f.execute('DELETE FROM video_course_members WHERE course_id=1 AND video_id=1');
+        await expect(mcp.read(entry.uri)).rejects.toThrow('Unknown skill or file');
+        await f.add();
+        await expect(mcp.get(entry.uri)).rejects.toThrow('Unknown skill or file');
+        await f.service.reconcile(1, 'owner');
+        expect(await f.jobs()).toHaveLength(2);
       } finally { await f.dispose(); }
     });
     it('refuses an approval-to-publication race and mismatched manifest bytes', async () => {

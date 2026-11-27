@@ -9,12 +9,12 @@ export interface SkillDraftDependencies {
   audit(draft: SkillDraft, facts: SupportedSkillFact[]): Promise<{ supported: boolean; issues: string[] }>;
 }
 
-export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, chunks: SkillKnowledgeChunk[], existing: SkillTask[] = []) {
+export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, chunks: SkillKnowledgeChunk[], existing: SkillTask[] = [], options: { force?: boolean } = {}) {
   const facts = supportedSkillFacts(chunks);
   const byId = new Map(facts.map(f => [f.id, f]));
   const tasks = new Map(existing.map(t => [t.skillId, { ...t, factIds: t.factIds.filter(id => byId.has(id)) }]));
   const issues: string[] = [];
-  const touched = new Set<string>();
+  const touched = new Set(existing.filter(t => options.force || t.factIds.some(id => !byId.has(id))).map(t => t.skillId));
   // Planning reads bounded pages; task identity is server-assigned or explicitly retained.
   for (let start = 0; start < facts.length; start += 32) {
     const page = facts.slice(start, start + 32);
@@ -26,9 +26,10 @@ export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, ch
       if (proposal.existingSkillId && !tasks.has(proposal.existingSkillId)) throw new Error('INVALID_SKILL_IDENTITY');
       const sameSlug = [...tasks.values()].find(t => t.slug === proposal.slug);
       const skillId = proposal.existingSkillId ?? sameSlug?.skillId ?? deps.id();
+      if (!proposal.existingSkillId && !sameSlug && tasks.has(skillId)) throw new Error('SKILL_ID_COLLISION');
       const previous = tasks.get(skillId);
       tasks.set(skillId, { skillId, slug: previous?.slug ?? proposal.slug, objective: proposal.objective, factIds: [...new Set([...(previous?.factIds ?? []), ...proposal.factIds])] });
-      touched.add(skillId);
+      if (!previous || proposal.factIds.some(id => !previous.factIds.includes(id))) touched.add(skillId);
     }
   }
   const candidates: { task: SkillTask; draft: SkillDraft | null; facts: SupportedSkillFact[]; issues: string[] }[] = [];

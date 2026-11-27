@@ -1,4 +1,5 @@
 import { qaRouter } from './routers/qa';
+import { courseSkillsRouter } from './routers/course-skills';
 import { t } from "./init";
 import { accountRouter } from "./routers/account";
 import { adminRouter } from "./routers/admin";
@@ -13,6 +14,7 @@ import { tagsRouter } from "./routers/tags";
 import { videosRouter } from "./routers/videos";
 
 export const appRouter = t.router({
+  courseSkills: courseSkillsRouter,
   qa: qaRouter,
   account: accountRouter,
   admin: adminRouter,
