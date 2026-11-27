@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-27T16:53:56.688175+00:00",
+  "scope": "Local course51 verification and implementation handoff; no production writes or publication",
+  "validatedImplementationCommit": "33185aa0",
+  "appliedImplementationCommit": "2e6f315ee817828cfe75ab53fc3119dc5a801da8",
+  "beforeImplementationCommit": "3c1e47dd988d12d247501a3e678cc928a3b7eb2b",
+  "manifestSha256": "bb9767a9ba1dcc592d7ad26e874682246f0bd18ad8e8e88a39d5d01965b67940",
+  "originalManifestPreserved": true,
+  "compatibilitySha256": "8a5e68d94e687140ff0560fa364f87c99075735d9de15899a00ee4beff95d3b0",
+  "previousCompatibilitySha256": "ab67beab93ade131b0f473a6c4b6d9a192efca01e99292f5968e21106324c29a",
+  "supersededDraftCertificateSha256": "4c4b51317c242c7cecd10b5a63264615a5da05ded9d359fe80964fb418fe13d1",
+  "runnerSha256": "cd8bd01d879fb25857709887032c9f883395019c7bb9aeb81aa1ef11f66d606e",
+  "driverSha256": "5e2d9d6fcc90701c076a39d970754250f9be31eb6e4b20339e11d308cb74e43a",
+  "handoffPlanSha256": "7544552c03368f062f90a69ac7845caf9744c03edb3452e56b11f1c1b2c3b60d",
+  "initialRequest": {
+    "processedVideos": 82,
+    "quota": {
+      "used_ai_answers": 488,
+      "ai_answers_limit": 1000
+    }
+  },
+  "drainedCheckpoint": {
+    "processedVideos": 82,
+    "totalVideos": 177,
+    "buildId": "526b9227-9084-48d4-8119-aac4bac6e8ef",
+    "quota": {
+      "used_ai_answers": 489,
+      "ai_answers_limit": 1000
+    },
+    "cacheChunks": 504,
+    "mechanicallySupportedFacts": 1634,
+    "heldVisualFacts": 289,
+    "cacheSha256": "6ee4ca6972de3f619a22f88f97768b800a9fe778b35c8ddcf372c1aadc27b619",
+    "cacheBytesRewritten": false,
+    "approvedKnowledgeCountClaimed": false,
+    "publications": 0
+  },
+  "verification": {
+    "extractionAndBudgetSourcesUnchanged": true,
+    "existingDraftPromptsUnchanged": true,
+    "existingDraftValidationUnchanged": true,
+    "all905SourceChunksReconstructed": true,
+    "allCachedKeysCuesFactIdsAndStatusesRevalidated": true,
+    "checkpointAndQuotaUnchangedDuringVerification": true,
+    "totalSourceChunks": 905,
+    "validatedSourceHashesMatched": 11,
+    "mainWorktreeSmokeTestsPassed": 17
+  },
+  "resumedObservation": {
+    "processedVideos": 85,
+    "totalVideos": 177,
+    "buildId": "526b9227-9084-48d4-8119-aac4bac6e8ef",
+    "state": "queued",
+    "phase": "extracting",
+    "cacheChunks": 514,
+    "quota": {
+      "used_ai_answers": 499,
+      "ai_answers_limit": 1000
+    },
+    "providerCallsThisInvocation": 10,
+    "sourceGuardChecksThisInvocation": 21
+  },
+  "productionWrites": 0,
+  "published": false,
+  "quotaReset": false,
+  "newBuildCreated": false,
+  "limitations": [
+    "Mechanically supported facts are not approved knowledge",
+    "Resumed observations are a checkpoint snapshot, not full-course completion",
+    "Real-model quality problems and the video120 rejected drafts remain unresolved",
+    "Remote CI at the new implementation commit remains pending"
+  ]
+}
