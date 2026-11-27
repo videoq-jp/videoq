@@ -43,7 +43,7 @@ test('keeps machine and human denominators separate and preserves missing usage'
   expect(report.conditions.map(c => c.functional)).toEqual([{ passed: 0, total: 16 }, { passed: 16, total: 16 }, { passed: 16, total: 16 }]);
   expect(report.conditions[0].inputTokens).toBeNull();
   expect(report.conditions[1].inputTokens?.count).toBe(20);
-  expect(report.conditions.reduce((n, c) => n + c.human.misapplied, 0)).toBe(1);
+  expect(report.conditions.reduce((n, c) => n + c.judgment.misapplied, 0)).toBe(1);
   expect(report.conditions.every(c => c.monetaryCostUsd === null)).toBe(true);
   expect(report.conditions[0].toolUse.trialsWithSuccessfulResourceRead).toBe(0);
   expect(report.conditions[1].toolUse.trialsWithSuccessfulSearch).toBe(20);
@@ -90,3 +90,16 @@ test('verifies all frozen outputs and does not promote old failures or hide new 
   expect(report.conditions.map(c => c.originalFunctionalPasses)).toEqual([0, 16, 16]);
   expect(report.conditions.map(c => c.verificationDiscrepancies)).toEqual([0, 16, 16]);
 }), 20000);
+
+test('labels AI judgments explicitly and requires model provenance', () => fixture(async f => {
+  const ai = { ...f.completed, decision: 'ai-reviewed' };
+  await writeFile(f.assessmentFile, JSON.stringify(ai));
+  await expect(createAssessmentReport(f)).rejects.toThrow();
+  await writeFile(f.assessmentFile, JSON.stringify({ ...ai, ai: { provider: 'synthetic', model: 'independent-assessor-fixture', protocolHash: 'a'.repeat(64), sourceHash: 'b'.repeat(64), evidenceHash: 'c'.repeat(64) } }));
+  const result = await createAssessmentReport(f);
+  expect(result.humanAssessmentRecorded).toBe(false);
+  expect(result.aiAssessmentRecorded).toBe(true);
+  const report = JSON.parse(await readFile(f.output, 'utf8'));
+  expect(report.assessmentMethod).toBe('ai-reviewed');
+  expect(report.ai.model).toBe('independent-assessor-fixture');
+}));

@@ -8,11 +8,14 @@ import { readStrictVerification } from './strict-verification';
 
 const assessmentSchema = z.object({
   version: z.literal(1), packetHash: z.string().regex(/^[a-f0-9]{64}$/), reviewer: z.string().trim().min(1).max(120),
-  decision: z.literal('human-reviewed'),
+  decision: z.enum(['human-reviewed', 'ai-reviewed']),
+  ai: z.object({ provider: z.string().min(1), model: z.string().min(1), protocolHash: z.string().regex(/^[a-f0-9]{64}$/), sourceHash: z.string().regex(/^[a-f0-9]{64}$/), evidenceHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict().optional(),
   assessments: z.array(z.object({ blindId: z.string().regex(/^[a-f0-9]{24}$/), criteria: z.array(z.object({ criterion: z.string(), met: z.boolean() }).strict()),
     misapplied: z.boolean(), unsupportedClaim: z.boolean(), notes: z.string().trim().min(1).max(4000),
   }).strict()).min(1).max(150),
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if ((value.decision === 'ai-reviewed') !== Boolean(value.ai)) ctx.addIssue({ code: 'custom', message: 'AI assessment provenance must match the declared method' });
+});
 const hash = (raw: string) => createHash('sha256').update(raw).digest('hex');
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 type AssessmentRow = CohortOutcome & CohortSlot & { kind: EvaluationCase['kind']; verifiedFunctional: boolean | null; criteriaMet: number; criteriaTotal: number; misapplied: boolean; unsupportedClaim: boolean; notes: string; toolCalls: { name: string; success: boolean }[] };
@@ -23,7 +26,7 @@ function distribution(values: number[]) {
   return { count: n, min: sorted[0], median: n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2, max: sorted[n - 1], total: sorted.reduce((sum, value) => sum + value, 0) };
 }
 
-/** Explicit human record required. Does not change cohort state or infer reviews. */
+/** Explicit assessment method required. Does not change cohort state or infer human reviews. */
 export async function createAssessmentReport(options: { directory: string; reviewerDirectory: string; assessmentFile: string; verificationFile: string; output: string; cases: readonly EvaluationCase[] }) {
   const stateRaw = await readFile(join(options.directory, 'cohort.json'), 'utf8'), state = JSON.parse(stateRaw) as CohortState;
   await validateCompletedCohort(state, options.cases);
@@ -59,12 +62,12 @@ export async function createAssessmentReport(options: { directory: string; revie
       verificationDiscrepancies: code.filter(r => r.functional !== r.verifiedFunctional).length, timeouts: selected.filter(r => r.validity === 'budget-exceeded').length,
       toolUse: { trialsWithSuccessfulSearch: selected.filter(r => r.toolCalls.some(c => c.name === 'search_scenes' && c.success)).length,
         trialsWithSuccessfulResourceRead: selected.filter(r => r.toolCalls.some(c => c.name === 'read_course_skill_resource' && c.success)).length, successfulCallsByName },
-      human: { misapplied: selected.filter(r => r.misapplied).length, unsupportedClaims: selected.filter(r => r.unsupportedClaim).length, total: selected.length, criteriaMet: selected.reduce((n, r) => n + r.criteriaMet, 0), criteriaTotal: selected.reduce((n, r) => n + r.criteriaTotal, 0) },
+      judgment: { misapplied: selected.filter(r => r.misapplied).length, unsupportedClaims: selected.filter(r => r.unsupportedClaim).length, total: selected.length, criteriaMet: selected.reduce((n, r) => n + r.criteriaMet, 0), criteriaTotal: selected.reduce((n, r) => n + r.criteriaTotal, 0) },
       elapsedMs: distribution(selected.map(r => r.elapsedMs)), inputTokens: distribution(selected.flatMap(r => r.inputTokens === null ? [] : [r.inputTokens])), outputTokens: distribution(selected.flatMap(r => r.outputTokens === null ? [] : [r.outputTokens])), monetaryCostUsd: null };
   });
-  const report = { version: 1, manifestHash: state.manifestHash, packetHash: assessment.packetHash, assessmentHash: hash(assessmentsRaw), verificationHash: verification.digest, reviewer: assessment.reviewer,
-    executionCompleted: true, humanAssessmentRecorded: true, conditions, rows,
-    limitations: ['A human-reviewed record was supplied; identity and independence are not cryptographically verified.', 'Condition labels and machine grades were hidden; citations and prose may reveal tool use.', 'Functional success requires both original and independent checks; the additional checker was introduced after an output-forgery probe, without rerunning models or changing original records.', 'Descriptive results for these tasks and frozen videos only; no population-wide causal or statistical-significance claim.', 'Monetary cost is unknown for the existing CLI plan; missing token observations retain their own counts.'] };
+  const report = { version: 2, manifestHash: state.manifestHash, packetHash: assessment.packetHash, assessmentHash: hash(assessmentsRaw), verificationHash: verification.digest, reviewer: assessment.reviewer,
+    executionCompleted: true, humanAssessmentRecorded: assessment.decision === 'human-reviewed', aiAssessmentRecorded: assessment.decision === 'ai-reviewed', assessmentMethod: assessment.decision, ai: assessment.ai ?? null, conditions, rows,
+    limitations: [assessment.decision === 'human-reviewed' ? 'A human-reviewed record was supplied; identity and independence are not cryptographically verified.' : 'AI judgments are model-based assessments, not human review; separate requests or a different model do not prove statistical independence.', 'Condition labels and machine grades were hidden; citations and prose may reveal tool use.', 'Functional success requires both original and independent checks; the additional checker was introduced after an output-forgery probe, without rerunning models or changing original records.', 'Descriptive results for these tasks and frozen videos only; no population-wide causal or statistical-significance claim.', 'Monetary cost is unknown for the existing CLI plan; missing token observations retain their own counts.'] };
   await writeFile(options.output, JSON.stringify(report, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-  return { conditions, humanAssessmentRecorded: true };
+  return { conditions, humanAssessmentRecorded: report.humanAssessmentRecorded, aiAssessmentRecorded: report.aiAssessmentRecorded };
 }
