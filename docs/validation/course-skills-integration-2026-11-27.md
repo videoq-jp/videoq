@@ -53,6 +53,36 @@ Codexではグローバルに登録済みのSkillも対照群への知識混入�
 
 評価者には条件名を隠して採点する。機能成功率、誤適用率、根拠なし断定率、時間・費用の分布を条件別に比較し、失敗例も保存する。少数課題の改善を全講座へ一般化しない。結果と対応クライアントの版・実行ログを#1747へ添付する。
 
+### 比較基盤の事前確認
+
+scripts/course-skill-evaluation/cases.tsに、実装8課題と根拠確認2課題を固定した。コード・数値・API名はこの評価用の合成仕様であり、講師の実装や講師が定めた閾値とは扱わない。実装課題はID/時計の差し替え、ドメイン状態遷移、平均時間の判定、リポジトリ境界、SDK非依存のimport、未完成APIに依存しない操作、内部状態の隠蔽を扱う。根拠確認では、資料で確認できない再試行値と未確認の画面コードを捏造しないかを採点する。利用可能な教材は動画578・580の凍結入力2本と明記し、全177本の内容を確認済みとは扱わない。
+
+全実装課題で未修正コードの失敗・参照実装の成功を確認した。契約検査はエージェントの作業ディレクトリ外に置き、作業ディレクトリと契約検査ファイルの読み取りに限定したNode permission環境で実行する。実際に検査が走ったことも確認し、process.exit(0)だけでは成功にしない。機能成功だけで講座方針への適合を自動採点しない。plan.tsは各課題をA/B/Cで2回ずつ、計60実行する計画を生成し、課題順と条件順を変え、条件名を含まない評価用IDを付ける。これは計画の検査であり、60試行の完了記録ではない。
+
+本番の対象2動画には、現在のembeddinggemma2・768次元で公開された検索シーンが94件・145件あった。既存字幕と239シーンをローカルD1へコピーし、元の字幕との完全一致・解析版・検索モデルのidentity/fingerprintを検査した。ローカルの解析版トークンだけは既存生成試験と同じ字幕SHA-256へ対応付け、元のvector run ID・検索文・シーン内容は維持した。本番の検索用ベクトルを作り直していない。
+
+検索には実際のVideoQのopenSceneSearch、D1シーンリポジトリ、外部MCPの検索・字幕取得ツールを使用する。環境依存のbindingだけを既存Workers AIとVectorizeのREST読み取り呼び出しへ接続する。接続先は元のownerと対象動画IDで制限し、ベクトル値の取得・書き込み・別モデル・別講座を拒否し、外部呼び出し回数を制限する。実試行前には凍結したindex headが引き続き対象であることを確認し、変更があれば同じコホートとして結果を混ぜない。
+
+次のCLIは既定ではヘルプだけを表示し、明示したときだけ既存認証で検索を行う。--validate-fixturesは外部呼び出し0回。--runはSDK経由の実検索、--codexを加えると独立した実Codexでも検索する。承認や公開は行わない。入力ファイルは非公開のまま使い、出力・クライアントログはmode0600で保存する。
+
+```sh
+cd apps/api
+npx tsx scripts/preflight-course-skill-evaluation.ts --validate-fixtures
+npx tsx scripts/preflight-course-skill-evaluation.ts --run --codex \
+  --course-id 51 --account-id <current-account-id> --index-name <current-768-index> \
+  --videos-file <private-D1-videos-response.json> --runs-file <private-published-runs-array.json> \
+  --scenes-file <private-D1-scenes-response.json> --source-file <original-bounded-input.json> \
+  --wrangler-auth-file <existing-auth-file> --output <new-private-report.json>
+```
+
+認証切れの試行は失敗として保存し、既存Wrangler認証を更新後に再検査した。通し検査ではSDKと実Codexから20件の検索結果を読み、Codexが実際の動画ID・字幕時刻を回答できた。検索の外部呼び出しは計4回（埋め込み2、Vectorize query2）。コード実行側では、別のクイズ選択課題で実Codexが実装・テストし、独立した契約検査が成功した。さらにGit開始コミットと作業ディレクトリ外のログ保存を加えた環境でも、独立した挨拶APIの課題で実装・契約検査が成功した。これらの環境調整用課題は、本比較の10課題とは別であり、効果比較の試行に数えない。
+
+Codexはgpt-6.1-terra・medium・コンテキスト上限32,768で実行した。これは累積トークン予算の強制上限ではなく、実測トークンは別途記録する。コードの事前試行は180秒、検索接続の事前試行は120秒の上限。本比較では課題内の全条件で時間・設定を一致させる。既存CLIプランの金額換算は確認できておらず、API料金表で利用額を捏造しない。取得手順だけの起動Skillを入れたプロジェクトでも、有効Skillがそれ1件だけになることをモデル呼び出し0回で確認した。
+
+[集約した事前確認記録](evidence/course-skills-codex-evaluation-preflight-2026-11-27.json)には教材・認証情報・生成コード本文を含めない。比較基盤4ファイル12テスト、全評価スクリプトの型検査・lintが成功し、同じ課題から同一のGit開始コミットを生成できることも確認した。ログ・回答は作業ディレクトリ外へ保存する。実講座の所有者承認は未取得で、承認済み公開版を使うC条件、全コホートの実行、人による盲検採点は未完了。接続・実行基盤の成功をSkillによる品質改善の証拠とはしない。
+
+前段の実装コミット2a18f35dは[CI全体が成功](https://github.com/videoq-jp/videoq/actions/runs/45976924795)。APIジョブの実行ログでは一般試験5,489件成功・95件skip、Workers試験126件成功、追加試験10件成功を確認した。schema parity試験も成功した。これは比較基盤を追加する前のコミットの結果であり、今回の追加分の全CI結果とは区別する。
+
 CIではAPI 5,385件が成功し、PostgreSQLの全migration照合2件で外部キー名の切り詰めによる差分を検出した。短い外部キー名をschemaへ明示し、生成した0075 migrationで改名した後、pgvector/pgvector:pg17の専用ローカルDBで空DB・既存データ入りDBの両試験が成功した。生成SQL・snapshot・journalは手編集していない。
 
 
