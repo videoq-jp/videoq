@@ -13,6 +13,7 @@ function setup() {
     approve: () => Promise.resolve(false), stage: () => Promise.resolve(false), publish: () => Promise.resolve(false), withdraw: () => Promise.resolve(false),
     managed: () => Promise.resolve([]),
     get: (_id, user) => Promise.resolve(!removed && user === 'owner' ? p : null), list: user => Promise.resolve(!removed && user === 'owner' ? [p] : []), read,
+    page: user => Promise.resolve({ publications: !removed && user === 'owner' ? [p] : [], catalogIds: !removed && user === 'owner' ? [p.id] : [] }),
   };
   const tools = vi.fn(() => Promise.resolve({ tools: [] }));
   const deps = { skills: createMcpSkillsService(repository, 'owner'), tools };
@@ -28,6 +29,28 @@ function setup() {
 }
 
 describe('stateless Skills over MCP', () => {
+  it('rejects continuation after catalog changes and across principals, including empty pages', async () => {
+    const f = setup();
+    let publications = Array.from({ length: 21 }, (_, index) => ({ ...p, id: `revision-${String(index).padStart(2, '0')}` }));
+    f.repository.page = (_user, limit, after) => Promise.resolve({ catalogIds: publications.map(value => value.id), publications: publications.filter(value => value.id > after).slice(0, limit) });
+    const service = createMcpSkillsService(f.repository, 'owner');
+    const first = await service.list();
+    expect(first.skills).toHaveLength(20);
+    const cursor = first.nextCursor!;
+    expect((await service.list(cursor)).skills.map(value => value.uri)).toEqual([skillResourceUri(publications[20])]);
+    await expect(createMcpSkillsService(f.repository, 'other').list(cursor)).rejects.toThrow('restart listing');
+    const original = publications;
+    publications = [{ ...p, id: 'new-revision' }, ...original];
+    await expect(service.list(cursor)).rejects.toThrow('restart listing');
+    publications = original;
+    publications = publications.slice(0, 20);
+    await expect(service.list(cursor)).rejects.toThrow('restart listing');
+    expect((await service.list()).skills).toHaveLength(20);
+    publications = [];
+    await expect(service.list(cursor)).rejects.toThrow('restart listing');
+    expect((await service.list()).skills).toEqual([]);
+    await expect(service.list('revision-19')).rejects.toThrow('Invalid cursor');
+  });
   it('declares discovery without reading any files and returns complete skill manifests', async () => {
     const f = setup();
     expect((await f.call('server/discover')).body).toMatchObject({ result: { resultType: 'complete', supportedVersions: [MODERN_MCP_VERSION], capabilities: { resources: {}, extensions: { 'io.modelcontextprotocol/skills': {} } } } });

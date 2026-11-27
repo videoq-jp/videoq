@@ -277,6 +277,11 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         expect(await f.publications.publish('publication', 'owner', 'reviewed-hash')).toBe(true);
         expect(await f.publications.publish('publication', 'owner', 'reviewed-hash')).toBe(true);
         expect(await f.publications.list('owner', 20, '')).toHaveLength(1);
+        const page = await f.publications.page('owner', 20, '');
+        expect(page.publications.map(p => p.id)).toEqual(['publication']);
+        expect(page.catalogIds).toEqual(['publication']);
+        expect(await f.publications.page('owner', 20, 'publication')).toEqual({ publications: [], catalogIds: ['publication'] });
+        expect(await f.publications.page('other', 20, '')).toEqual({ publications: [], catalogIds: [] });
         expect(await f.publications.read('publication', 'SKILL.md', 'owner')).toEqual(f.publication.files[0]);
         expect(await f.publications.read('publication', 'SKILL.md', 'other')).toBeNull();
         expect(await f.publications.list('other', 20, '')).toHaveLength(0);
@@ -287,6 +292,7 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         expect(await f.publications.read('publication', 'SKILL.md', 'owner')).toBeNull();
         expect(await f.publications.read('publication', 'references/sources.md', 'owner')).toBeNull();
         expect(await f.publications.list('owner', 20, '')).toHaveLength(0);
+        expect(await f.publications.page('owner', 20, '')).toEqual({ publications: [], catalogIds: [] });
       } finally { await f.dispose(); }
     });
     it('runs prepared sources through extraction, review, MCP retrieval and membership removal/re-addition', async () => {

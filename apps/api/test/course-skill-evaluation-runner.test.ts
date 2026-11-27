@@ -13,7 +13,10 @@ import type { runCodexTrial } from '../scripts/course-skill-evaluation/codex';
 import type { Bindings } from '../src/types/bindings';
 
 const { list } = vi.hoisted(() => ({ list: vi.fn() }));
-vi.mock('../src/integrations/course-skill-publications', () => ({ createCourseSkillPublicationRepository: () => Promise.resolve({ list }) }));
+vi.mock('../src/integrations/course-skill-publications', () => ({ createCourseSkillPublicationRepository: () => Promise.resolve({ list, page: async () => {
+  const publications = await list() as { id: string }[];
+  return { publications, catalogIds: publications.map(p => p.id) };
+} }) }));
 const publication = { id: 'synthetic-publication', courseId: 51, skillId: 'synthetic-skill', name: 'videoq-c51-synthetic', description: 'Unit fixture only', manifest: [{ path: 'SKILL.md', digest: 'a'.repeat(64), size: 1 }] };
 beforeEach(() => { list.mockReset(); list.mockResolvedValue([publication]); });
 const hash = (text: string) => createHash('sha256').update(text).digest('hex');

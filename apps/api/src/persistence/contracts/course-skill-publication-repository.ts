@@ -7,6 +7,8 @@ export interface CourseSkillPublicationRepository {
   stage(ownerId: string, input: { id: string; candidateId: string; expectedHash: string; name: string; description: string; sources: string; files: SkillPublicationFile[] }): Promise<boolean>;
   publish(id: string, ownerId: string, expectedHash: string): Promise<boolean>;
   list(userId: string, limit: number, after: string): Promise<CourseSkillPublication[]>;
+  /** Page and visible revision IDs must come from one database snapshot. */
+  page(userId: string, limit: number, after: string): Promise<{ publications: CourseSkillPublication[]; catalogIds: string[] }>;
   get(id: string, userId: string): Promise<CourseSkillPublication | null>;
   read(id: string, path: string, userId: string): Promise<SkillPublicationFile | null>;
   withdraw(courseId: number, skillId: string, ownerId: string): Promise<boolean>;

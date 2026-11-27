@@ -87,6 +87,19 @@ export function createSqlCourseSkillPublicationRepository(driver: SkillSqlDriver
         WHERE p.id=? AND ${readable}`, [id, userId, userId]);
       return row ? decode(row) : null;
     },
+    async page(userId, limit, after) {
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('INVALID_SKILL_PAGE');
+      const aggregate = driver.dialect === 'd1' ? 'json_group_array(id)' : 'json_agg(id)';
+      // A single statement also handles an empty page. Separate queries would
+      // observe different snapshots under PostgreSQL READ COMMITTED.
+      const rows = await driver.all<Row & { catalog: string | string[] | null }>(`WITH visible AS (
+        SELECT p.* FROM course_skill_publications p JOIN course_skill_heads h ON h.revision_id=p.id
+        JOIN course_skill_inputs s ON s.course_id=p.course_id WHERE ${readable}
+      ) SELECT page.*, (SELECT ${aggregate} FROM (SELECT id FROM visible ORDER BY id) ordered_ids) AS catalog
+        FROM (SELECT 1) anchor LEFT JOIN (SELECT * FROM visible WHERE id>? ORDER BY id LIMIT ?) page ON 1=1`, [userId, userId, after, limit]);
+      const catalog = rows[0]?.catalog;
+      return { publications: rows.filter(row => row.id !== null).map(decode), catalogIds: typeof catalog === 'string' ? JSON.parse(catalog) as string[] : catalog ?? [] };
+    },
     async read(id, path, userId) {
       const [row] = await driver.all<SkillPublicationFile>(`SELECT f.path,f.content,f.digest,f.size FROM course_skill_files f
         JOIN course_skill_publications p ON p.id=f.revision_id JOIN course_skill_inputs s ON s.course_id=p.course_id

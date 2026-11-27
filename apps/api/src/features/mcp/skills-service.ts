@@ -23,15 +23,21 @@ export function createMcpSkillsService(repository: CourseSkillPublicationReposit
   }
   return {
     async list(cursor?: string) {
-      // Opaque cursor contains only a public revision ID; authorization is repeated on every page.
       let after = '';
+      let expectedCatalog: string | undefined;
       if (cursor) {
         if (cursor.length > 1024) throw new SkillLookupError('Invalid cursor');
-        try { after = decodeURIComponent(cursor); } catch { throw new SkillLookupError('Invalid cursor'); }
+        try {
+          const value: unknown = JSON.parse(decodeURIComponent(cursor));
+          if (!value || typeof value !== 'object' || !('version' in value) || value.version !== 1 || !('after' in value) || typeof value.after !== 'string' || !value.after || !('catalog' in value) || typeof value.catalog !== 'string' || !/^[a-f0-9]{64}$/.test(value.catalog)) throw new Error();
+          after = value.after; expectedCatalog = value.catalog;
+        } catch { throw new SkillLookupError('Invalid cursor'); }
       }
-      const publications = await repository.list(userId, 21, after);
+      const { publications, catalogIds } = await repository.page(userId, 21, after);
+      const catalog = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([userId, catalogIds]))))].map(n => n.toString(16).padStart(2, '0')).join('');
+      if (expectedCatalog && (expectedCatalog !== catalog || !catalogIds.includes(after))) throw new SkillLookupError('Skill catalog changed; restart listing');
       const page = publications.slice(0, 20);
-      return { ...cache, skills: page.map(entry), ...(publications.length > 20 ? { nextCursor: encodeURIComponent(page.at(-1)!.id) } : {}) };
+      return { ...cache, skills: page.map(entry), ...(publications.length > 20 ? { nextCursor: encodeURIComponent(JSON.stringify({ version: 1, after: page.at(-1)!.id, catalog })) } : {}) };
     },
     async get(uri: string) {
       const { p, parsed } = await resolve(uri);
