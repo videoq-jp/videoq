@@ -1,5 +1,6 @@
 import { toolJwks } from "./tool-keys";
 import { decodeJwt } from "jose";
+import { createAuthorizationURL } from 'better-auth/oauth2';
 import { launchLocale, resolveLtiLocale } from "./locale";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -72,14 +73,15 @@ ltiRoutes.on(["GET", "POST"], "/login", async c => {
   });
   if (!initiated) return refused(c);
   const { reg, state, nonce, browserSecret, deploymentHint } = initiated;
-  const url = new URL(reg.authorizationUrl);
-  const authParams: Record<string, string> = {
-    scope: "openid", response_type: "id_token", response_mode: "form_post", prompt: "none",
-    client_id: reg.clientId, redirect_uri: target, login_hint: initiated.loginHint, state, nonce,
-  };
-  if (initiated.messageHint) authParams.lti_message_hint = initiated.messageHint;
-  if (deploymentHint) authParams.lti_deployment_id = deploymentHint;
-  for (const [key, value] of Object.entries(authParams)) url.searchParams.set(key, value);
+  const url = await createAuthorizationURL({
+    id: reg.id, options: { clientId: reg.clientId }, authorizationEndpoint: reg.authorizationUrl,
+    scopes: ['openid'], responseType: 'id_token', responseMode: 'form_post', prompt: 'none',
+    redirectURI: target, loginHint: initiated.loginHint, state, nonce,
+    additionalParams: {
+      ...(initiated.messageHint ? { lti_message_hint: initiated.messageHint } : {}),
+      ...(deploymentHint ? { lti_deployment_id: deploymentHint } : {}),
+    },
+  });
   const scriptNonce = randomSecret();
   framePolicy(c, reg, scriptNonce);
   return c.html(loginView(scriptNonce, state, browserSecret, url.href, locale));

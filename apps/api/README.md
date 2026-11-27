@@ -18,6 +18,40 @@ See [the domain model and context map](../../docs/architecture/domain-model.md) 
 
 For API-first development without a database or provider, see [the local prototype and use-case scaffolding guide](../../docs/architecture/video-clean-architecture-adoption.md). Run `npm run dev:prototype` from the repository root.
 
+## Learning integration authentication
+
+Classroom uses Better Auth's Google provider configuration, OAuth request
+builders and token parser for authorization-code exchange and refresh, and its
+authorization URL builder for PKCE and nonce parameters. The transport adapter
+aborts token requests after ten seconds and JWKS requests after five seconds,
+including response-body reads, and refuses HTTP redirects. Better Auth's JWKS
+cache shares concurrent loads, expires after five minutes and refetches rotated
+keys with a cooldown. Classroom and LTI launch identities both pass through the
+exported `verifyProviderIdToken` API from `better-auth/oauth2`; the application
+decodes claims only after successful verification. Google supplies the issuer,
+audience and algorithms through its provider configuration; Classroom supplies
+the cached key resolver for Google's fixed JWKS endpoint. LTI
+uses the administrator-approved issuer, client and JWKS endpoint. JWT headers
+cannot select a new issuer or key URL. `lib/learning-oidc.ts` retains the existing
+strict launch time windows on top of Better Auth's default clock tolerance.
+
+This is reuse of Better Auth's OAuth/OIDC components, not conversion of every
+learner into a Better Auth user or session. LTI's `id_token` / `form_post` launch
+and Classroom's popup/iframe flow keep their browser-bound, single-use state
+and scoped learning credentials. Teacher/student authority, deployment,
+resource, account-hint and live Classroom membership checks remain application
+responsibilities. Existing encrypted Classroom credentials and LTI signing-key
+rings retain their format; no database migration or new OAuth callback URL is
+required. LTI client assertions still use `jose` because they carry an
+LTI-specific deployment claim. Neither using Better Auth nor issuing an Ed25519
+VideoQ JWT changes Google's or the LMS's RSA signatures into post-quantum
+signatures.
+
+Regression coverage includes real signed tokens, forged signatures, missing
+claims, wrong issuer/audience/nonce, stricter time limits, PKCE, browser state
+replay, encrypted refresh and disconnect. Provider-specific browser acceptance
+must still be checked against a real Classroom/LMS installation before release.
+
 ## Structure
 
 The router in `packages/trpc` is the source of truth for the regular JSON API.
