@@ -1472,6 +1472,13 @@
     "next": "次へ"
   },
   "courseSkills": {
+    "changes": "前回の公開版からの知識・根拠の変更",
+    "addedKnowledge": "追加・更新された知識",
+    "removedKnowledge": "除外された知識",
+    "addedVideos": "追加された根拠動画",
+    "removedVideos": "除外された根拠動画",
+    "noChanges": "変更なし",
+
     "imageSource": "画像の読み取り",
     "title": "エージェント用Skills",
     "intro": "講座の動画から、コーディングエージェントが使える判断基準・手順・検証方法を作ります。候補を確認して公開すると、対応するMCPクライアントから利用できます。",

@@ -53,7 +53,7 @@ export async function extractCourseSkillKnowledge(env: Bindings, input: {
       if (!required.length) return [];
       const start = Math.max(0, Math.min(...required.map(c => c.startMs)) / 1000 - 2);
       const end = Math.max(...required.map(c => c.endMs)) / 1000 + 2;
-      const selected = await readSparseFrames(env, video, start, end, AbortSignal.timeout(30_000), 8);
+      const selected = await readSparseFrames(env, video, start, end, AbortSignal.timeout(30_000), /^gpt-4o-mini(?:-\d{4}-\d{2}-\d{2})?$/.test(model.model) ? 4 : 8);
       if ('unavailable' in selected) return [];
       return selected.frames.map(frame => ({ id: `${input.source.visualRevision}:${Math.round(frame.timestamp_seconds * 1000)}`, timestampMs: Math.round(frame.timestamp_seconds * 1000), jpegBase64: frame.jpeg_base64 }));
     },

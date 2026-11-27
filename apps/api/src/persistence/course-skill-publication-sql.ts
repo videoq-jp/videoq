@@ -24,7 +24,7 @@ export function createSqlCourseSkillPublicationRepository(driver: SkillSqlDriver
   return {
     async approve(candidateId, ownerId, expectedHash) {
       const rows = await driver.all(`UPDATE course_skill_candidates AS k SET status='approved',approved_hash=content_hash
-        WHERE k.id=? AND k.content_hash=? AND ${hasDraft} AND k.status<>'published'
+        WHERE k.id=? AND k.content_hash=? AND ${hasDraft} AND k.status IN ('review_required','approved')
         AND EXISTS(SELECT 1 FROM course_skill_builds b WHERE b.id=k.build_id AND b.state='completed' AND ${current}) RETURNING id`, [candidateId, expectedHash, ownerId]);
       return rows.length > 0;
     },

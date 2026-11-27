@@ -216,6 +216,7 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         expect(await f.candidates.edit('candidate-a', 'owner', 'hash-a', content, 'hash-b')).toBe(true);
         await expect(f.candidates.edit('candidate-a', 'owner', 'hash-b', { ...content, task: { ...content.task, skillId: 'foreign' } }, 'hash-c')).rejects.toThrow('SKILL_EVIDENCE_EDIT_FORBIDDEN');
         await f.execute('DELETE FROM video_course_members WHERE course_id=1');
+        expect(await f.candidates.edit('candidate-a', 'owner', 'hash-b', content, 'hash-c')).toBe(false);
         expect(await f.candidates.save(lease, { id: 'stale', content, contentHash: 'hash-c' }, f.now())).toBe(false);
       } finally { await f.dispose(); }
     });
@@ -313,6 +314,14 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         await f.execute('DELETE FROM video_course_members WHERE course_id=1');
         expect(await f.publications.publish('publication', 'owner', 'reviewed-hash')).toBe(false);
         expect(await f.publications.get('publication', 'owner')).toBeNull();
+      } finally { await f.dispose(); }
+    });
+    it('requires editing a rejected candidate before it can be approved again', async () => {
+      const f = await staged();
+      try {
+        expect(await f.candidates.reject('candidate', 'owner', 'reviewed-hash')).toBe(true);
+        expect(await f.publications.approve('candidate', 'owner', 'reviewed-hash')).toBe(false);
+        expect(await f.publications.stage('owner', f.publication)).toBe(false);
       } finally { await f.dispose(); }
     });
     it('withdraws all URI access and never edits an already published candidate', async () => {

@@ -504,7 +504,6 @@ export function VideoCourseDetailView({
             <ViewerHeader title={course?.name ?? t('navigation.coursesNav')} backHref="/videos/courses">
                 {canManage ? <ViewerActionsMenu label={t('videos.courseDetail.manage')}>
                   <MenuList>
-                    <MenuListItem><MenuListItemButton type="box" size="regular" onClick={() => setIsSkillsOpen(true)}><BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{t('courseSkills.title')}</span></MenuListItemButton></MenuListItem>
                     <MenuListItem>
                       <MenuListItemButton type="box" size="regular" onClick={() => setIsShareDialogOpen(true)}>
                         <Share2 className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -538,6 +537,7 @@ export function VideoCourseDetailView({
                         <span>{t('videos.courseDetail.delete')}</span>
                       </MenuListItemButton>
                     </MenuListItem>
+                    <MenuListItem><MenuListItemButton type="box" size="regular" onClick={() => setIsSkillsOpen(true)}><BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{t('courseSkills.title')}</span></MenuListItemButton></MenuListItem>
                   </MenuList>
                 </ViewerActionsMenu> : course ? (
                   <Button

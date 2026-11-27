@@ -31,8 +31,8 @@ export function courseSkillManagement(env: Bindings, ownerId: string) {
       return { settings: snapshot?.settings ?? defaults, revision: snapshot?.revision ?? 0,
         candidates: [...latest.values()].map(c => ({ id: c.id, skillId: c.skillId, title: c.content.draft?.title ?? c.content.task.objective,
           description: c.content.draft?.description ?? '', status: c.status, contentHash: c.contentHash, issues: c.content.issues, hasDraft: Boolean(c.content.draft),
-          editable: Boolean(snapshot?.settings.generationEnabled && c.buildRevision === snapshot.revision && c.status !== 'published' && builds.some(b => b.id === c.buildId && b.state === 'completed')),
-          canPublish: Boolean(snapshot?.settings.generationEnabled && c.buildRevision === snapshot.revision && c.content.draft && !c.content.issues.length && ['review_required', 'approved'].includes(c.status) && builds.some(b => b.id === c.buildId && b.state === 'completed')),
+          editable: Boolean(snapshot?.settings.generationEnabled && c.buildRevision === snapshot.revision && c.sourceState === snapshot.sourceState && c.status !== 'published' && builds.some(b => b.id === c.buildId && b.state === 'completed')),
+          canPublish: Boolean(snapshot?.settings.generationEnabled && c.buildRevision === snapshot.revision && c.sourceState === snapshot.sourceState && c.content.draft && !c.content.issues.length && ['review_required', 'approved'].includes(c.status) && builds.some(b => b.id === c.buildId && b.state === 'completed')),
           publication: (() => { const p = publications.find(p => p.skillId === c.skillId); return p ? { id: p.id, state: p.state, validSources: p.validSources } : null; })(),
         })),
         jobs: builds.map(b => {
@@ -49,8 +49,13 @@ export function courseSkillManagement(env: Bindings, ownerId: string) {
       const all = await (await createCourseSkillCandidateRepository(env)).list(courseId, ownerId);
       const c = all.find(c => c.id === candidateId);
       if (!c) throw new CourseSkillManagementError('not_found', 'Skill candidate not found');
-      const previous = all.filter(p => p.skillId === c.skillId && p.id !== c.id && p.status === 'published').at(-1);
-      return { id: c.id, skillId: c.skillId, contentHash: c.contentHash, status: c.status, issues: c.content.issues, draft: c.content.draft, previousDraft: previous?.content.draft ?? null,
+      const previous = all.filter(p => p.skillId === c.skillId && p.buildRevision < c.buildRevision && p.status === 'published').at(-1);
+      const before = previous?.content.facts ?? [];
+      const currentIds = new Set(c.content.facts.map(f => f.id));
+      const previousIds = new Set(before.map(f => f.id));
+      const currentVideos = new Set(c.content.facts.map(f => f.videoId));
+      const previousVideos = new Set(before.map(f => f.videoId));
+      return { changes: { addedKnowledge: c.content.facts.filter(f => !previousIds.has(f.id)).map(f => f.claim), removedKnowledge: before.filter(f => !currentIds.has(f.id)).map(f => f.claim), addedVideos: [...currentVideos].filter(id => !previousVideos.has(id)), removedVideos: [...previousVideos].filter(id => !currentVideos.has(id)) }, id: c.id, skillId: c.skillId, contentHash: c.contentHash, status: c.status, issues: c.content.issues, draft: c.content.draft, previousDraft: previous?.content.draft ?? null,
         files: c.content.draft ? renderCourseSkill(courseId, c.content.draft, c.content.facts, c.content.generation?.language).files : [],
         sources: c.content.facts.flatMap(f => [...f.evidence.map(e => { const cue = f.cues.find(c => c.id === e.cueId); return { factId: f.id, claim: f.claim, videoId: f.videoId, startMs: cue?.startMs ?? 0, endMs: cue?.endMs ?? 0, quote: e.quote, kind: 'subtitle' as const }; }), ...(f.visualEvidence ?? []).map(e => { const frame = f.frames?.find(frame => frame.id === e.frameId); return { factId: f.id, claim: f.claim, videoId: f.videoId, startMs: frame?.timestampMs ?? 0, endMs: frame?.timestampMs ?? 0, quote: e.observation, kind: 'image' as const }; })]),
       };
@@ -73,7 +78,7 @@ export function courseSkillManagement(env: Bindings, ownerId: string) {
       const candidate = (await repository.list(courseId, ownerId)).find(c => c.id === candidateId);
       const snapshot = await (await createCourseSkillInputRepository(env)).snapshot(courseId, ownerId);
       const builds = await (await createCourseSkillExecutionRepository(env)).progress(courseId, ownerId);
-      if (!candidate || candidate.contentHash !== expectedHash || candidate.status === 'published' || candidate.buildRevision !== snapshot?.revision || !builds.some(b => b.id === candidate.buildId && b.state === 'completed')) throw new CourseSkillManagementError('conflict', 'Skill candidate changed; reload before editing');
+      if (!candidate || candidate.contentHash !== expectedHash || candidate.status === 'published' || candidate.buildRevision !== snapshot?.revision || candidate.sourceState !== snapshot.sourceState || !builds.some(b => b.id === candidate.buildId && b.state === 'completed')) throw new CourseSkillManagementError('conflict', 'Skill candidate changed; reload before editing');
       if (draft.slug !== candidate.content.task.slug) throw new CourseSkillManagementError('invalid', 'Skill identity cannot be edited');
       validateSkillDraft(draft, candidate.content.facts);
       const audit = await courseSkillDraftDependencies(env, ownerId, snapshot.settings.language).audit(draft, candidate.content.facts);

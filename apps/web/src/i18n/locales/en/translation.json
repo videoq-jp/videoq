@@ -1474,6 +1474,13 @@
     "next": "Next"
   },
   "courseSkills": {
+    "changes": "Knowledge and source changes since publication",
+    "addedKnowledge": "Added or updated knowledge",
+    "removedKnowledge": "Removed knowledge",
+    "addedVideos": "Added source videos",
+    "removedVideos": "Removed source videos",
+    "noChanges": "No changes",
+
     "imageSource": "Image observation",
     "title": "Agent skills",
     "intro": "Turn course videos into decisions, workflows, and checks for coding agents. Review and publish candidates to make them available to compatible MCP clients.",

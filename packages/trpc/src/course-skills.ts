@@ -30,6 +30,7 @@ export const courseSkillsOutputSchemas = {
   'courseSkills.list': z.object({ settings, revision: z.number(), candidates: z.array(summary),
     jobs: z.array(z.object({ id: z.string(), revision: z.number(), state: z.string(), phase: z.string(), processedVideos: z.number(), totalVideos: z.number(), error: z.string().nullable() })) }),
   'courseSkills.get': z.object({ id: z.string(), skillId: z.string(), contentHash: z.string(), status: z.string(), issues: z.array(z.string()), draft: courseSkillDraftSchema.nullable(), previousDraft: courseSkillDraftSchema.nullable(),
+    changes: z.object({ addedKnowledge: z.array(z.string()), removedKnowledge: z.array(z.string()), addedVideos: z.array(id), removedVideos: z.array(id) }).optional(),
     files: z.array(z.object({ path: z.string(), content: z.string() })),
     sources: z.array(z.object({ factId: z.string(), claim: z.string(), videoId: id, startMs: z.number(), endMs: z.number(), quote: z.string(), kind: z.enum(['subtitle', 'image']).optional() })) }),
   'courseSkills.configure': z.object({ success: z.literal(true) }),

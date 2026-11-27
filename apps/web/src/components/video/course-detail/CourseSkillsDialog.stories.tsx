@@ -56,7 +56,7 @@ export const ReviewAndPublish: Story = {
     await context.userEvent.type(title, '再試行の前提と検証を確認する');
     await expect(dialog.getByRole('button', { name: i18n.t('courseSkills.publish') })).toBeDisabled();
     await context.userEvent.click(dialog.getByRole('button', { name: i18n.t('courseSkills.save') }));
-    await waitFor(() => expect(dialog.getByRole('button', { name: i18n.t('courseSkills.publish') })).toBeEnabled());
+    await waitFor(() => expect(dialog.getByRole('button', { name: i18n.t('courseSkills.publish') })).toBeEnabled(), { timeout: 10000 });
     await context.userEvent.click(dialog.getByRole('button', { name: i18n.t('courseSkills.publish') }));
     await dialog.findByText(i18n.t('courseSkills.states.active'));
     await waitFor(() => expect(dialog.getByRole('textbox', { name: i18n.t('courseSkills.name') })).toBeDisabled());

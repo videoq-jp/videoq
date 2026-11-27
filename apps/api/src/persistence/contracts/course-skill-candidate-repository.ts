@@ -6,7 +6,7 @@ export type CourseSkillCandidateContent = { task: SkillTask; draft: SkillDraft |
 export type CourseSkillCandidate = {
   id: string; courseId: number; buildId: string; skillId: string; content: CourseSkillCandidateContent;
   contentHash: string; status: string; approvedHash: string | null;
-  buildRevision: number;
+  buildRevision: number; sourceState: string;
 };
 export interface CourseSkillCandidateRepository {
   save(lease: SkillBuildLease, candidate: { id: string; content: CourseSkillCandidateContent; contentHash: string }, now: number): Promise<boolean>;
