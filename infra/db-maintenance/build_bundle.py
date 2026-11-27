@@ -52,7 +52,7 @@ def operator_files():
     for name in ["scripts/d1-postgres-login-fence.ts", "scripts/migrations/d1/postgres-login-fence.ts", "scripts/migrations/d1/postgres-cutover-activity.ts", "scripts/d1-migration-manifest.ts", "scripts/d1-export.ts", "scripts/d1-preserve-legacy.ts",
                  "scripts/d1-production-recovery.ts", "scripts/migrations/d1/recovery-authorization.ts",
                  "scripts/migrations/d1/postwrite-recovery.ts", "scripts/migrations/d1/fenced-postgres-transaction.ts",
-                 "scripts/migrations/d1/recover-visual-artifacts.ts", "scripts/migrations/d1/visual-artifacts.ts", "src/shared/media-path.ts", "src/application/media-path.ts",
+                 "scripts/migrations/d1/recover-visual-artifacts.ts", "scripts/migrations/d1/visual-artifacts.ts", "src/shared/media-path.ts", "src/domain/media/media-path.ts",
                  "scripts/migrations/d1/write-fence.ts",
                  "scripts/migrations/d1/export.ts", "scripts/migrations/d1/manifest.ts",
                  "scripts/migrations/d1/archive-format.ts", "scripts/migrations/d1/sequence-format.ts",

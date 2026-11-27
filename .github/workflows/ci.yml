@@ -314,7 +314,7 @@ jobs:
               - 'apps/api/scripts/migrations/d1/recover-visual-artifacts.ts'
               - 'apps/api/scripts/migrations/d1/visual-artifacts.ts'
               - 'apps/api/src/shared/media-path.ts'
-              - 'apps/api/src/application/media-path.ts'
+              - 'apps/api/src/domain/media/media-path.ts'
               - 'apps/api/scripts/migrations/d1/postgres-login-fence.ts'
               - 'apps/api/scripts/migrations/d1/postgres-cutover-activity.ts'
               - 'apps/api/scripts/d1-migration-manifest.ts'

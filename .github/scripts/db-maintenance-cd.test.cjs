@@ -10,7 +10,7 @@ test('deployment includes runtime, locked dependencies, operations fixtures and 
     '.github/scripts/cutover-postgres-fence.mjs','.github/operations-tools/fixtures/smoke.mp4','apps/demo-video/public/lessons/math.mp4',
     'apps/api/scripts/d1-production-recovery.ts','apps/api/scripts/migrations/d1/recovery-authorization.ts',
     'apps/api/scripts/migrations/d1/postwrite-recovery.ts','apps/api/scripts/migrations/d1/fenced-postgres-transaction.ts',
-    'apps/api/scripts/migrations/d1/recover-visual-artifacts.ts','apps/api/scripts/migrations/d1/visual-artifacts.ts','apps/api/src/shared/media-path.ts','apps/api/src/application/media-path.ts']) assert.equal(relevant(path),true,path);
+    'apps/api/scripts/migrations/d1/recover-visual-artifacts.ts','apps/api/scripts/migrations/d1/visual-artifacts.ts','apps/api/src/shared/media-path.ts','apps/api/src/domain/media/media-path.ts']) assert.equal(relevant(path),true,path);
   for (const path of ['apps/web/src/App.tsx','infra/db-maintenance/README.md','docs/guides/testing.md',
     'infra/db-maintenance/terraform/main.tf','infra/db-maintenance/terraform/tests/boundaries.tftest.hcl',
     '.github/operations-tools/fixtures/README.md']) assert.equal(relevant(path),false,path);
