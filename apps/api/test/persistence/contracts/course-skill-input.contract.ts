@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { CourseSkillInputRepository, CourseSkillSettings } from '../../../src/persistence/contracts/course-skill-input-repository';
 import { courseSkillInputService } from '../../../src/features/course-skills/input-service';
+import type { CourseSkillKnowledgeRepository } from '../../../src/persistence/contracts/course-skill-knowledge-repository';
 
 export const enabledSkillSettings: CourseSkillSettings = { generationEnabled: true, distributionEnabled: false, policyVersion: '1', language: 'ja' };
 export type SkillInputFixture = {
   repository: CourseSkillInputRepository;
+  knowledge: CourseSkillKnowledgeRepository;
   execute(sql: string, values?: (string | number)[]): Promise<void>;
   jobs(): Promise<{ id: string; input: string }[]>;
   dispose(): Promise<void>;
@@ -109,6 +111,27 @@ export function courseSkillInputContract(name: string, fixture: () => Promise<Sk
         const first = await f.repository.claim(job.id, 'owner', 'first', f.now(), 1000);
         await f.service.configure(1, 'owner', { ...enabledSkillSettings, generationEnabled: false });
         expect(await f.repository.complete(job.id, 'owner', 'first', first!.generation, f.now())).toBe(false);
+      } finally { await f.dispose(); }
+    });
+    it('reads bounded source pages and fences cached knowledge after removal', async () => {
+      const f = await setup();
+      try {
+        await f.add(); await f.ready(); await f.service.configure(1, 'owner', enabledSkillSettings);
+        const [job] = await f.jobs();
+        const claim = await f.repository.claim(job.id, 'owner', 'lease', f.now(), 1000);
+        const lease = { id: job.id, ownerId: 'owner', token: 'lease', generation: claim!.generation };
+        const source = (await f.repository.snapshot(1, 'owner'))!.sources[0];
+        const page = await f.knowledge.readPage(lease, 1, 0, f.now());
+        expect(page?.text).toContain('Sample knowledge');
+        expect(page?.done).toBe(true);
+        expect(await f.knowledge.readPage({ ...lease, ownerId: 'other' }, 1, 0, f.now())).toBeNull();
+        const chunk = { version: 1 as const, videoId: 1, analysisRevision: source.analysisRevision, chunkIndex: 0, cues: [], facts: [], model: 'fixture', promptVersion: '1' };
+        expect(await f.knowledge.save(lease, 'knowledge-key', chunk, f.now())).toBe(true);
+        expect(await f.knowledge.cached(lease, 'knowledge-key', f.now())).toEqual(chunk);
+        await f.execute('DELETE FROM video_course_members WHERE course_id=1');
+        expect(await f.knowledge.readPage(lease, 1, 0, f.now())).toBeNull();
+        expect(await f.knowledge.cached(lease, 'knowledge-key', f.now())).toBeNull();
+        expect(await f.knowledge.save(lease, 'other-key', chunk, f.now())).toBe(false);
       } finally { await f.dispose(); }
     });
   });

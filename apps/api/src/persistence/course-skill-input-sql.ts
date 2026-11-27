@@ -7,6 +7,12 @@ export interface SkillSqlDriver {
   all<T>(sql: string, values: Value[]): Promise<T[]>;
   batch(statements: SkillStatement[]): Promise<unknown[][]>;
 }
+export function currentSkillBuildPredicate(driver: SkillSqlDriver): string {
+  const jsonSource = driver.dialect === 'd1' ? `json_extract(b.input,'$.sourceState')` : `(b.input::jsonb->>'sourceState')`;
+  return `EXISTS (SELECT 1 FROM course_skill_inputs s WHERE s.course_id=b.course_id
+    AND s.generation_enabled=1 AND s.revision=b.revision AND ${managed}
+    AND ${skillSourceState(driver.dialect)}=${jsonSource})`;
+}
 type InputRow = {
   course_id: number; owner_id: string; revision: number; source_state: string;
   generation_enabled: number; distribution_enabled: number; language: 'ja' | 'en'; policy_version: string;
@@ -41,10 +47,7 @@ function sources(value: string): CourseSkillSource[] {
 
 export function createSqlCourseSkillInputRepository(driver: SkillSqlDriver): CourseSkillInputRepository {
   const source = skillSourceState(driver.dialect);
-  const jsonSource = driver.dialect === 'd1' ? `json_extract(b.input,'$.sourceState')` : `(b.input::jsonb->>'sourceState')`;
-  const current = `EXISTS (SELECT 1 FROM course_skill_inputs s WHERE s.course_id=b.course_id
-    AND s.generation_enabled=1 AND s.revision=b.revision AND ${managed}
-    AND ${source}=${jsonSource})`;
+  const current = currentSkillBuildPredicate(driver);
   const stmt = (sql: string, ...values: Value[]): SkillStatement => ({ sql, values });
   const ownedCourse = `SELECT c.id FROM video_courses c WHERE c.id=? AND c.user_id=? AND NOT c.managed_by_lms AND NOT c.native_access_disabled`;
   async function seed(courseId: number, ownerId: string) {
