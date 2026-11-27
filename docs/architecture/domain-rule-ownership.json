@@ -595,5 +595,64 @@
       ],
       "intentionalDifferences": []
     }
+  ],
+  "followUps": [
+    {
+      "issue": 1739,
+      "rules": [
+        {
+          "path": "apps/api/src/domain/identity/username.ts",
+          "symbols": [
+            "usernameSeed",
+            "usernameCandidate",
+            "fallbackUsername"
+          ],
+          "consumers": [
+            "apps/api/src/application/identity/username.ts"
+          ]
+        },
+        {
+          "path": "apps/api/src/domain/identity/account-registration.ts",
+          "symbols": [
+            "registrationUsername",
+            "accountWithDefaults"
+          ],
+          "consumers": [
+            "apps/api/src/application/identity/account-registration.ts"
+          ]
+        },
+        {
+          "path": "apps/api/src/domain/identity/google-account.ts",
+          "symbols": [
+            "googleAccountFacts",
+            "googleAccountProfile"
+          ],
+          "consumers": [
+            "apps/api/src/application/identity/google-account.ts"
+          ]
+        },
+        {
+          "path": "apps/api/src/domain/identity/oauth-consent.ts",
+          "symbols": [
+            "consentAllows",
+            "refreshConsentPlan"
+          ],
+          "consumers": [
+            "apps/api/src/application/identity/oauth-consent.ts"
+          ]
+        }
+      ],
+      "contracts": [
+        "apps/api/test/identity-domain-purity.test.ts",
+        "apps/api/test/username-policy.test.ts",
+        "apps/api/test/account-registration.test.ts",
+        "apps/api/test/google-account-policy.test.ts",
+        "apps/api/test/oauth-consent-policy.test.ts",
+        "apps/api/test/auth-security.test.ts"
+      ],
+      "intentionalDifferences": [
+        "I/O orchestration belongs to application/identity; domain consumes current facts synchronously."
+      ]
+    }
   ]
 }

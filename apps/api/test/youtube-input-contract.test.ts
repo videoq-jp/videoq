@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { expect, it, vi } from 'vitest';
 import { inputSchemas } from '@videoq/trpc/inputs';
 import { managementToolSchemas } from '../src/tools/management';
@@ -23,4 +24,9 @@ it.each(['not a URL','https://evil.example/watch?v=abcdefghijk','https://youtube
 it.each(['https://youtu.be/abcdefghijk','https://youtube.com/embed/abcdefghijk','https://youtube.com/shorts/abcdefghijk'])('normalizes surrounding whitespace consistently: %s', url => {
   expect(inputSchemas['videos.createYoutube'].parse({youtubeUrl:'  '+url+'  ',title:'Clip'}).youtubeUrl).toBe(url);
   expect(managementToolSchemas.create_youtube_video.parse({idempotency_key:'test-key-123',youtube_url:'  '+url+'  ',title:'Clip'}).youtube_url).toBe(url);
+});
+
+it('retains URL format and length guidance in the MCP JSON schema', () => {
+  const schema = z.toJSONSchema(managementToolSchemas.create_youtube_video,{io:'input'});
+  expect(schema.properties?.youtube_url).toMatchObject({type:'string',format:'uri',minLength:1,maxLength:200});
 });

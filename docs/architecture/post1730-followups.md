@@ -41,7 +41,7 @@ PGのjsonbとDOの履歴は旧数値と新しい予約付きentryを読み取れ
 | 入口/ユースケース/DBの挙動契約 | 実行したケースの結果と副作用 | 未実行の全仕様や全並行順序 |
 | negative control | 指定した変異を対象契約が検出できる | 全CI・全consumerのmutation score |
 
-登録済みの全TypeScript consumer（現行43ファイル・46組の正本との対応）について、実装を除去してimport/re-exportだけを残すメモリ上の変異を評価し、静的な到達検査が成功する限界を確認する。各組は台帳の契約試験パスとも照合する。
+登録済みの全TypeScript consumer（現行47ファイル・50組の正本との対応）について、実装を除去してimport/re-exportだけを残すメモリ上の変異を評価し、静的な到達検査が成功する限界を確認する。各組は台帳の契約試験パスとも照合する。
 
 course serviceの「呼ばない」「返却値を使わない」「旧検証へ置換」はimportをそのまま残し、実ソースを一時的にメモリで変異させて検証する。通常のcourse名契約も同じ挙動assertionを使う。ディスク上の実装は変異させない。tRPC/MCPのschemaは共通fixtureで別途実行する。
 
@@ -56,4 +56,4 @@ course serviceの「呼ばない」「返却値を使わない」「旧検証へ
 | google-account: claimの事実、メール権威性、profile組立て | createGoogleAccountProfile: usernameを割り当てる | Google claim adapter |
 | oauth-consent: 現在同意の照合、照会plan | currentConsentAllows / refreshConsentDecision: 現在の同意を毎回読み直す | Better Auth consent store |
 
-usernameの事前存在照会は競合時の一意性を保証しない。DBのunique制約と既存の競合時処理を維持する。現在同意の再照会をcacheへ置き換えず、失効を即時反映する。domainの非同期serviceを例外として残す方式は今回は採用しない。
+usernameの事前存在照会は競合時の一意性を保証しない。DBのunique制約と既存の競合時処理を維持する。現在同意の再照会をcacheへ置き換えず、失効を即時反映する。domainの非同期serviceを例外として残す方式は今回は採用しない。4つのdomain/application間の対応と契約は `domain-rule-ownership.json` の `followUps` に登録し、元の27件とともに機械的に検査する。

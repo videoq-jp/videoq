@@ -5,7 +5,7 @@ import ts from 'typescript';
 import { expect, it } from 'vitest';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 type Rule = { path: string; symbols: string[]; consumers: string[] };
-const catalog = JSON.parse(readFileSync(resolve(root, 'docs/architecture/domain-rule-ownership.json'), 'utf8')) as { rules: { issue: number; rules: Rule[]; contracts: string[]; supersededBy?: number }[] };
+const catalog = JSON.parse(readFileSync(resolve(root, 'docs/architecture/domain-rule-ownership.json'), 'utf8')) as { rules: { issue: number; rules: Rule[]; contracts: string[]; supersededBy?: number }[]; followUps: { issue: number; rules: Rule[]; contracts: string[]; supersededBy?: number }[] };
 const sources = new Map<string, ts.SourceFile>();
 function scan(dir: string) {
   for (const entry of readdirSync(resolve(root, dir), { withFileTypes: true })) {
@@ -47,7 +47,8 @@ function reaches(from: string, owner: string, seen = new Set<string>(), graph = 
 }
 it('tracks canonical declarations, import reachability and contract file existence (not runtime calls)', () => {
   expect(catalog.rules.map(x => x.issue)).toEqual(Array.from({ length: 27 }, (_, i) => 1703 + i));
-  for (const entry of catalog.rules) {
+  expect(catalog.followUps.map(x => x.issue)).toEqual([1739]);
+  for (const entry of [...catalog.rules, ...catalog.followUps]) {
     expect(entry.contracts.length, `#${entry.issue}`).toBeGreaterThan(0);
     if (entry.supersededBy !== undefined) {
       expect([1712, 1713]).toContain(entry.issue);
@@ -85,7 +86,7 @@ it('keeps effectful search and delivery execution outside the canonical domain p
 
 it('evaluates import-only negative controls for every registered TypeScript consumer', () => {
   let evaluated = 0;
-  for (const entry of catalog.rules) for (const rule of entry.rules) {
+  for (const entry of [...catalog.rules, ...catalog.followUps]) for (const rule of entry.rules) {
     if (!rule.path.endsWith('.ts')) continue;
     for (const consumer of rule.consumers) {
       if (!consumer.endsWith('.ts')) continue;
