@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { RpcOutputMap } from '@videoq/trpc';
 import { CourseSkillsDialog } from '../CourseSkillsDialog';
 
@@ -24,6 +24,33 @@ beforeEach(() => {
 });
 
 describe('course skill owner review', () => {
+  it('detects background builds after completed jobs and stops polling when closed', async () => {
+    const read = vi.fn(async () => structuredClone(list));
+    globalThis.__setTrpcHandler('courseSkills.list', read);
+    vi.useFakeTimers();
+    const p = props();
+    const view = render(<CourseSkillsDialog {...p} />);
+    try {
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(read).toHaveBeenCalledTimes(1);
+      list.jobs[0] = { ...list.jobs[0], id: 'next-build', revision: 2, state: 'running', totalVideos: 2 };
+      await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(read).toHaveBeenCalledTimes(2);
+      list.jobs[0].state = 'completed';
+      list.candidates[0].title = 'Automatically refreshed candidate';
+      await act(async () => { await vi.advanceTimersByTimeAsync(3001); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(screen.getByText('Automatically refreshed candidate')).toBeInTheDocument();
+      view.rerender(<CourseSkillsDialog {...p} isOpen={false} />);
+      const calls = read.mock.calls.length;
+      await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+      expect(read).toHaveBeenCalledTimes(calls);
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
+  });
   it('requires saving edits, publishes the new reviewed hash, then locks the published content', async () => {
     handlers.update.mockImplementation(async input => { detail.draft = input.draft; detail.contentHash = 'b'.repeat(64); list.candidates[0].contentHash = detail.contentHash; return { success: true }; });
     handlers.publish.mockImplementation(async () => { detail.status = 'published'; list.candidates[0].status = 'published'; list.candidates[0].canPublish = false; list.candidates[0].publication = { id: 'publication', state: 'active', validSources: true }; return { revisionId: 'publication' }; });

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "syntheticCourse": true,
+  "actualWebAndAuthenticatedApi": true,
+  "database": "PostgreSQL 17 / pgvector",
+  "provider": "fixed local HTTP responses",
+  "liveGenerationQualityTested": false,
+  "videoPlaybackTested": false,
+  "ownerSettingsAndEditAndPublish": true,
+  "unsavedEditsPreventPublication": true,
+  "publishedContentLocked": true,
+  "mcpPublishedRead": true,
+  "unrelatedAddition": {
+    "oldUriUnchanged": true,
+    "oldContentReadable": true
+  },
+  "sourceRemoval": {
+    "listed": 0,
+    "denied": [
+      true,
+      true
+    ]
+  },
+  "sourceReaddition": {
+    "listed": 0,
+    "denied": [
+      true,
+      true
+    ]
+  },
+  "republication": {
+    "newUri": true,
+    "oldDenied": [
+      true,
+      true
+    ],
+    "newReadable": true
+  },
+  "idlePolling": {
+    "before": "completed history, 2/2 videos",
+    "after": "new completed job, 1/1 videos",
+    "manualRefreshClicked": false,
+    "activeMs": 3000,
+    "idleMs": 15000,
+    "closedPolling": false,
+    "regressionTestFailedBeforeFix": true,
+    "componentTestsPassed": 12
+  },
+  "snapshotHashes": {
+    "published.snapshot.txt": "0cd56d8f8f346fe24eb842fb6d9ff93b95d1d5cc113adb921008c64f2f2e676f",
+    "idle-poll-before.snapshot.txt": "50923b2ff9c386042d9f740e61bbcae9473124b2af90f7a2a1747ed0e6b10bc9",
+    "removed.snapshot.txt": "7f024a048faa8f3c23397ee099f49d064044f05a387a7c2b476b5014e9556037",
+    "idle-poll-after.snapshot.txt": "c38bf8a022a807d72d60945724cca943d237adc28470c91d116c35ed3fdb0912",
+    "readded.snapshot.txt": "54a23c213cfee86c6af47335e35372c2656e2a709d12ef81622f0e9568fa94d5",
+    "republished.snapshot.txt": "b2cff58e47761055aa1d719dd45c5b299c3d45dd166cda14fc6ee87a4e03c9f9"
+  },
+  "privateMcpEvidenceSha256": "3b8f483e8d49f694007e93f4113ff93575d3538afbd55a8f53d49970b179d4b3",
+  "ownedDatabaseContainerRemoved": true,
+  "productionWrites": 0
+}

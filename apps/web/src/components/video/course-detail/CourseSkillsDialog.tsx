@@ -62,7 +62,8 @@ export function CourseSkillsDialog({ courseId, isOpen, onOpenChange, onPlay }: {
   const [settingsDraft, setSettingsDraft] = useState<Settings | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const list = useQuery({ ...trpc.courseSkills.list.queryOptions({ courseId }), enabled: isOpen,
-    refetchInterval: query => isOpen && query.state.data?.jobs.some(j => ['queued', 'running'].includes(j.state)) ? 3000 : false });
+    // Reconciliation can enqueue a build after the previous job has completed.
+    refetchInterval: query => !isOpen ? false : query.state.data?.jobs.some(j => ['queued', 'running'].includes(j.state)) ? 3000 : 15000 });
   const detail = useQuery({ ...trpc.courseSkills.get.queryOptions({ courseId, candidateId: selected ?? 'none' }), enabled: isOpen && selected !== null });
   const operation = useMutation({
     mutationFn: async (command: Command) => {
