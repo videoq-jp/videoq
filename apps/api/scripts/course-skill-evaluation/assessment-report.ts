@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { validateCompletedCohort, type CohortState, type CohortOutcome, type CohortSlot } from './cohort';
 import type { EvaluationCase } from './cases';
 import { readStrictVerification } from './strict-verification';
+import { executionReviewEvidence } from './execution-review-evidence';
 
 const assessmentSchema = z.object({
   version: z.literal(1), packetHash: z.string().regex(/^[a-f0-9]{64}$/), reviewer: z.string().trim().min(1).max(120),
@@ -35,8 +36,8 @@ export async function createAssessmentReport(options: { directory: string; revie
   const assessmentsRaw = await readFile(options.assessmentFile, 'utf8');
   const assessment = assessmentSchema.parse(JSON.parse(assessmentsRaw));
   if (assessment.packetHash !== hash(packetRaw)) throw new Error('ASSESSMENT_PACKET_CHANGED');
-  const bundle = JSON.parse(packetRaw) as { version: number; packets: { blindId: string; taskId: string; prompt: string; criteria: string[]; answer: string; files: unknown; omitted: unknown }[] };
-  if (bundle.version !== 1 || !Array.isArray(bundle.packets) || bundle.packets.length !== state.results.length || new Set(bundle.packets.map(p => p.blindId)).size !== state.results.length
+  const bundle = JSON.parse(packetRaw) as { version: number; packets: { blindId: string; taskId: string; prompt: string; criteria: string[]; answer: string; files: unknown; omitted: unknown; executionEvidence?: unknown }[] };
+  if (![1, 2].includes(bundle.version) || !Array.isArray(bundle.packets) || bundle.packets.length !== state.results.length || new Set(bundle.packets.map(p => p.blindId)).size !== state.results.length
     || assessment.assessments.length !== state.results.length || new Set(assessment.assessments.map(a => a.blindId)).size !== state.results.length) throw new Error('ASSESSMENT_TRIAL_SET_CHANGED');
   const rows: AssessmentRow[] = [];
   for (const result of state.results) {
@@ -48,6 +49,8 @@ export async function createAssessmentReport(options: { directory: string; revie
     const toolCalls = callSchema.parse(detail.calls);
     if (!packet || !score || packet.taskId !== task.id || packet.prompt !== task.prompt || !same(packet.criteria, task.humanCriteria) || !same(score.criteria.map(c => c.criterion), task.humanCriteria)
       || packet.answer !== detail.execution.answer || !same(packet.files, detail.reviewFiles.files) || !same(packet.omitted, detail.reviewFiles.omitted)) throw new Error('ASSESSMENT_CONTENT_CHANGED');
+    if (bundle.version === 2 && !same(packet.executionEvidence, executionReviewEvidence(detail.execution, result.slot.condition, join(options.directory, 'workspaces', result.slot.blindId)))) throw new Error('ASSESSMENT_EXECUTION_EVIDENCE_CHANGED');
+    if (bundle.version === 1 && packet.executionEvidence !== undefined) throw new Error('ASSESSMENT_EXECUTION_EVIDENCE_CHANGED');
     rows.push({ taskId: task.id, kind: task.kind, condition: result.slot.condition, repetition: result.slot.repetition, blindId: result.slot.blindId, ...result.outcome,
       verifiedFunctional: verification.report.results.find(r => r.blindId === result.slot.blindId)!.verifiedFunctional,
       criteriaMet: score.criteria.filter(c => c.met).length, criteriaTotal: score.criteria.length, misapplied: score.misapplied, unsupportedClaim: score.unsupportedClaim, notes: score.notes, toolCalls });

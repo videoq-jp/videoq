@@ -308,9 +308,10 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
         const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
         const { tmpdir } = await import('node:os');
         const { join } = await import('node:path');
-        const { runCodexTrial } = await import('../scripts/course-skill-evaluation/codex');
+        const { runCodexTrial, codexVersion } = await import('../scripts/course-skill-evaluation/codex');
         const workspace = await mkdtemp(join(tmpdir(), 'videoq-codex-app-http-'));
         try {
+          const clientVersion = await codexVersion();
           const execution = await runCodexTrial({ workspace, model: process.env.VIDEOQ_CODEX_HTTP_MODEL ?? 'gpt-6.1-terra', timeoutMs: 120000,
             server: { url: `${origin}/api/mcp`, bearer: key, allowedTools: ['list_course_skills', 'get_course_skill', 'read_course_skill_resource'] },
             prompt: `これは合成教材の実アプリHTTP認証・取得確認です。get_course_skillで ${entry.uri} のmanifestを取得し、read_course_skill_resourceで同じURIの本文と ${reference} の参照資料を読んでください。取得した出典の動画IDと時刻を短く回答してください。コード変更・検索・外部Webは不要です。` });
@@ -320,7 +321,8 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
           });
           const ready = execution.completed && calls.some(call => call.name === 'get_course_skill' && call.uri === entry.uri && call.success)
             && [entry.uri, reference].every(uri => calls.some(call => call.name === 'read_course_skill_resource' && call.uri === uri && call.success));
-          await writeFile(process.env.VIDEOQ_CODEX_HTTP_EVIDENCE ?? join(tmpdir(), 'videoq-authenticated-skill-http-codex.json'), JSON.stringify({ ready, execution, calls,
+          expect(await codexVersion()).toBe(clientVersion);
+          await writeFile(process.env.VIDEOQ_CODEX_HTTP_EVIDENCE ?? join(tmpdir(), 'videoq-authenticated-skill-http-codex.json'), JSON.stringify({ ready, clientVersion, execution, calls,
             authenticatedApplicationRoute: true, fixedLocalModelProvider: true, effectTrial: false, productionWrites: 0 }, null, 2), { mode: 0o600, flag: 'wx' });
           expect(ready).toBe(true);
         } finally { await rm(workspace, { recursive: true, force: true }); }

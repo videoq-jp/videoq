@@ -17,7 +17,7 @@ async function fixture(run: (f: Awaited<ReturnType<typeof setup>>) => Promise<vo
 async function setup(directory: string) {
   const manifest: CohortManifest = { version: 1, seed: 'synthetic-report-fixture', repetitions: 2, definitionHash: hash(JSON.stringify(evaluationCases)), bootstrapHash: 'a'.repeat(64), sourceHashes: ['b'.repeat(64)], approvedSkillHashes: ['c'.repeat(64)], executorVersion: 'synthetic', model: 'synthetic', reasoning: 'medium', contextWindow: 32768, timeoutMs: 1000, baseCommits: Object.fromEntries(evaluationCases.map(c => [c.id, '1'.repeat(40)])) };
   const state = await runComparisonCohort({ directory, manifest, cases: evaluationCases, maxTrials: 60, verifyInputs: async () => undefined, run: async slot => {
-    const detailPath = join(directory, `${slot.blindId}.json`), body = JSON.stringify({ execution: { answer: 'Synthetic unit answer' }, reviewFiles: { files: [], omitted: [] },
+    const detailPath = join(directory, `${slot.blindId}.json`), body = JSON.stringify({ execution: { answer: 'Synthetic unit answer', events: [] }, reviewFiles: { files: [], omitted: [] },
       calls: slot.condition === 'A' ? [] : [{ name: slot.condition === 'B' ? 'search_scenes' : 'read_course_skill_resource', success: true }] });
     await writeFile(detailPath, body);
     return { validity: 'valid', functional: evaluationCases.find(c => c.id === slot.taskId)!.kind === 'code' ? slot.condition !== 'A' : null, elapsedMs: slot.condition === 'A' ? 10 : 20, inputTokens: slot.condition === 'A' ? null : 3, outputTokens: 2, baseCommit: '1'.repeat(40), detailPath, detailSha256: hash(body) };
@@ -102,4 +102,21 @@ test('labels AI judgments explicitly and requires model provenance', () => fixtu
   const report = JSON.parse(await readFile(f.output, 'utf8'));
   expect(report.assessmentMethod).toBe('ai-reviewed');
   expect(report.ai.model).toBe('independent-assessor-fixture');
+}));
+
+test('binds expanded execution evidence to immutable trial records', () => fixture(async f => {
+  const directory = join(f.directory, 'expanded-review');
+  await exportReviewPackets({ directory: f.directory, output: directory, cases: evaluationCases, includeExecutionEvidence: true });
+  const reviewerDirectory = join(directory, 'reviewer');
+  const path = join(reviewerDirectory, 'packets.json');
+  const raw = await readFile(path, 'utf8');
+  await writeFile(f.assessmentFile, JSON.stringify({ ...f.completed, packetHash: hash(raw) }));
+  const result = await createAssessmentReport({ ...f, reviewerDirectory });
+  expect(result.humanAssessmentRecorded).toBe(true);
+  const bundle = JSON.parse(raw);
+  bundle.packets[0].executionEvidence.operations = [{ kind: 'command', output: 'Forged success' }];
+  const altered = JSON.stringify(bundle);
+  await writeFile(path, altered);
+  await writeFile(f.assessmentFile, JSON.stringify({ ...f.completed, packetHash: hash(altered) }));
+  await expect(createAssessmentReport({ ...f, reviewerDirectory, output: join(f.directory, 'tampered-report.json') })).rejects.toThrow('EXECUTION_EVIDENCE_CHANGED');
 }));

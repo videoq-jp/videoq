@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { validateCompletedCohort, type CohortState } from './cohort';
 import type { EvaluationCase } from './cases';
+import { executionReviewEvidence } from './execution-review-evidence';
 
 const detailSchema = z.object({
   execution: z.object({ answer: z.string().max(2_000_000) }),
@@ -11,7 +12,7 @@ const detailSchema = z.object({
 });
 
 /** Hide assigned labels and machine scores; prose/citations may reveal tool use. */
-export async function exportReviewPackets(options: { directory: string; output: string; cases: readonly EvaluationCase[] }) {
+export async function exportReviewPackets(options: { directory: string; output: string; cases: readonly EvaluationCase[]; includeExecutionEvidence?: boolean }) {
   const state = JSON.parse(await readFile(join(options.directory, 'cohort.json'), 'utf8')) as CohortState;
   await validateCompletedCohort(state, options.cases);
   const packets = [];
@@ -25,14 +26,15 @@ export async function exportReviewPackets(options: { directory: string; output: 
       const parts = file.path.split('/');
       if (file.path.startsWith('/') || parts.some(p => ['', '.', '..', '.git', '.agents', 'node_modules'].includes(p))) throw new Error('COHORT_REVIEW_FILE_PATH_INVALID');
     }
-    packets.push({ blindId: result.slot.blindId, taskId: task.id, prompt: task.prompt, criteria: task.humanCriteria, answer: detail.execution.answer, ...detail.reviewFiles });
+    const evidence = options.includeExecutionEvidence ? executionReviewEvidence((JSON.parse(raw) as { execution: unknown }).execution, result.slot.condition, join(options.directory, 'workspaces', result.slot.blindId)) : undefined;
+    packets.push({ blindId: result.slot.blindId, taskId: task.id, prompt: task.prompt, criteria: task.humanCriteria, answer: detail.execution.answer, ...detail.reviewFiles, ...(evidence ? { executionEvidence: evidence } : {}) });
   }
   // Do not expose execution ordering, repeated-trial labels or machine grades.
   packets.sort((a, b) => a.blindId.localeCompare(b.blindId));
   await mkdir(options.output, { mode: 0o700 }); // Existing exports are immutable.
   const reviewer = join(options.output, 'reviewer'); await mkdir(reviewer, { mode: 0o700 });
   const write = (path: string, value: unknown) => writeFile(path, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-  const bundle = { version: 1, humanAssessmentCompleted: false, maskingLimit: 'Assigned conditions and machine scores are hidden. Answers and citations are preserved and may suggest tool use; complete blinding is not guaranteed.', packets };
+  const bundle = { version: options.includeExecutionEvidence ? 2 : 1, humanAssessmentCompleted: false, maskingLimit: 'Assigned conditions and machine scores are hidden. Answers, citations and optional execution evidence may suggest tool use; complete blinding is not guaranteed.', packets };
   const packetHash = createHash('sha256').update(JSON.stringify(bundle, null, 2) + '\n').digest('hex');
   await write(join(reviewer, 'packets.json'), bundle);
   await write(join(reviewer, 'assessment-template.json'), { version: 1, packetHash, reviewer: '', assessments: packets.map(packet => ({ blindId: packet.blindId, criteria: packet.criteria.map(criterion => ({ criterion, met: null })), misapplied: null, unsupportedClaim: null, notes: '' })) });
