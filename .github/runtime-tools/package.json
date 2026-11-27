@@ -1,0 +1,8 @@
+{
+  "name": "videoq-runtime-tools",
+  "private": true,
+  "description": "Reviewed bootstrap tools consumed by Runtime Updates; versions are maintained by Dependabot.",
+  "dependencies": {
+    "npm": "12.2.3"
+  }
+}

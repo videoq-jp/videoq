@@ -70,7 +70,7 @@ jobs:
       - uses: ./.github/actions/setup-package-manager
         with:
           manager: pip
-      - name: Discover official interpreter and package-manager releases
+      - name: Discover interpreters and resolve Dependabot tool pins
         id: plan
         env:
           GITHUB_TOKEN: ${{ github.token }}

@@ -204,3 +204,72 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 1
+
+  # Standalone maintenance packages are outside the root npm workspace.
+  - package-ecosystem: npm
+    directory: /infra/db-maintenance/runtime
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 3
+    groups:
+      aws-sdk:
+        patterns: ["@aws-sdk/*"]
+
+  # Verification and Ansible tools are not part of either uv project.
+  - package-ecosystem: pip
+    directories:
+      - /scripts/onprem
+      - /infra/ansible
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 3
+    groups:
+      tools-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  # Keep the acceptance fixture on the reviewed PHP series.
+  - package-ecosystem: docker
+    directory: /.github/moodle-cpu
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: moodlehq/moodle-php-apache
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  # Bootstrap npm has its own manifest; Runtime Updates verifies and renders it.
+  - package-ecosystem: npm
+    directory: /.github/runtime-tools
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: pip
+    directory: /.github/runtime-tools
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 3
