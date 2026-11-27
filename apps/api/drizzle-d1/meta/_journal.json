@@ -183,6 +183,20 @@
       "when": 1795758508796,
       "tag": "0025_course_skill_knowledge",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1795758916526,
+      "tag": "0026_course_skill_candidates",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1795759226621,
+      "tag": "0027_course_skill_publications",
+      "breakpoints": true
     }
   ]
 }

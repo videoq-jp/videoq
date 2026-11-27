@@ -5,7 +5,7 @@ const snapshot=(folder:string)=>{const base=new URL('../../'+folder+'/',import.m
 it('accounts for every current schema table and column without declaring data migration complete',()=>{
  const result=buildMigrationManifest(snapshot('drizzle'),snapshot('drizzle-d1'));
  expect(result.issues).toEqual([]);expect(result.mapping_complete).toBe(true);expect(result.execution_complete).toBe(false);
- expect(result.tables.filter(table=>table.policy==='convert_rows')).toHaveLength(58);expect(result.tables.filter(table=>table.target===null)).toHaveLength(2);expect(result.target_only).toHaveLength(14);
+ expect(result.tables.filter(table=>table.policy==='convert_rows')).toHaveLength(65);expect(result.tables.filter(table=>table.target===null)).toHaveLength(2);expect(result.target_only).toHaveLength(14);
  expect(result.target_only).toEqual(expect.arrayContaining([
   {target:'policy_readiness',policy:'initialize_empty_no_historical_acceptance_backfill'},
   {target:'policy_cleanup',policy:'initialize_empty_observe_future_logical_deletions'},
@@ -17,6 +17,8 @@ it('accounts for every current schema table and column without declaring data mi
  expect(result.target_insert_order.indexOf('agent_skills')).toBeLessThan(result.target_insert_order.indexOf('agent_skill_state_parts'));
  expect(result.target_insert_order.indexOf('users')).toBeLessThan(result.target_insert_order.indexOf('videos'));
  expect(result.target_insert_order.indexOf('videos')).toBeLessThan(result.target_insert_order.indexOf('scenes'));
+ expect(result.target_insert_order.indexOf('course_skill_builds')).toBeLessThan(result.target_insert_order.indexOf('course_skill_candidates'));
+ expect(result.target_insert_order.indexOf('course_skill_publications')).toBeLessThan(result.target_insert_order.indexOf('course_skill_heads'));
 });
 it.each(['source-table','source-column','target-table','target-column','unsupported-type'] as const)('fails closed on %s schema drift',kind=>{
  const from=snapshot('drizzle'),to=snapshot('drizzle-d1');
@@ -45,7 +47,7 @@ it('keeps SQL NULL separate from JSON null and rejects missing required values',
 it('appends undeployed index migrations after the published skills schema with continuous snapshots',()=>{
  const base=new URL('../../drizzle-d1/',import.meta.url);
  const journal=JSON.parse(readFileSync(new URL('meta/_journal.json',base),'utf8')) as {entries:{idx:number;tag:string}[]};
- expect(journal.entries.slice(-3).map(entry=>entry.tag)).toEqual(['0021_agent_skill_state_parts','0022_embedding_fingerprint','0023_policy_observation']);
+ expect(journal.entries.slice(21,24).map(entry=>entry.tag)).toEqual(['0021_agent_skill_state_parts','0022_embedding_fingerprint','0023_policy_observation']);
  const read=(idx:number)=>JSON.parse(readFileSync(new URL(`meta/${String(idx).padStart(4,'0')}_snapshot.json`,base),'utf8'));
  const skills=read(21),embedding=read(22),policy=read(23);
  expect(embedding.prevId).toBe(skills.id);expect(policy.prevId).toBe(embedding.id);
@@ -55,4 +57,5 @@ it('appends undeployed index migrations after the published skills schema with c
  expect(embedding.tables.scene_index_runs.columns.embedding_fingerprint).toBeDefined();
  expect(embedding.tables.policy_readiness).toBeUndefined();expect(policy.tables.policy_readiness).toBeDefined();
  for(const entry of journal.entries)expect(readFileSync(new URL(`${entry.tag}.sql`,base),'utf8').length).toBeGreaterThan(0);
+ for(let idx=24;idx<journal.entries.length;idx++)expect(read(idx).prevId).toBe(read(idx-1).id);
 });

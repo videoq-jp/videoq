@@ -13,3 +13,5 @@ export * from './policy-observation';
 export * from './agent-skills';
 export * from './course-skill-inputs';
 export * from './course-skill-knowledge';
+export * from './course-skill-candidates';
+export * from './course-skill-publications';
