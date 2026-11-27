@@ -47,6 +47,8 @@ course serviceの「呼ばない」「返却値を使わない」「旧検証へ
 
 他のconsumerに新しい配線や意味の変更を加える際は、台帳で対応する契約を確認し、該当入口を実行するケースと代表的な誤配線のnegative controlを追加する。現在はcourse serviceの3変異を計測した範囲であり、全consumerで同じ検出力を証明したとはしない。
 
+最小upload fixtureの `title <> 'reject'` はrollbackを起こすための意図的な故障注入であり、productionの業務制約とは扱わない。production由来DDLのsuiteはこの追加制約を持たない。
+
 ## identityの所有先
 
 | 純粋な判断（domain/identity） | I/O手順（application/identity） | 外側の接続 |

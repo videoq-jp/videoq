@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { RateLimitBackend } from '../../src/lib/rate-limit';
+import { enforceThrottles, type RateLimitBackend } from '../../src/lib/rate-limit';
+import type { Bindings } from '../../src/types/bindings';
 /** Exercises the same refund semantics in Memory, real PG and workerd DO. */
 export function rateLimitContract(name: string, setup: () => Promise<{
   backend: RateLimitBackend;
@@ -11,6 +12,26 @@ export function rateLimitContract(name: string, setup: () => Promise<{
     let f: Awaited<ReturnType<typeof setup>>;
     beforeEach(async () => { f = await setup(); });
     afterEach(async () => { await f?.dispose(); });
+    it('compensates gated A after B succeeds through the real backend', async () => {
+      let reached!: () => void, rejectA!: () => void;
+      const ready = new Promise<void>(r => { reached = r; });
+      const gate = new Promise<void>(r => { rejectA = r; });
+      const backend: RateLimitBackend = {...f.backend, async consume(key,...args) {
+        if (key.endsWith('_blocked')) { reached(); await gate; return {allowed:false,retryAfterSec:1}; }
+        return f.backend.consume(key,...args);
+      }};
+      const env = {RATE_LIMIT_BACKEND:backend} as Bindings;
+      const scope = {scope:'course_invitation_user',ident:'owner'} as const;
+      const a = enforceThrottles(env,[{...scope,cost:2},{scope:'course_invitation_course',ident:'blocked'}]);
+      await ready;
+      await f.age(100);
+      expect(await enforceThrottles(env,[scope])).toBeNull();
+      const key = 'throttle_course_invitation_user_owner';
+      const bTime = (await f.backend.snapshot(key))!.lastRequestMs;
+      rejectA();
+      expect(await a).toMatchObject({allowed:false});
+      expect(await f.backend.snapshot(key)).toEqual({count:1,lastRequestMs:bTime});
+    });
     it('refunds weighted A, preserves B, and makes retries/unknown refunds harmless', async () => {
       await f.backend.consume('shared', 10, 3600, 2, 'A');
       await f.age(100);

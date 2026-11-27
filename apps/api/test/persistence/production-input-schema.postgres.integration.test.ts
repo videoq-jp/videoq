@@ -1,3 +1,4 @@
+import { allocateUniqueUsername } from '../../src/application/identity/username';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api';
 import { users, videos, videoCourses, mcpIdempotencyRecords, externalTasks } from '../../src/db/schema';
@@ -40,6 +41,17 @@ const url=process.env.PERSISTENCE_TEST_DATABASE_URL;
       await expect(repo.createYoutube({...input,[field]:'x'.repeat(max+1)})).rejects.toMatchObject({cause:{code:'22001'}});
       expect(Number((await f.pool.query('SELECT count(*) AS n FROM videos')).rows[0].n)).toBe(1);
       await expect(f.pool.query('UPDATE videos SET file=$1',['x'.repeat(101)])).rejects.toMatchObject({code:'22001'});
+    }finally{await f.dispose();}
+  });
+  it('retains database username uniqueness when pre-insert allocation races', async () => {
+    const f=await setup();try {
+      const exists=async(candidate:string)=>Boolean((await f.pool.query('SELECT 1 FROM users WHERE username=$1',[candidate])).rowCount);
+      const candidates=await Promise.all([allocateUniqueUsername(exists,'same',()=>crypto.randomUUID()),allocateUniqueUsername(exists,'same',()=>crypto.randomUUID())]);
+      expect(candidates).toEqual(['same','same']);
+      const writes=await Promise.allSettled(candidates.map((username,index)=>f.pool.query('INSERT INTO users(id,username,email,is_over_quota,used_ai_answers,used_processing_seconds,used_storage_bytes) VALUES($1,$2,$3,false,0,0,0)',[`racer${index}`,username,`racer${index}@example.test`])));
+      expect(writes.filter(result=>result.status==='fulfilled')).toHaveLength(1);
+      expect(writes.find(result=>result.status==='rejected')).toMatchObject({status:'rejected',reason:{code:'23505',constraint:'users_username_key'}});
+      expect(await allocateUniqueUsername(exists,'same',()=>crypto.randomUUID())).toBe('same_1');
     }finally{await f.dispose();}
   });
   it('detects a deliberately weakened fixture instead of accepting text as varchar', async () => {

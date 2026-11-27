@@ -4,7 +4,7 @@ import { planLmsUploadSnapshot } from '../src/domain/lms/lms-upload';
 const resource = {id:'r',kind:'video',enabled:true,generation:1,syncError:null,contentType:'video/mp4',fileSize:3};
 const video = {id:1,status:'uploading',file:'key'};
 it.each([
- {fileSize:null}, {contentType:null}, {contentType:''}, {contentType:'  '}, {fileSize:0},
+ {fileSize:null,contentType:null}, {fileSize:null}, {contentType:null}, {contentType:''}, {contentType:'  '}, {fileSize:0},
  {fileSize:-1}, {fileSize:0.5}, {enabled:false}, {kind:'course'},
 ])('does not advertise an upload denied by the snapshot: %j', patch => {
   const source = {resource:{...resource,...patch},video};
