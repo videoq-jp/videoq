@@ -451,6 +451,8 @@ jobs:
               - '.node-version'
               - '.python-version'
             hono:
+              - 'docs/architecture/domain-rule-ownership.json'
+              - 'docs/architecture/ownership-behavioral-controls.json'
               - '.github/scripts/cutover-transfer.mjs'
               - 'eslint.shared.mjs'
               - 'apps/api/**'
@@ -471,6 +473,8 @@ jobs:
               - ".github/scripts/runtime-versions.py"
               - ".github/scripts/package-managers.py"
             worker:
+              - 'docs/architecture/domain-rule-ownership.json'
+              - 'docs/architecture/ownership-behavioral-controls.json'
               - 'apps/worker/**'
               - 'packages/domain/test/fixtures/**'
               - 'packages/trpc/test-fixtures/**'
