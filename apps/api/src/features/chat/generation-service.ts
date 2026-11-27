@@ -1,6 +1,7 @@
 import { aiQuotaConsumed } from '../../domain/billing/ai-consumption';
 import type { CancellationState } from '../../domain/conversation/answer-generation';
 import { validConversationQuestion } from '@videoq/domain/chat';
+import { textValueFailure } from '@videoq/domain/text-value';
 import type { ChatAnswer } from "../../application/models";
 import type { LtiSessionProof } from "../../application/lti-session-proof";
 import type { AiAnswerReservation } from "../../persistence/contracts/ai-quota";
@@ -151,6 +152,12 @@ export function createChatGenerationService<Ledger, Signal extends CancellationS
         ),
       };
     }
+
+    // Preserve authorization precedence while rejecting unpersistable input
+    // before quota, model execution, cost accounting or conversation writes.
+    const textError = opts.req.messages.map(message => textValueFailure(message.content)).find(Boolean)
+      ?? (opts.displayQuestion === undefined ? null : textValueFailure(opts.displayQuestion));
+    if (textError) return { ok: false, failure: failures.invalidRequest(textError) };
 
     const quota = await deps.reserve(ownerUserId);
     if ("overQuota" in quota)

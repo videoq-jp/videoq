@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { textValueFailure } from '@videoq/domain/text-value';
 
 export const CHAT_MAX_MESSAGES = 100;
 export const CHAT_MAX_MESSAGE_CHARS = 16_000;
@@ -24,7 +25,11 @@ export const chatMessageSchema = z.object({
     .string()
     .trim()
     .min(1)
-    .max(CHAT_MAX_MESSAGE_CHARS, `Message must be at most ${CHAT_MAX_MESSAGE_CHARS} characters`),
+    .max(CHAT_MAX_MESSAGE_CHARS, `Message must be at most ${CHAT_MAX_MESSAGE_CHARS} characters`)
+    .superRefine((value, context) => {
+      const error = textValueFailure(value);
+      if (error) context.addIssue({ code: 'custom', message: error });
+    }),
 });
 
 /**
