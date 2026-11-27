@@ -11,3 +11,4 @@ export * from "./migration-imports";
 export * from './policy-observation';
 
 export * from './agent-skills';
+export * from './course-skill-inputs';

@@ -169,6 +169,13 @@
       "when": 1795600734266,
       "tag": "0023_policy_observation",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1795757928032,
+      "tag": "0024_course_skill_inputs",
+      "breakpoints": true
     }
   ]
 }

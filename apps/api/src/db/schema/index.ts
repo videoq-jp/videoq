@@ -1,4 +1,6 @@
 export * from './agent-skills';
+export * from './course-skill-inputs';
+import * as courseSkillInputs from './course-skill-inputs';
 import * as agentSkills from './agent-skills';
 /** Runtime Drizzle schema. */
 export * from "./modern";
@@ -10,4 +12,4 @@ import * as betterAuth from "./better-auth";
 import * as lms from "./lms";
 
 /** drizzle(client, { schema }) uses only application-owned tables. */
-export const schema = { ...agentSkills, ...modern, ...betterAuth, ...lms };
+export const schema = { ...courseSkillInputs, ...agentSkills, ...modern, ...betterAuth, ...lms };

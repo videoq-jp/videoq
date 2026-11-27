@@ -484,6 +484,13 @@
       "when": 1795600733780,
       "tag": "0068_agent_skill_state_parts",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1795757927524,
+      "tag": "0069_course_skill_inputs",
+      "breakpoints": true
     }
   ]
 }

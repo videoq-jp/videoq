@@ -17,6 +17,7 @@ import type { Bindings } from "../types/bindings";
 import { processExternalTaskById } from "../lib/external-tasks";
 
 import { createVideoManagementService } from "../features/videos/management-service";
+import { notifyVideoSkillInput } from './course-skill-inputs';
 
 export function videoManagementService(env: Bindings) {
   return createVideoManagementService({
@@ -24,7 +25,11 @@ export function videoManagementService(env: Bindings) {
     list: (...args) => listVideosPage(env, ...args),
     detail: (...args) => getVideoDetail(env, ...args),
     createYoutube: (...args) => createYoutubeVideo(env, ...args),
-    update: (...args) => updateVideo(env, ...args),
+    update: async (...args) => {
+      const result = await updateVideo(env, ...args);
+      if (!('notFound' in result)) await notifyVideoSkillInput(env, args[0]);
+      return result;
+    },
     delete: (...args) => deleteVideoCascade(env, ...args),
     fileKey: (...args) => getVideoFileKey(env, ...args),
     ownedBy: (...args) => videoOwnedBy(env, ...args),

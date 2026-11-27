@@ -96,6 +96,7 @@ export async function runMaintenanceSweep(
     ),
     health: observeExternalTaskHealth(deps),
     operationalPolicy: deps.observePolicy?.(now) ?? Promise.resolve({status:"unconfigured"}),
+    courseSkills: deps.reconcileSkills?.() ?? Promise.resolve({ checked: 0 }),
   });
   return { progressed: sweepProgressed(results) };
 }

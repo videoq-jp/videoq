@@ -4,6 +4,7 @@ import { addVideosBulk } from "../src/repositories/membership-repository";
 import type { Bindings } from "../src/types/bindings";
 
 vi.mock("../src/repositories/membership-repository");
+vi.mock('../src/integrations/course-skill-inputs', () => ({ notifyCourseSkillInput: vi.fn().mockResolvedValue(undefined) }));
 
 describe("bulk course membership counts", () => {
   beforeEach(() => {

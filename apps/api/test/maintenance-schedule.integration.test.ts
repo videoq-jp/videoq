@@ -38,6 +38,7 @@ describeWithPostgres("next maintenance wakeup on PostgreSQL", () => {
     admin = new pg.Client({ connectionString: databaseUrl });
     await admin.connect();
     await admin.query(`CREATE SCHEMA ${quotedSchema}`);
+    await admin.query(`CREATE TABLE ${quotedSchema}.course_skill_inputs(course_id bigint PRIMARY KEY,generation_enabled integer DEFAULT 0,next_check_at bigint DEFAULT 0)`);
     await admin.query(`
       CREATE TABLE ${quotedSchema}.external_tasks (
         id bigserial PRIMARY KEY,
