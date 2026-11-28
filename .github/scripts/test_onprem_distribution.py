@@ -13,6 +13,84 @@ m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 D=lambda n:'sha256:'+f'{n:064x}'
 
 class RetentionTests(unittest.TestCase):
+    def source_repository(self, directory):
+        root = Path(directory)
+        real_run = subprocess.run
+        def git(*args):
+            return real_run(['git', *args], cwd=directory, capture_output=True, text=True, check=True)
+        git('init', '-q')
+        path = root / 'charts/retention-values.yaml'
+        path.parent.mkdir()
+        for number in [1, 2]:
+            path.write_text('image: ghcr.io/videoq-jp/videoq-api@' + D(number) + '\n')
+            git('add', 'charts')
+            git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'pin')
+            git('branch', 'ordinary' if number == 1 else 'yukiharada1228/MCPアップデート')
+        return git
+
+    def test_unicode_source_refs_preserve_both_distinct_operational_pins(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.source_repository(directory)
+            real_run = subprocess.run
+            with patch.object(m.subprocess, 'run', side_effect=lambda *a, **k: real_run(*a, cwd=directory, **k)):
+                roots = m.source_roots(['ordinary', 'yukiharada1228/MCPアップデート'])
+            self.assertEqual(roots['videoq-api'], {D(1), D(2)})
+
+    def test_fetches_unicode_and_ascii_prs_with_exact_remote_refspecs(self):
+        with tempfile.TemporaryDirectory() as parent:
+            directory = Path(parent) / 'work'; directory.mkdir()
+            git = self.source_repository(directory)
+            remote = Path(parent) / 'origin.git'
+            git('init', '--bare', '-q', str(remote))
+            git('remote', 'add', 'origin', str(remote))
+            unicode = 'yukiharada1228/MCPアップデート'
+            git('branch', 'literal$(false)', 'ordinary')
+            git('push', '-q', 'origin', 'ordinary', unicode, 'literal$(false)')
+            # A local branch with the remote shorthand must not shadow the PR.
+            git('branch', 'origin/' + unicode, 'ordinary')
+            pulls = [{'head': {'repo': {'full_name': m.REPO}, 'ref': branch}} for branch in ['ordinary', unicode, 'literal$(false)']]
+            pulls.append({'head': {'repo': {'full_name': 'foreign/fork'}, 'ref': '--upload-pack=bad'}})
+            real_run = subprocess.run
+            with patch.object(m.subprocess, 'run', side_effect=lambda *a, **k: real_run(*a, cwd=directory, **k)):
+                refs = m.open_pr_source_refs(pulls)
+                roots = m.source_roots(sorted(refs))
+            self.assertEqual(refs, {'refs/remotes/origin/ordinary', 'refs/remotes/origin/' + unicode, 'refs/remotes/origin/literal$(false)'})
+            self.assertEqual(roots['videoq-api'], {D(1), D(2)})
+
+    def test_invalid_refs_cannot_reach_fetch_or_revision_reading(self):
+        for ref in ['', None, '--upload-pack=bad', 'a:b', 'a..b', 'a b', 'a\nb', 'a\0b', 'a.lock', 'a@{1}', 'a~1', 'a^', 'a//b']:
+            real_run = subprocess.run
+            calls = []
+            def execute(command, **kwargs):
+                calls.append(command)
+                self.assertEqual(command[:2], ['git', 'check-ref-format'])
+                return real_run(command, **kwargs)
+            with self.subTest(ref=ref), patch.object(m.subprocess, 'run', side_effect=execute):
+                with self.assertRaises(ValueError):
+                    m.open_pr_source_refs([{'head': {'repo': {'full_name': m.REPO}, 'ref': ref}}])
+                with self.assertRaises(ValueError):
+                    m.source_roots([ref])
+            self.assertFalse(any(command[1] == 'fetch' for command in calls))
+
+    def test_unknown_head_repository_is_not_silently_excluded(self):
+        for repository in [None, {}, {'full_name': None}, {'full_name': ''}]:
+            with self.subTest(repository=repository), patch.object(m.subprocess, 'run') as run, self.assertRaises(ValueError):
+                m.open_pr_source_refs([{'head': {'repo': repository, 'ref': 'ordinary'}}])
+            run.assert_not_called()
+
+    def test_unreadable_same_repository_pr_stops_before_inventory_or_delete_plan(self):
+        real_run = subprocess.run
+        def execute(command, **kwargs):
+            if command[1] == 'fetch':
+                raise subprocess.CalledProcessError(128, command)
+            return real_run(command, **kwargs)
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / 'plan.json'
+            with patch.object(m, 'listing', return_value=[{'head': {'repo': {'full_name': m.REPO}, 'ref': 'missing'}}]), patch.object(m.subprocess, 'run', side_effect=execute), patch.object(m, 'snapshot') as snapshot, patch('sys.argv', ['retention', 'plan', '--file', str(target)]):
+                with self.assertRaises(subprocess.CalledProcessError): m.main()
+                snapshot.assert_not_called()
+            self.assertFalse(target.exists())
+
     def test_public_deployment_pins_protect_both_site_generations_from_a_real_git_ref(self):
         images = {name: {'repository': 'ghcr.io/videoq-jp/videoq-' + name, 'digest': D(i)}
                   for i, name in enumerate(('api', 'web', 'worker', 'transcription-gateway'), 1)}
