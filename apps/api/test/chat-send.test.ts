@@ -266,6 +266,7 @@ const SEARCH_TOOL_CALL = {
  */
 function stubOpenAi(opts: {
   content?: string;
+  searchPlan?: { requested_video: string | null; query: string; video_ids: number[] | null };
   answer?: ModelAnswer;
   failAfterFirstChunk?: boolean;
   failureGate?: Promise<void>;
@@ -296,6 +297,17 @@ function stubOpenAi(opts: {
       return jsonBody({ data: [{ index: 0, embedding: testEmbedding(0.1, 0.2) }] });
     }
 
+    if (JSON.stringify(body.response_format).includes('"requested_video"')) {
+      const hasMetadata = (body.messages as { role: string }[]).some(message => message.role === "tool");
+      if (opts.toolCall?.function.name === "get_course_info" && !hasMetadata) {
+        return chatCompletionResponse({ choices: [{ finish_reason: "tool_calls", message: {
+          role: "assistant", content: null, tool_calls: [opts.toolCall],
+        } }] }, false);
+      }
+      return chatCompletionResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant",
+        content: JSON.stringify(opts.searchPlan ?? { requested_video: null, query: "scene", video_ids: null }),
+      } }] }, false);
+    }
     if (!body.response_format) return chatCompletionResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "Earlier course evidence." } }] }, false);
     const enc = new TextEncoder();
     const messages = (body.messages ?? []) as { role?: string }[];
@@ -359,8 +371,40 @@ function stubOpenAi(opts: {
   return requests;
 }
 
+describe.each([false, true])("動画指定の確認エラー（stream=%s）", stream => {
+  it.each(["outside", "unresolved", "ambiguous"])("%s is an actionable validation error without scene retrieval", async reason => {
+    if (reason !== "outside") {
+      rowsFor = (sql, args) => {
+        if (sql.includes("video_courses") && sql.includes("video_count")) return [{ name: "Course", description: "", video_count: 2 }];
+        if (sql.includes("video_course_members") && sql.includes("inner join videos")) return [60, 61].map(id => ({ id, title: reason === "ambiguous" ? "Lecture" : `Lecture ${id}`, description: "", status: "completed", member_order: id }));
+        return defaultRows(sql, args);
+      };
+    }
+    const requests = stubOpenAi({ searchPlan: reason === "outside"
+      ? { requested_video: null, query: "scene", video_ids: null }
+      : { requested_video: reason === "ambiguous" ? "Lecture" : "Unknown video", query: "scene", video_ids: null } });
+    const res = await post(stream ? "/messages/stream" : "/messages", {
+      course_id: 3, messages: [{ role: "user", content: reason === "outside" ? "動画ID 999の内容" : "指定した動画の内容" }],
+    }, { userId: TEST_USER_ID, env: OPENAI_ENV, headers: { "Accept-Language": "ja" } });
+    let failure: { code: string; message: string };
+    if (stream) {
+      expect(res.status).toBe(200);
+      const events = sseEvents(await res.text());
+      failure = events.find(event => event.type === "error");
+      expect(events.some(event => ["text_delta", "done", "source"].includes(event.type))).toBe(false);
+    } else { expect(res.status).toBe(400); failure = await trpcError(res); }
+    expect(failure.code).toBe("VALIDATION_ERROR");
+    expect(failure.message).toContain("動画IDを指定してください");
+    expect(failure.message).not.toMatch(/999|Unknown|Lecture/);
+    expect(calls.filter(call => call.sql.includes("GREATEST"))).toHaveLength(1);
+    expect(calls.some(call => call.sql.includes("scene_embeddings"))).toBe(false);
+    expect(requests.some(request => request.url.endsWith("/embeddings"))).toBe(false);
+    expect(calls.some(call => call.sql.includes("chat_logs") && call.sql.includes("returning"))).toBe(false);
+  });
+});
+
 describe.each([false, true])("講座メタ情報のチャット経路（stream=%s）", (stream) => {
-  it.each(["owner", "member", "public"])("%s でメタ情報を取得し、検索なしで回答・根拠を保存する", async (access) => {
+  it.each(["owner", "member", "public"])("%s でメタ情報を取得し、必須検索後に回答・根拠を保存する", async (access) => {
     rowsFor = (sql, args) => {
       if (sql.includes("video_courses") && sql.includes("video_count")) {
         return [{
@@ -392,18 +436,21 @@ describe.each([false, true])("講座メタ情報のチャット経路（stream=%
       expect(events.filter((event) => event.type === "text_delta").map((event) => event.text).join("")).toBe(answer);
       expect(events.at(-1)).toMatchObject({ type: "done" });
       expect(events.at(-1)).not.toHaveProperty("citations");
-      expect(events.some((event) => event.type === "searching")).toBe(false);
+      expect(events.some((event) => event.type === "searching")).toBe(true);
       expect(events.filter(event => event.type === "tool_progress")).toEqual([
         { type: "tool_progress", call_id: 1, tool: "get_course_info", status: "running" },
         { type: "tool_progress", call_id: 1, tool: "get_course_info", status: "complete" },
+        { type: "tool_progress", call_id: 2, tool: "search_scenes", status: "running" },
+        { type: "tool_progress", call_id: 2, tool: "search_scenes", status: "complete" },
       ]);
     } else {
       const data = await trpcData(res);
-      expect(data).toMatchObject({ answer: plainChatAnswer(answer) });
+      expect(data).toMatchObject({ answer: { segments: plainChatAnswer(answer).segments } });
+      expect(data.answer.sources).toHaveLength(1);
       expect(data).not.toHaveProperty("citations");
     }
-    expect(calls.some((call) => call.sql.includes("scene_embeddings"))).toBe(false);
-    expect(requests.some((request) => request.url.includes("embeddings"))).toBe(false);
+    expect(calls.some((call) => call.sql.includes("scene_embeddings"))).toBe(true);
+    expect(requests.some((request) => request.url.includes("embeddings"))).toBe(true);
     const stored = calls.find((call) => call.sql.includes("chat_logs") && call.sql.includes("returning"))!;
     expect(JSON.stringify(stored.args)).toContain("Course metadata");
     const modelRequests = requests.filter((request) => request.url.endsWith("/chat/completions"));
@@ -632,7 +679,7 @@ describe("POST /messages（非ストリーミング）", () => {
     expect(String(search.sql)).toMatch(/user_id = \$1 AND video_id = ANY\(\$2\)/);
 
     // 講座の説明文は必要時にツールで取得する。system は日英の根拠の使い分けを指示。
-    const chatRequests = requests.filter((r) => r.url.endsWith("/chat/completions"));
+    const chatRequests = requests.filter((r) => r.url.endsWith("/chat/completions") && !JSON.stringify(r.body.response_format).includes('"requested_video"'));
     const first = chatRequests[0].body.messages as { role: string; content: string }[];
     expect(first[0].content).toContain("get_course_info");
     expect(first[0].content).not.toContain("Course about pgvector");
@@ -645,7 +692,7 @@ describe("POST /messages（非ストリーミング）", () => {
     ).toEqual(["search_scenes", "read_video_window", "inspect_clip", "overview_video", "skim_video", "focus_clip", "get_course_info"]);
 
     // 参照シーンは構造化したツール結果として渡す。
-    const second = chatRequests[1].body.messages as { role: string; content: string }[];
+    const second = chatRequests[0].body.messages as { role: string; content: string }[];
     const toolMessage = second.find((m) => m.role === "tool")!;
     expect(JSON.parse(toolMessage.content)).toMatchObject({ sourceId: 1, title: "Video A", text: "scene text A" });
 

@@ -1,3 +1,4 @@
+import { VideoSelectionError } from "../lib/video-selection-error";
 import {
   getCourseWithMembers,
   createChatLog,
@@ -46,6 +47,9 @@ const toFailure = (e: unknown): ChatFailure => {
       code: "CONVERSATION_BUSY",
       message: e.message,
     };
+  }
+  if (e instanceof VideoSelectionError) {
+    return { kind: "invalid", streamCode: "VALIDATION_ERROR", code: "VALIDATION_ERROR", message: e.message };
   }
   if (e instanceof LlmConfigurationError) {
     return {

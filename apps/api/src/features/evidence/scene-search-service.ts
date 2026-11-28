@@ -8,14 +8,13 @@ export interface SceneSearchExecution {
   reportProgress?: (event: Record<string, unknown>) => Promise<void>;
 }
 
-/** ヒット 0 件でも「検索したが無かった」と伝える。空文字だとモデルが再検索を繰り返す。 */
-const NO_HITS = "No subtitle scenes matched this query. Subtitle search does not inspect images and cannot establish that visible content is absent. Use video viewing tools for on-screen text, objects or changes.";
+/** このクエリの 0 件と講座全体の不在を区別する。空文字で検索を繰り返させない。 */
+const NO_HITS = "No subtitle scenes matched this query. Subtitle search does not inspect images and does not establish absence from the course or any video. Use video viewing tools for on-screen text, objects or changes.";
 
 /** 上限超過はツール結果として返す。エラーで打ち切ると回答本文が無いまま終わるため。 */
 const SEARCH_LIMIT_REACHED =
   "Search limit reached: no more searches are available for this answer. " +
-  "Answer now using the scenes you already have, or state that the question is " +
-  "outside the scope of the video materials.";
+  "Answer using the evidence available, or explain what could not be verified. Never infer course-wide absence from limited searches.";
 
 export function createSceneSearchService(videoIds: readonly number[]) {
   let used = 0;

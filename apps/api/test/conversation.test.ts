@@ -1,3 +1,5 @@
+// Initial retrieval is integrated in initial-scene-search.test.ts; these tests isolate the subsequent ReAct loop.
+vi.mock("../src/lib/initial-scene-search", () => ({ retrieveInitialScenes: async () => [] }));
 import { afterEach, expect, it, vi } from 'vitest';
 import { MemorySaver, StateGraph, StateSchema, MessagesValue, START, END } from '@langchain/langgraph';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';

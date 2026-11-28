@@ -34,6 +34,9 @@ it("uses internal MCP in a production-like Worker without unsafe eval", async ()
       const input = await request.json() as { response_format?: unknown; messages: { role: string }[] };
       if (!input.response_format) return Response.json({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "Earlier course evidence." } }] });
       modelCalls++;
+      if (JSON.stringify(input.response_format).includes('"requested_video"')) return Response.json({ choices: [{ finish_reason: "stop", message: {
+        role: "assistant", content: JSON.stringify({ requested_video: null, query: "topic", video_ids: null }),
+      } }] });
       const searched = input.messages.some(message => message.role === "tool");
       return Response.json({ choices: [{ finish_reason: searched ? "stop" : "tool_calls", message: searched
         ? { role: "assistant", content: JSON.stringify({ segments: [{ text: "No evidence.", sourceIds: [] }] }) }

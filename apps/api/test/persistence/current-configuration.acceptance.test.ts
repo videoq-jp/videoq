@@ -117,6 +117,9 @@ describe.skipIf(!enabled)('current 768 configuration isolated acceptance', () =>
         if (String(url) !== 'https://answer.acceptance.invalid/v1/chat/completions') throw Error('Unexpected outbound request');
         return timed('answer_provider', async()=> {
           const body = JSON.parse(requestBodyText(init.body));
+          if (JSON.stringify(body.response_format).includes('"requested_video"')) return chatCompletionResponse({ choices: [{ finish_reason: 'stop', message: {
+            role: 'assistant', content: JSON.stringify({ requested_video: null, query: 'What does recovery keep?', video_ids: null }),
+          } }] }, false, randomUUID());
           const searched = body.messages.some((message: {role:string})=>message.role==='tool');
           const message = searched ? {role:'assistant',content:JSON.stringify({segments:[{text:'Recovery keeps the current revision.',sourceIds:[1]}]})}
             : {role:'assistant',content:null,tool_calls:[{id:'search',type:'function',function:{name:'search_scenes',arguments:JSON.stringify({query:'What does recovery keep?',video_ids:null})}}]};
