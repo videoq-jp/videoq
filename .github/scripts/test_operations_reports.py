@@ -25,3 +25,9 @@ class OperationsReports(unittest.TestCase):
         self.assertEqual(report["status"], "findings")
         with self.assertRaises(ValueError):
             module.inspect({})
+
+    def test_container_distinguishes_reviewed_findings_without_hiding_raw_count(self):
+        report = load("container-security").inspect({"Results": [{"Vulnerabilities": [],
+            "ExperimentalModifiedFindings": [{"Finding": {"Severity": "HIGH", "VulnerabilityID": "CVE-2026-119170"}}]}]})
+        self.assertEqual(report["status"], "ok")
+        self.assertIn('評価済み検出が1件', report["summary"])

@@ -1732,6 +1732,56 @@
         "CVE-2026-135706",
         "CVE-2026-135709"
       ]
+    },
+    {
+      "type": "binary",
+      "origin": "masked-native",
+      "status": "not_affected",
+      "vulnerabilities": [
+        "CVE-2026-137907"
+      ],
+      "packages": {
+        "ffmpeg": {
+          "version": "8.1.1",
+          "purl": "pkg:generic/ffmpeg@8.1.1",
+          "locations": [
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavcodec.so.62.28.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavdevice.so.62.3.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavfilter.so.11.14.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavformat.so.62.12.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libavutil.so.60.26.101",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6",
+            "/usr/local/lib/python3.12/dist-packages/PyNvVideoCodec/libswresample.so.6.3.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavcodec-c4204469.so.62.28.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavformat-4762a711.so.62.12.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libavutil-befbbc48.so.60.26.101",
+            "/usr/local/lib/python3.12/dist-packages/opencv_python_headless.libs/libswresample-2dfded3b.so.6.3.101"
+          ]
+        }
+      },
+      "impactStatement": "Only CVE-2026-137907 in FFmpeg8.1.1 at the 26 exact physically masked native paths. Native workflow proves absolute-load refusal and the separate loaded FFmpeg9.1 audio wheel. No general filter non-use claim, upstream patch, GPU execution or host-kernel assessment. Expiry and complete artifact/runtime/inventory identity remain mandatory.",
+      "references": [
+        "apps/inference/vllm/security/masked-ffmpeg-20261128-review.json",
+        "https://raw.githubusercontent.com/CVEProject/cvelistV5/f95ca95c64cd380387c0707726cff2971bbc7c3f/cves/2026/137xxx/CVE-2026-137907.json"
+      ],
+      "exactFindingReview": [
+        "CVE-2026-137907"
+      ]
     }
   ],
   "runtimeEnv": {
@@ -2451,5 +2501,10 @@
     "file": "masked-ffmpeg-20261127-additional-review.json",
     "sha256": "f8e8699cf9651cb208a859a247a814df9a3566e853ad5590652e21f942897753",
     "count": 2
+  },
+  "latestMaskedFfmpegReview": {
+    "file": "masked-ffmpeg-20261128-review.json",
+    "sha256": "c22315f878bffed1d71b2e9ca75ec17e6855680a1d1d498aff743baca9168fcc",
+    "count": 1
   }
 }

@@ -116,10 +116,13 @@ function verifyKernelReview(policy, files, additional = false, now = new Date())
 
 const maskedFfmpegCves = Object.freeze(['135736', '135742', '135743', '135739', '135722', '135725', '135734', '135740', '135737', '135738', '135723'].map(id => 'CVE-2026-' + id));
 const additionalMaskedFfmpegCves = Object.freeze(['CVE-2026-135706', 'CVE-2026-135709']);
-function verifyMaskedFfmpegReview(policy, report, native, runtime, additional = false, now = new Date()) {
-  const reference = additional ? policy.additionalMaskedFfmpegReview : policy.maskedFfmpegReview;
-  const reviewedCves = additional ? additionalMaskedFfmpegCves : maskedFfmpegCves;
-  assert.equal(reference?.file, additional ? 'masked-ffmpeg-20261127-additional-review.json' : 'masked-ffmpeg-20261126-review.json');
+const latestMaskedFfmpegCves = Object.freeze(['CVE-2026-137907']);
+function verifyMaskedFfmpegReview(policy, report, native, runtime, review = 'original', now = new Date()) {
+  assert.ok(['original', 'additional', 'latest'].includes(review));
+  const latest = review === 'latest', additional = review !== 'original';
+  const reference = latest ? policy.latestMaskedFfmpegReview : additional ? policy.additionalMaskedFfmpegReview : policy.maskedFfmpegReview;
+  const reviewedCves = latest ? latestMaskedFfmpegCves : additional ? additionalMaskedFfmpegCves : maskedFfmpegCves;
+  assert.equal(reference?.file, latest ? 'masked-ffmpeg-20261128-review.json' : additional ? 'masked-ffmpeg-20261127-additional-review.json' : 'masked-ffmpeg-20261126-review.json');
   assert.equal(reference.count, reviewedCves.length);
   const bytes = readFileSync(join(__dirname, '../../apps/inference/vllm/security', reference.file));
   assert.equal(checksum(bytes), reference.sha256);
@@ -166,8 +169,8 @@ function verifyMaskedFfmpegReview(policy, report, native, runtime, additional = 
     const record = JSON.parse(row.primaryRecord);
     assert.equal(record.cveMetadata.cveId, row.cve);
     assert.equal(record.cveMetadata.state, 'PUBLISHED');
-    const source = additional ? 'b0cd7b5412b9aa02e40e3ab97d536b87dc57f8bc' : '7e4de3c1bcb5d5a1818ac5b96c2cf5370cad98b8';
-    assert.equal(row.primaryUrl, `https://raw.githubusercontent.com/CVEProject/cvelistV5/${source}/cves/2026/135xxx/${row.cve}.json`);
+    const source = latest ? 'f95ca95c64cd380387c0707726cff2971bbc7c3f' : additional ? 'b0cd7b5412b9aa02e40e3ab97d536b87dc57f8bc' : '7e4de3c1bcb5d5a1818ac5b96c2cf5370cad98b8';
+    assert.equal(row.primaryUrl, `https://raw.githubusercontent.com/CVEProject/cvelistV5/${source}/cves/2026/${latest ? '137xxx' : '135xxx'}/${row.cve}.json`);
     assert.equal(row.locations.length, 26);
     assert.deepEqual([...row.locations].sort(), [...denial.absoluteLoadsDenied].sort());
     assert.ok(row.locations.every(path => nativeMasks.slice(0, 2).some(mask => path.startsWith(mask + '/'))));
@@ -214,7 +217,7 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
   assert.equal(profiles.length, 10, 'Review all five NVIDIA profiles before and after offline provisioning');
   profiles.forEach(documents => verifyWorkload(documents, policy));
   const accepted = [], blocking = [];
-  let maskedFfmpegRows, additionalMaskedFfmpegRows;
+  let maskedFfmpegRows, additionalMaskedFfmpegRows, latestMaskedFfmpegRows;
   for (const result of report.Results) {
     assert.ok(!result.ModifiedFindings?.length && !result.ExperimentalModifiedFindings?.length, 'Use unsuppressed raw findings');
     for (const finding of result.Vulnerabilities || []) {
@@ -235,10 +238,13 @@ function assess(report, policy, native, profiles, now = new Date(), runtime) {
         assert.equal(finding.PkgIdentifier.PURL, row.normalizedPurl);
         assert.deepEqual([...finding.Locations].sort(), row.locations);
       }
+      const latestMasked = latestMaskedFfmpegCves.some(id => [finding.VulnerabilityID, ...(finding.Aliases || [])].includes(id));
       const additionalMasked = additionalMaskedFfmpegCves.some(id => [finding.VulnerabilityID, ...(finding.Aliases || [])].includes(id));
-      if (group && (additionalMasked || maskedFfmpegCves.some(id => [finding.VulnerabilityID, ...(finding.Aliases || [])].includes(id)))) {
-        const rows = additionalMasked
-          ? additionalMaskedFfmpegRows ||= verifyMaskedFfmpegReview(policy, report, native, runtime, true, now)
+      if (group && (latestMasked || additionalMasked || maskedFfmpegCves.some(id => [finding.VulnerabilityID, ...(finding.Aliases || [])].includes(id)))) {
+        const rows = latestMasked
+          ? latestMaskedFfmpegRows ||= verifyMaskedFfmpegReview(policy, report, native, runtime, 'latest', now)
+          : additionalMasked
+          ? additionalMaskedFfmpegRows ||= verifyMaskedFfmpegReview(policy, report, native, runtime, 'additional', now)
           : maskedFfmpegRows ||= verifyMaskedFfmpegReview(policy, report, native, runtime);
         const row = rows.find(row => row.cve === finding.VulnerabilityID);
         assert.ok(row, 'Exact reviewed CVE required; aliases cannot extend masked-library review');

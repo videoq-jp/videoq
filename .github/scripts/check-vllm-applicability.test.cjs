@@ -457,3 +457,38 @@ test('the two additional masked image CVEs never waive findings in the loaded au
   assert.equal(result.accepted.length, 0);
   assert.equal(result.blocking.length, 2);
 });
+
+test('November 28 boxblur review is limited to the exact masked image tuple and current runtime proof', () => {
+  const evidence = require('../../apps/inference/vllm/security/masked-ffmpeg-20261128-review.json');
+  const make = () => {
+    const f = exactMaskedFixture(false);
+    f.runtime.checks = structuredClone(evidence.requiredRuntimeChecks);
+    f.native.inventory = structuredClone(evidence.nativeInventory);
+    f.report.Results = [{ Type: 'binary', Vulnerabilities: evidence.rows.map(row => ({
+      Severity: 'HIGH', PkgName: row.package, InstalledVersion: row.version, VulnerabilityID: row.cve,
+      PkgIdentifier: { PURL: row.purl }, Locations: [...row.locations],
+    })) }];
+    return f;
+  };
+  const run = f => assess(f.report, f.policy, f.native, f.profiles, new Date('2026-11-29T00:00:00Z'), f.runtime);
+  assert.equal(run(make()).accepted.length, 1);
+  assert.equal(evidence.workflowRunId, 46123718202);
+  assert.equal(evidence.artifactId, 15254468052);
+  assert.equal(evidence.nativeStepConclusion, 'success');
+  assert.equal(evidence.rawImageIgnoredMatches, 0);
+  assert.equal(evidence.rawAudioMatches, 0);
+  assert.match(evidence.rows[0].affectedSource, /vf_boxblur/);
+  for (const mutate of [
+    f => delete f.policy.latestMaskedFfmpegReview,
+    f => f.policy.latestMaskedFfmpegReview.sha256 = '0'.repeat(64),
+    f => f.runtime.checks['security.maskedNativeDenial'].details.absoluteLoadsDenied.pop(),
+    f => f.report.Results[0].Vulnerabilities[0].Locations.push('/unmasked/libavfilter.so'),
+    f => f.runtime.checks['security.servingAudioBoundary'].details.loadedFfmpegLibraries.push('/usr/lib/libavfilter.so'),
+  ]) { const f = make(); mutate(f); assert.throws(() => run(f)); }
+  for (const mutate of [
+    v => v.VulnerabilityID = 'CVE-unreviewed',
+    v => v.InstalledVersion = '8.1.2',
+    v => v.PkgIdentifier.PURL = 'pkg:generic/ffmpeg@9.1',
+  ]) { const f = make(); mutate(f.report.Results[0].Vulnerabilities[0]); assert.equal(run(f).blocking.length, 1); }
+  assert.throws(() => { const f = make(); return assess(f.report, f.policy, f.native, f.profiles, new Date('2026-12-11T00:00:00Z'), f.runtime); });
+});
