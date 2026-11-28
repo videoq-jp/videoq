@@ -1,16 +1,18 @@
 import { z } from 'zod';
+import { textValueSchema } from './text-value';
 
 const resourceId = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const access = z.object({ courseId: resourceId, shareSlug: z.string().trim().min(1).max(64).optional() });
 const question = access.extend({ questionId: z.uuid() });
-const body = z.string().trim().min(1).max(10_000);
+const body = textValueSchema.trim().min(1).max(10_000);
+const title = textValueSchema.trim().min(1).max(200);
 export const qaInputSchemas = {
-  'qa.list': access.extend({ search: z.string().trim().max(200).default(''), videoId: resourceId.optional(),
+  'qa.list': access.extend({ search: textValueSchema.trim().max(200).default(''), videoId: resourceId.optional(),
     unanswered: z.boolean().default(false), sort: z.enum(['recent', 'votes']).default('recent'),
     offset: z.number().int().nonnegative().max(100_000).default(0), limit: z.number().int().min(1).max(50).default(20) }),
   'qa.get': question.extend({ offset: z.number().int().nonnegative().max(100_000).default(0), limit: z.number().int().min(1).max(50).default(20) }),
-  'qa.ask': access.extend({ title: z.string().trim().min(1).max(200), body, videoId: resourceId.nullable().default(null) }),
-  'qa.updateQuestion': question.extend({ title: z.string().trim().min(1).max(200), body }),
+  'qa.ask': access.extend({ title, body, videoId: resourceId.nullable().default(null) }),
+  'qa.updateQuestion': question.extend({ title, body }),
   'qa.deleteQuestion': question,
   'qa.reply': question.extend({ body }),
   'qa.updateReply': question.extend({ replyId: z.uuid(), body }),

@@ -78,7 +78,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@trpc/server": "^11.28.3",
+    "@trpc/server": "^11.29.5",
     "zod": "^4.6.5",
     "@videoq/domain": "0.1.0"
   },

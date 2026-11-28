@@ -69,5 +69,11 @@ try {
 } finally {
   if (serving) { serving.child.kill('SIGTERM'); await serving.done; }
   await new Promise(resolve => model.close(resolve));
-  await pool.end(); await admin.query('DROP DATABASE "' + name + '" WITH (FORCE)'); await admin.end();
+  try {
+    await pool.end();
+    // Pool.end can resolve before PostgreSQL observes the socket closes. Let
+    // DROP wait for graceful disconnects instead of terminating an idle client
+    // and emitting an asynchronous 57P01 after the rehearsal has passed.
+    await admin.query('DROP DATABASE "' + name + '"');
+  } finally { await admin.end(); }
 }

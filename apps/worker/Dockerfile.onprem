@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b AS ffmpeg-build
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:4cf5932a0f95a88af352f77e4efa67480cab0e1f7a48f0eddca3cce003a7c0fb AS ffmpeg-build
 RUN apk add --no-cache build-base nasm curl xz zlib-dev lame-dev openssl-4.0-dev pkgconf
 ARG FFMPEG_VERSION=9.0.2
 ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
@@ -14,8 +14,8 @@ RUN curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" -o 
     && cp COPYING.LGPLv3 /opt/ffmpeg/share/doc/LICENSE \
     && printf 'Source: https://ffmpeg.org/releases/ffmpeg-%s.tar.xz\nSHA256: %s\n' "$FFMPEG_VERSION" "$FFMPEG_SHA256" > /opt/ffmpeg/share/doc/source
 
-FROM ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d AS uv
-FROM python:3.14.10-slim-bookworm@sha256:3fe1a0b6c2d6b2ebb572906cdabeca75aeb558c0c17db5ffefbcf8094871c32b AS base
+FROM ghcr.io/astral-sh/uv:0.13.10@sha256:a3ea1357342c1a4bf9a0c53a3deb1b55379aefa037338d8113d5771efa01774f AS uv
+FROM python:3.14.10-slim-bookworm@sha256:e60ad028afdcdd14772a3d46decf0eaf616720f9102aeb4397a2045ff6718c3d AS base
 
 # BEGIN managed pip
 ARG PIP_VERSION=26.2.2
@@ -35,7 +35,7 @@ RUN uv export --quiet --locked --no-dev --no-emit-project --format requirements-
     && uv venv --python /usr/local/bin/python /opt/venv \
     && uv pip install --python /opt/venv/bin/python --require-hashes --only-binary=:all: -r /tmp/requirements.txt
 
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b AS runtime
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:4cf5932a0f95a88af352f77e4efa67480cab0e1f7a48f0eddca3cce003a7c0fb AS runtime
 # Patched glibc, C++ runtime and SQLite come from one maintained distribution.
 ARG PYTHON_VERSION=3.14.10
 RUN apk add --no-cache python-3.14 zlib sqlite-libs libstdc++ lame-libs \
