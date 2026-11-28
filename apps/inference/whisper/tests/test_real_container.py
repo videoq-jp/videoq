@@ -62,8 +62,8 @@ def test_cpu_image_transcribes_public_speech_and_silence_offline(record_property
         # Match the gateway's architecture; upstream publishes separate image tags.
         arch = docker("image", "inspect", IMAGE, "--format", "{{.Architecture}}")
         engines = {
-            "amd64": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:8a0500db924c9974e02cc1ace538743cb86101784b961a564c27c401859435f3",
-            "arm64": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d",
+            "amd64": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:fdded4d2d5fd197af632738eb8b9d7ffcd621a806173966d4c90abe9e25112c4",
+            "arm64": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:c4bc8f62d0e07241b8a5f15d00e111836bae240fd4ee4bd54930b14f0d81a27b",
         }
         engine_args = ["--model", f"/models/{REVISION}/{MODEL}",
                        "--host", "127.0.0.1", "--port", "8081", "--inference-path", "/v1/audio/transcriptions",

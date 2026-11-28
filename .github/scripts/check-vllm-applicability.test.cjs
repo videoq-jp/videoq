@@ -490,5 +490,6 @@ test('November 28 boxblur review is limited to the exact masked image tuple and 
     v => v.InstalledVersion = '8.1.2',
     v => v.PkgIdentifier.PURL = 'pkg:generic/ffmpeg@9.1',
   ]) { const f = make(); mutate(f.report.Results[0].Vulnerabilities[0]); assert.equal(run(f).blocking.length, 1); }
+  { const f = make(), finding = f.report.Results[0].Vulnerabilities[0]; finding.Aliases = [finding.VulnerabilityID]; finding.VulnerabilityID = 'forged-alias'; assert.throws(() => run(f)); }
   assert.throws(() => { const f = make(); return assess(f.report, f.policy, f.native, f.profiles, new Date('2026-12-11T00:00:00Z'), f.runtime); });
 });
