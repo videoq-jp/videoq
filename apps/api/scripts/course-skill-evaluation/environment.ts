@@ -47,7 +47,7 @@ export function readOnlySearchTransport(options: { accountId: string; indexName:
   const perform = async (path: string, body: unknown, signal?: AbortSignal) => {
     if (stats.embeddingCalls + stats.vectorQueries > options.maxCalls) throw new Error('EVALUATION_SEARCH_BUDGET_EXHAUSTED');
     const response = await (options.fetch ?? fetch)(`https://api.cloudflare.com/client/v4/accounts/${options.accountId}/${path}`, {
-      method: 'POST', headers: { Authorization: `Bearer ${await options.token()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      redirect: 'error', method: 'POST', headers: { Authorization: `Bearer ${await options.token()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000),
     });
     if (!response.ok) { stats.failedRequests++; throw new Error(`EVALUATION_SEARCH_HTTP_${response.status}`); }

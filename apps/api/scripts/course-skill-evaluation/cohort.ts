@@ -1,5 +1,6 @@
+import { readBoundedRegularFile } from './bounded-file';
 import { createHash } from 'node:crypto';
-import { mkdir, open, readFile, rename, unlink, writeFile, stat } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { comparisonPlan, type ComparisonCondition } from './plan';
 import type { EvaluationCase } from './cases';
@@ -35,7 +36,7 @@ async function validateOutcome(value: CohortOutcome, timeoutMs: number, baseComm
   for (const tokens of [value.inputTokens, value.outputTokens]) if (tokens !== null && (!Number.isSafeInteger(tokens) || tokens < 0)) throw new Error('INVALID_COHORT_USAGE');
   if (value.validity === 'valid' && value.elapsedMs > timeoutMs) throw new Error('COHORT_TIME_BUDGET_EXCEEDED');
   if (value.baseCommit !== baseCommit) throw new Error('COHORT_BASE_COMMIT_CHANGED');
-  if (!hex(value.detailSha256) || (await stat(value.detailPath)).size > 32_000_000 || createHash('sha256').update(await readFile(value.detailPath)).digest('hex') !== value.detailSha256) throw new Error('COHORT_DETAIL_CHANGED');
+  if (!hex(value.detailSha256) || createHash('sha256').update(await readBoundedRegularFile(value.detailPath, 32_000_000)).digest('hex') !== value.detailSha256) throw new Error('COHORT_DETAIL_CHANGED');
 }
 
 /** Artifact verification only; never claims that a human has assessed quality. */

@@ -33,6 +33,7 @@ it('uses only the scoped query endpoint and keeps authentication out of the body
   if (typeof url !== 'string' || typeof request?.body !== 'string') throw new Error('Expected a JSON HTTP request');
   expect(url).toBe(`https://api.cloudflare.com/client/v4/accounts/${'a'.repeat(32)}/vectorize/v2/indexes/frozen-scenes/query`);
   expect(request?.method).toBe('POST');
+  expect(request?.redirect).toBe('error');
   expect(JSON.parse(request.body)).toMatchObject({ filter: query.filter, topK: 10, returnValues: false });
   expect(request.body).not.toContain('synthetic-secret');
   expect(t.stats.vectorQueries).toBe(1);

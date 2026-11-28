@@ -16,6 +16,7 @@ test('uses a fixed parameterized SELECT and pins membership identity', async () 
   expect(pin).toMatch(/^[a-f0-9]{64}$/);
   const [url, request] = first.fetch.mock.calls[0];
   expect(url).toEqual(expect.stringContaining('/d1/database/'));
+  expect(request?.redirect).toBe('error');
   if (typeof request?.body !== 'string') throw new Error('Expected JSON request body');
   const body = JSON.parse(request.body);
   expect(body.sql.trim()).toMatch(/^SELECT /);

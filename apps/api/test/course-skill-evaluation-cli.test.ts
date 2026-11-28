@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, writeFile, stat, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, stat, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -22,5 +22,19 @@ test('defaults to help and refuses pending owner review before touching inputs o
     expect(result?.stdout).toBe('');
     expect(result?.stderr).toContain('Evaluation stopped');
     expect(await stat(directory).then(() => true, () => false)).toBe(false);
+  } finally { await rm(root, { recursive: true, force: true }); }
+}, 15000);
+
+test('preflight reserves its output before reading private inputs and never overwrites an existing report', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'videoq-preflight-output-'));
+  try {
+    const output = join(root, 'report.json'), missing = join(root, 'missing');
+    await writeFile(output, 'preserved-report');
+    const args = ['--import', 'tsx', 'scripts/preflight-course-skill-evaluation.ts', '--run', '--course-id', '51', '--account-id', 'a'.repeat(32), '--index-name', 'synthetic'];
+    for (const option of ['videos-file', 'runs-file', 'scenes-file', 'source-file', 'wrangler-auth-file']) args.push(`--${option}`, missing);
+    args.push('--output', output);
+    const result = await execute(process.execPath, args).then(() => null, error => error as { code: number });
+    expect(result?.code).toBe(1);
+    expect(await readFile(output, 'utf8')).toBe('preserved-report');
   } finally { await rm(root, { recursive: true, force: true }); }
 }, 15000);

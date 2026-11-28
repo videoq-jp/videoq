@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile, mkdtemp, rm, realpath, readdir, stat } from 'node:fs/promises';
+import { readBoundedRegularFile } from './bounded-file';
+import { mkdir, readFile, writeFile, mkdtemp, rm, realpath, readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -18,8 +19,11 @@ export async function captureReviewFiles(workspace: string) {
       if (entry.isDirectory()) { await visit(path); continue; }
       if (!entry.isFile()) { omitted.push(path); continue; }
       const target = join(workspace, path);
-      if ((await stat(target)).size > 200_000) { omitted.push(path); continue; }
-      const content = await readFile(target);
+      const content = await readBoundedRegularFile(target, 200_000).catch(error => {
+        if (error instanceof Error && error.message === 'EVALUATION_ARTIFACT_TOO_LARGE') return null;
+        throw error;
+      });
+      if (!content) { omitted.push(path); continue; }
       if (content.includes(0)) { omitted.push(path); continue; }
       bytes += content.length;
       if (bytes > 2_000_000) throw new Error('EVALUATION_REVIEW_SIZE_LIMIT');

@@ -18,7 +18,7 @@ export async function readLiveSourcePin(options: {
     JOIN scene_index_runs r ON r.id=h.run_id AND r.video_id=v.id AND r.user_id=v.user_id
     WHERE m.course_id=? AND v.id IN (${ids.map(() => '?').join(',')}) ORDER BY v.id`;
   const response = await (options.fetch ?? fetch)(`https://api.cloudflare.com/client/v4/accounts/${options.accountId}/d1/database/${options.databaseId}/query`, {
-    method: 'POST', headers: { Authorization: `Bearer ${await options.token()}`, 'Content-Type': 'application/json' },
+    redirect: 'error', method: 'POST', headers: { Authorization: `Bearer ${await options.token()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ sql, params: [source.courseId, ...ids] }), signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) throw new Error(`LIVE_SOURCE_HTTP_${response.status}`);
