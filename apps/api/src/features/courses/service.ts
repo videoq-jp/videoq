@@ -27,7 +27,7 @@ export function createCourseService(courses: CourseRepository) {
   }
 
   async function getSharedCourse(slug: string) {
-    return courses.getShared(slug, { includeTags: false });
+    return courses.getShared(checkedText(slug), { includeTags: false });
   }
 
   async function createUserCourse(

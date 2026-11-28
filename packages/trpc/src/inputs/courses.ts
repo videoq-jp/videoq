@@ -10,7 +10,7 @@ export const coursesInputSchemas = {
     cursor: z.number().int().nonnegative().optional(),
   }),
   "courses.get": z.object({ id }),
-  "courses.shared": z.object({ slug: z.string().min(1).max(255) }),
+  "courses.shared": z.object({ slug: textValueSchema.min(1).max(255) }),
   "courses.create": z.object({
     name: courseNameSchema,
     description: textValueSchema.default(""),

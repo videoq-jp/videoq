@@ -1,3 +1,4 @@
+import { validationFailure } from '../../application/errors';
 import { youtubeUrlTextFailure } from '@videoq/domain/youtube';
 import { textValueFailure } from '@videoq/domain/text-value';
 import { videoTitleFailure } from '@videoq/domain/video-upload';
@@ -28,6 +29,8 @@ export function createVideoManagementService(
     limit: number,
     offset: number,
   ) {
+    const error = textValueFailure(query.q ?? '') ?? textValueFailure(query.status ?? '');
+    if (error) throw validationFailure(error);
     return deps.list(
       userId,
       {
