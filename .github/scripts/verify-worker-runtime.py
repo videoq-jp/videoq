@@ -12,23 +12,27 @@ FILES = ['runtime_security.py', 'lambda_handler.py']
 PROBE = r'''
 import sys,json,hashlib,pathlib,subprocess,platform,_hashlib
 expected=json.loads(sys.argv[1])
-assert platform.machine() in ('aarch64','arm64'), 'Expected native ARM64 runtime'
+def require(condition,message):
+ if not condition:raise RuntimeError(message)
+require(platform.machine() in ('aarch64','arm64'), 'Expected native ARM64 runtime')
 for name,digest in expected.items():
- assert hashlib.sha256(pathlib.Path('/var/task/worker_python',name).read_bytes()).hexdigest()==digest, 'Runtime source differs from reviewed guard'
+ require(hashlib.sha256(pathlib.Path('/var/task/worker_python',name).read_bytes()).hexdigest()==digest, 'Runtime source differs from reviewed guard')
 from worker_python import runtime_security
 runtime_security.verify_hashlib_runtime()
 from worker_python import lambda_handler
+for name,module in [('runtime_security.py',runtime_security),('lambda_handler.py',lambda_handler)]:
+ require(pathlib.Path(module.__file__).resolve()==pathlib.Path('/var/task/worker_python',name).resolve(), 'Loaded module differs from reviewed source path')
 mode=_hashlib.get_fips_mode()
 checks=[]
 if sys.version_info[:3]==(3,14,10):
- assert mode==0, 'Affected FIPS configuration'
+ require(mode==0, 'Affected FIPS configuration')
  _hashlib.get_fips_mode=lambda:1
  for action in [runtime_security.verify_hashlib_runtime,lambda:lambda_handler.handler({'Records':[]},None)]:
   try:action()
-  except RuntimeError as error:assert 'CVE-2026-119170' in str(error)
+  except RuntimeError as error:require('CVE-2026-119170' in str(error), 'Missing FIPS refusal reason')
   else:raise AssertionError('Affected FIPS configuration was accepted')
  child=subprocess.run([sys.executable,'-c','import _hashlib;_hashlib.get_fips_mode=lambda:1;import worker_python.lambda_handler'],capture_output=True,text=True,timeout=30)
- assert child.returncode!=0 and 'CVE-2026-119170' in child.stderr, 'Import did not reject FIPS'
+ require(child.returncode!=0 and 'CVE-2026-119170' in child.stderr, 'Import did not reject FIPS')
  checks=['guard','import','invocation']
 print(json.dumps({'python':list(sys.version_info[:3]),'fipsMode':mode,'fipsRefusalChecks':checks,'sources':expected}))
 '''
