@@ -19,7 +19,7 @@ const url=process.env.PERSISTENCE_TEST_DATABASE_URL;
       CREATE TABLE chat_conversations(thread_id text PRIMARY KEY,conversation_id text,owner_user_id text,course_id integer,expires_at timestamptz);`);
     for (const id of ['owner','learner','outsider']) await execute('INSERT INTO users(id,username,email) VALUES (?,?,?)',[id,id,`${id}@example.test`]);
     await execute("INSERT INTO video_courses(id,user_id,share_slug) VALUES (1,'owner','public'); INSERT INTO videos(id) VALUES (1),(2); INSERT INTO video_course_members(course_id,video_id,\"order\") VALUES (1,2,0),(1,1,1); INSERT INTO video_course_memberships VALUES (1,'learner')");
-    return {repository:await createChatRepository({DATABASE_POOL:f.pool} as Bindings),execute,
+    return {env:{DATABASE_POOL:f.pool} as Bindings,repository:await createChatRepository({DATABASE_POOL:f.pool} as Bindings),execute,
       subject:async()=>{const row=(await f.pool.query<{subjectKey:string;resourceVideoIds:number[];registrationId:string|null;contextId:string|null}>('SELECT subject_key AS "subjectKey",resource_video_ids AS "resourceVideoIds",registration_id AS "registrationId",context_id AS "contextId" FROM lti_chat_log_subjects')).rows[0];return row??null;},
       failAttribution:()=>execute('ALTER TABLE lti_chat_log_subjects ADD CONSTRAINT injected_failure CHECK(false)'),
       failHistoryDelete:()=>execute("CREATE FUNCTION reject_chat_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected failure'; END $$; CREATE TRIGGER reject_chat_delete BEFORE DELETE ON chat_logs FOR EACH ROW EXECUTE FUNCTION reject_chat_delete()"),

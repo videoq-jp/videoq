@@ -1,12 +1,48 @@
-import {afterEach,beforeEach,describe,expect,it} from "vitest";
+import {afterEach,beforeEach,describe,expect,it,vi} from "vitest";
 import type {ChatRepository,CreateChatLogInput} from "../../../src/persistence/contracts/chat-repository";
 import { createChatGenerationService } from '../../../src/features/chat/generation-service';
-export interface ChatFixture {repository:ChatRepository;execute(sql:string,args?:unknown[]):Promise<void>;count(table:string):Promise<number>;subject():Promise<{subjectKey:string;resourceVideoIds:number[];registrationId:string|null;contextId:string|null}|null>;failAttribution():Promise<void>;failHistoryDelete():Promise<void>;dispose():Promise<void>}
+import { createChatHistoryService } from '../../../src/features/chat/service';
+import { Hono } from 'hono';
+import { chatRoutes } from '../../../src/features/chat/routes';
+import { onError } from '../../../src/middleware/error-handler';
+import * as auth from '../../../src/middleware/auth';
+import type { AppEnv, Bindings } from '../../../src/types/bindings';
+export interface ChatFixture {env:Bindings;repository:ChatRepository;execute(sql:string,args?:unknown[]):Promise<void>;count(table:string):Promise<number>;subject():Promise<{subjectKey:string;resourceVideoIds:number[];registrationId:string|null;contextId:string|null}|null>;failAttribution():Promise<void>;failHistoryDelete():Promise<void>;dispose():Promise<void>}
 const answer={segments:[{text:'回答',sourceIds:[]}],sources:[]};
 const input=(shared=false):CreateChatLogInput=>({userId:shared?'owner':'learner',courseId:1,question:'質問',answer,isShared:shared,retrievedContexts:['context']});
 export function chatContract(name:string,create:()=>Promise<ChatFixture>) {
   describe(`${name}: chat persistence`,()=>{
     let f:ChatFixture;beforeEach(async()=>{f=await create();});afterEach(async()=>{await f?.dispose();});
+    it('validates shared lookup before real persistence while preserving valid lookups', async () => {
+      const shareExists = vi.fn((slug: string) => f.repository.shareExists(slug));
+      const service = createChatHistoryService({ chat: { ...f.repository, shareExists }, courseOwnedBy: vi.fn(), historyRows: vi.fn(), verifyFeedbackToken: vi.fn() });
+      expect(await service.shareSlugExists('public')).toBe(true);
+      expect(await service.shareSlugExists('missing')).toBe(false);
+      shareExists.mockClear();
+      await expect(service.shareSlugExists('bad\0slug')).rejects.toMatchObject({ kind: 'validation' });
+      expect(shareExists).not.toHaveBeenCalled();
+      expect(await f.count('chat_logs')).toBe(0);
+    });
+    it('rejects malformed share aliases with the real database binding and keeps normal authorization', async () => {
+      const app = new Hono<AppEnv>(); app.onError(onError); app.route('/chat', chatRoutes);
+      const resolve = vi.spyOn(auth, 'resolveAuth').mockResolvedValue({ kind: 'absent' });
+      const request = (query: string) => app.request('/chat/messages/stream?' + query, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, f.env);
+      try {
+        expect((await request('share_slug=missing')).status).toBe(401);
+        expect((await request('share_slug=public')).status).toBe(400); // authenticated by the real shared lookup, then invalid body
+        for (const outcome of [{ kind: 'absent' } as const, { kind: 'ok', userId: 'owner', via: 'session' } as const]) {
+          resolve.mockResolvedValue(outcome);
+          for (const alias of ['share_slug', 'share_token']) {
+            resolve.mockClear();
+            const response = await request(alias + '=bad%00slug');
+            expect(response.status).toBe(400);
+            expect(await response.json()).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+            expect(resolve).not.toHaveBeenCalled();
+          }
+        }
+        expect(await f.count('chat_logs')).toBe(0);
+      } finally { resolve.mockRestore(); }
+    });
     it('rejects invalid questions before generation or saved state changes', async () => {
       await f.repository.create(input());
       await f.execute('INSERT INTO chat_conversations(thread_id,conversation_id,owner_user_id,course_id,expires_at) VALUES (?,?,?,?,?)', ['existing', 'existing', 'owner', 1, '2099-01-01T00:00:00.000Z']);

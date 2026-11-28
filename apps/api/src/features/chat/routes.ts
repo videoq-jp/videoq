@@ -5,6 +5,7 @@ import { createMiddleware } from "hono/factory";
 import { streamSSE } from "hono/streaming";
 import type { ZodError } from "zod";
 import { parseResourceId } from "@videoq/trpc/schema";
+import { textValueFailure } from '@videoq/domain/text-value';
 import {
   requireAuth,
   resolveAuth,
@@ -96,6 +97,12 @@ chatRoutes.get(
 chatRoutes.post(
   "/messages/stream",
   limitChatRequestBody,
+  async (c, next) => {
+    const slug = requestShareSlug(c);
+    const error = slug === null ? null : textValueFailure(slug);
+    if (error) return validationResponse(c, error);
+    await next();
+  },
   optionalShareAuth,
   chatThrottle,
   async (c) => {

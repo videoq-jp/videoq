@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { textValueSchema } from '../text-value';
 import { validConversationQuestion } from '@videoq/domain/chat';
 import { chatCourseIdSchema, chatMessagesSchema } from "../schema";
 
@@ -7,7 +8,7 @@ const page = {
   offset: z.number().int().nonnegative().default(0),
 };
 
-const conversationAccess = { courseId: chatCourseIdSchema, shareSlug: z.string().min(1).optional() };
+const conversationAccess = { courseId: chatCourseIdSchema, shareSlug: textValueSchema.min(1).optional() };
 export const chatInputSchemas = {
   "chat.conversations": z.object({ ...conversationAccess,
     conversationIds: z.array(z.uuid()).max(100).optional(),
@@ -23,14 +24,14 @@ export const chatInputSchemas = {
     conversationId: z.uuid().optional(),
     resumeConversation: z.boolean().optional(),
     courseId: chatCourseIdSchema,
-    shareSlug: z.string().min(1).optional(),
+    shareSlug: textValueSchema.min(1).optional(),
   }).refine(input => validConversationQuestion(input.messages, input.conversationId), {
     message: 'A conversation request requires one user question.', path: ['messages'],
   }),
   "chat.feedback": z.object({
     chatLogId: z.number().int().positive(),
     feedback: z.enum(["good", "bad"]).nullable(),
-    shareSlug: z.string().min(1).optional(),
+    shareSlug: textValueSchema.min(1).optional(),
     feedbackToken: z.string().optional(),
   }),
   "chat.history": z.object({ courseId: z.number().int().positive(), ...page }),
