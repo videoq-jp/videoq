@@ -52,6 +52,13 @@ function videoFixture() {
 }
 
 describe("video management workflows", () => {
+  it.each(['q', 'status'] as const)('rejects NUL in direct list %s before persistence', async field => {
+    const { deps, service } = videoFixture();
+    await expect(service.listUserVideos('owner', { [field]: 'Query' + String.fromCharCode(0) + 'suffix' }, 20, 0))
+      .rejects.toMatchObject({ kind: 'validation' });
+    expect(deps.list).not.toHaveBeenCalled();
+  });
+
   it("normalizes list filters without requiring a runtime", async () => {
     const { deps, service } = videoFixture();
     await service.listUserVideos(

@@ -7,7 +7,7 @@ const question = access.extend({ questionId: z.uuid() });
 const body = textValueSchema.trim().min(1).max(10_000);
 const title = textValueSchema.trim().min(1).max(200);
 export const qaInputSchemas = {
-  'qa.list': access.extend({ search: z.string().trim().max(200).default(''), videoId: resourceId.optional(),
+  'qa.list': access.extend({ search: textValueSchema.trim().max(200).default(''), videoId: resourceId.optional(),
     unanswered: z.boolean().default(false), sort: z.enum(['recent', 'votes']).default('recent'),
     offset: z.number().int().nonnegative().max(100_000).default(0), limit: z.number().int().min(1).max(50).default(20) }),
   'qa.get': question.extend({ offset: z.number().int().nonnegative().max(100_000).default(0), limit: z.number().int().min(1).max(50).default(20) }),

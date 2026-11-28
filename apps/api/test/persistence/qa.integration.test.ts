@@ -13,6 +13,9 @@ import type {Bindings} from '../../src/types/bindings';
 import {users,videos,videoCourses,videoCourseMembers,videoCourseInvitations,videoCourseMemberships,courseQuestions,courseQuestionReplies,courseQuestionVotes,courseQuestionLtiVotes,courseQaModeration,ltiCredentials} from '../../src/db/schema';
 import {createD1Fixture} from './d1-fixture';
 import {isolatedPostgres} from './isolated-postgres';
+import {createCourseRepository} from '../../src/persistence/factory';
+import {createCourseService} from '../../src/features/courses/service';
+import {listUserVideos} from '../../src/features/videos/service';
 const url=process.env.PERSISTENCE_TEST_DATABASE_URL;
 for(const backend of ['d1','postgres'] as const){
  describe.skipIf(backend==='postgres'&&!url)(`${backend} Q&A persistence contract`,()=>{
@@ -108,6 +111,38 @@ for(const backend of ['d1','postgres'] as const){
     expect(await get('alice',questionId)).toEqual(before);
     expect((await list('alice')).total).toBe(1);
     expect((await pool.query('SELECT count(*)::int AS n FROM course_question_replies')).rows[0].n).toBe(1);
+  });
+
+  it.each(['qa.search','videos.q','videos.status','courses.shared'] as const)('rejects NUL in direct %s before querying',async path=>{
+    const value='Query'+String.fromCharCode(0)+'suffix';
+    if(path==='qa.search'){
+      const input=qaInputSchemas['qa.list'].parse({courseId:1});
+      await expect(listQuestions(env,'alice',{...input,search:value})).rejects.toMatchObject({kind:'validation'});
+      expect((await list('alice',{search:'missing'})).total).toBe(0);
+    }else if(path==='courses.shared'){
+      const service=createCourseService(await createCourseRepository(env));
+      await expect(service.getSharedCourse(value)).rejects.toMatchObject({kind:'validation'});
+      await expect(service.getSharedCourse('missing')).resolves.toBeNull();
+    }else{
+      const field=path==='videos.q'?'q':'status';
+      await expect(listUserVideos(env,'owner',{[field]:value},24,0)).rejects.toMatchObject({kind:'validation'});
+      await expect(listUserVideos(env,'owner',{[field]:'missing'},24,0)).resolves.toMatchObject({count:0,results:[]});
+    }
+  });
+
+  it('returns HTTP400 for invalid read text while preserving empty and notFound responses',async()=>{
+    await pool.query("UPDATE users SET email_verified=true,password_reset_required=false WHERE id='alice'");
+    await pool.query("INSERT INTO account(id,account_id,user_id,provider_id,password) VALUES('account','alice','alice','credential',$1)",[await hashPassword('Qa-contract-password-123')]);
+    const signedIn=await signIn();expect(signedIn.status).toBe(200);
+    const cookie=signedIn.headers.getSetCookie().map(value=>value.split(';')[0]).join('; '),app=createApp();
+    for(const [name,field,base] of [
+      ['qa.list','search',{courseId:1}],['videos.list','q',{}],['videos.list','status',{}],['courses.shared','slug',{}],
+    ] as const){
+      const headers=name==='courses.shared'?{}:{cookie};
+      const request=(value:string)=>app.request('/api/trpc/'+name+'?input='+encodeURIComponent(JSON.stringify({...base,[field]:value})),{headers},env);
+      expect((await request('Query'+String.fromCharCode(0)+'suffix')).status).toBe(400);
+      expect((await request('missing')).status).toBe(name==='courses.shared'?404:200);
+    }
   });
 
   it('keeps Moodle authority across disconnects and blocks native invitations and public shares', async () => {

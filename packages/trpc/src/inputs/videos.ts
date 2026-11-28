@@ -7,8 +7,8 @@ const title = videoTitleSchema;
 
 export const videosInputSchemas = {
   "videos.list": z.object({
-    q: z.string().optional(),
-    status: z.string().optional(),
+    q: textValueSchema.optional(),
+    status: textValueSchema.optional(),
     ordering: z.enum(["uploaded_at_desc", "uploaded_at_asc", "title_asc", "title_desc"]).optional(),
     tags: z.array(id).optional(),
     limit: z.number().int().positive().max(100).default(100),
