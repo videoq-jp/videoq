@@ -1,0 +1,599 @@
+{
+  "at": "2026-11-28T11:34:50.573Z",
+  "kind": "AI evaluation; frozen complete-artifact protocol; no human grading",
+  "jobId": "7c3b7fd8-17df-4464-a052-d2a5eaf6003b",
+  "inventoryTotals": {
+    "candidates": 234,
+    "withDraft": 35,
+    "withoutDraft": 199,
+    "withGeneratorIssues": 199,
+    "readyForAiAssessment": 35,
+    "mechanicallyHeld": 0
+  },
+  "counts": {
+    "completed": 16,
+    "held": 19,
+    "failed": 0,
+    "pending": 0
+  },
+  "recommendations": {
+    "revise": 16
+  },
+  "candidateSupport": {
+    "unsupported": 12,
+    "unverifiable": 4
+  },
+  "grounding": {
+    "usedFacts": {
+      "unverifiable": 25,
+      "unsupported": 16,
+      "supported": 37
+    },
+    "unusedMetadataFacts": {
+      "unsupported": 1,
+      "supported": 5,
+      "unverifiable": 2
+    },
+    "deliveredBlocks": {
+      "unverifiable": 53,
+      "unsupported": 36,
+      "supported": 114
+    }
+  },
+  "requestedLanguageFailures": {
+    "usedFacts": 78,
+    "unusedMetadataFacts": 8,
+    "blocks": 45
+  },
+  "applicabilityFailed": 15,
+  "verificationFailed": 5,
+  "heldReasons": {
+    "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND": 19
+  },
+  "failureReasons": {},
+  "usageFromAvailableEnvelopes": {
+    "input_tokens": 349005,
+    "cached_input_tokens": 29568,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 49679,
+    "reasoning_output_tokens": 5316
+  },
+  "toolCalls": 0,
+  "records": [
+    {
+      "index": 2,
+      "status": "completed",
+      "candidateContentHash": "96be4523ce3edaebbe34f01ef9690ee94a28d638db8c6dd15563b26ead46d1ac",
+      "packetSha256": "ec22f9bed286d6436bd01b4afd63ebaa7377cbf3b222f4b5176d20f90a824f45",
+      "resultSha256": "6e1bd10d969cecb404b0baa90bc3d3f68b9c92f2cac354ea5dc21f4668fd77fb",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 7,
+        "blocks": 16
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 9
+    },
+    {
+      "index": 7,
+      "status": "completed",
+      "candidateContentHash": "17751d012acbb92931a2657a97e0c46fb9a09e64cf95d315bc6bd6d9bcfab30c",
+      "packetSha256": "07b53d94cb6ead8cbc71793c9a2b953cc45f3847da1dded7eb9046845503aa4e",
+      "resultSha256": "d98bd81f6e82acc587d08b13a18947b645df2f9cecca80ab146f5a36908e1cb8",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 4,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 6
+    },
+    {
+      "index": 17,
+      "status": "held",
+      "candidateContentHash": "f6a0875a7f90f32d6716c1392268a49423bea04382b4eba1c509cad19799647a",
+      "packetSha256": "372e9764bb0b2872df78220ffd09059866f48989a9e6ce86534279591ffe216c",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 30,
+      "status": "completed",
+      "candidateContentHash": "c127ec8a0688b4afab6f55239295e161e997e8e9f172540b3cee0f4094603b22",
+      "packetSha256": "b3e38fb6776ae139f7b2a87ecb723798a229aecee40621cb11796786596722f2",
+      "resultSha256": "dc0b69de39949b9ad7085b630d66140f46380885ba36c1980c34ed21131bc6f5",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 6,
+        "blocks": 14
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 6
+    },
+    {
+      "index": 39,
+      "status": "held",
+      "candidateContentHash": "0792fefd8892ef9785728831db682fb8e4ca696b81603ced07cdf9459cbf1eb7",
+      "packetSha256": "54effcea94477c7665f949096fba3ca3a0d3fc9a92082c6784b8262e876c811e",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 43,
+      "status": "held",
+      "candidateContentHash": "785a7f539023f44e807d85ae3c90ec1a0178d21724c5f3e5c8dd0130b4be3430",
+      "packetSha256": "e9d4505c982d80980828c81301790e8c235f8f14453b71b2d51e583fc6568bde",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 58,
+      "status": "completed",
+      "candidateContentHash": "3a82a1db4233e796addd01330e9114fb8f8f97ea3d7e36ebd52b789c7140e0a9",
+      "packetSha256": "e9841fd8bde0bed64531b0c9be14c452ea533957fa5c05736ed7722ef3ef63fb",
+      "resultSha256": "0e1027525386a132754a04f362354bd5c04489794af684ec66172205564bbdda",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 4,
+        "blocks": 8
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 5
+    },
+    {
+      "index": 61,
+      "status": "completed",
+      "candidateContentHash": "f6dc2f43e4267d1c99f90a4663e45aaa131ed9af6e59a7b0a51052aa95014c74",
+      "packetSha256": "3d1f9f4ffa88d135b8d672174e19cd84bead1738ca176b949ba0e0127409d2b3",
+      "resultSha256": "c4efaa0e2023994ffbb271513e746ba755858bd93fbda71f27785354dea84c9f",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 14
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 4
+    },
+    {
+      "index": 72,
+      "status": "completed",
+      "candidateContentHash": "8ebe75b01c773fb27da081dea4669b7dcef6d2e0b7480a83fa80d33589bd3601",
+      "packetSha256": "09480519111f677a252aa87fca10fb61cf378f06b310ff3c4b1c8491bbcd8e04",
+      "resultSha256": "cdb46da20338d8b1bd443c5b45e84cba1f46982af633c884c7217f219733a283",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 7,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 3
+    },
+    {
+      "index": 84,
+      "status": "completed",
+      "candidateContentHash": "f0029437dbe978944827864695e3015b0f184bf38c0e5475f6d137bba2311214",
+      "packetSha256": "7869247cd330bc5310b4f2074df6b40be7b7de19b6421ff9e843fea6ba5c6c46",
+      "resultSha256": "d44dfc841efa6d9bde81147361898700fd3b0aa9319e4bab9a25b1ad5b965cda",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 5
+    },
+    {
+      "index": 85,
+      "status": "held",
+      "candidateContentHash": "07a5550a2217a06db2a4ad146afd07acb04c55a96bbefbe90cce0bf15ca2cdea",
+      "packetSha256": "92ddb4c16b50c24a918d9a6efe9e99b516bb7b3c3e7abccc74b5bb6cc0af5d78",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 88,
+      "status": "completed",
+      "candidateContentHash": "073f91e2679c7bc0fad4b1aa54f6ebc0c4b9614e7b2e17eff4e662236731969a",
+      "packetSha256": "1d5740ed164f217c162a9d4cb9e555eaee36e67e4b6912e808291b02479aeb2c",
+      "resultSha256": "625b558c92cd5b18e21fed3ed68e769bc7c03d080c3f1ad2fc9abcb8d101336c",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 7,
+        "blocks": 12
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 7
+    },
+    {
+      "index": 91,
+      "status": "completed",
+      "candidateContentHash": "6a4a80aa4ed93366cdf44efc60c7f2ebbdfbcdd7278e88f9bdbc62b38e5980eb",
+      "packetSha256": "dcd650ef79da17fa9faba59458041208f37b0efb3253b144050271bb5f7e8962",
+      "resultSha256": "c19cbd20ff8c25d4cb0ba17209c04765fdbe7950909e6e320e2fff7442e0f883",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 6,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 5
+    },
+    {
+      "index": 99,
+      "status": "held",
+      "candidateContentHash": "2becebca99eae314e7f02745477d5f63b5c79599ec5385c1e35902890faf566e",
+      "packetSha256": "bbea9a06092659975c31597741502623fffe8e871ec9d9b10c47e66c4c591b19",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 105,
+      "status": "completed",
+      "candidateContentHash": "a229dd42b28997c436b98426e53b63481ee1afe281739eedb8967f53536941a7",
+      "packetSha256": "d7568d4dc79f5c6bade4a8f811aeaa04e87a1bc0733338f22e38e7d75a1d202b",
+      "resultSha256": "c10d275ebdca5707891059a01872ee1ed5f5f6b055459e147348ee3566a94664",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 11
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 5
+    },
+    {
+      "index": 117,
+      "status": "held",
+      "candidateContentHash": "308e66a45d4bae30d48bbdd1e2f7fe912106fefffd718da6246946a0bd458c20",
+      "packetSha256": "f9cdc7ed2cb5b571874156262d0d82933d22a9cb1775e06abcb7186d958adace",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 134,
+      "status": "completed",
+      "candidateContentHash": "5de47d5e96bf09f323c53c65cbe2a41b3cfeed8c31ce93bd2e0a06896aa0d21c",
+      "packetSha256": "56f4e81a06a8f137dff1a926a18fbdcf74545efedf61e343c145fbeb4dce7300",
+      "resultSha256": "6af22699a1c78ae1b6eb5750d6377080d1e67e51707bdb7327342831b1aeaef4",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 4,
+        "blocks": 9
+      },
+      "applicabilityPreserved": true,
+      "verificationGrounded": true,
+      "issueCount": 4
+    },
+    {
+      "index": 136,
+      "status": "completed",
+      "candidateContentHash": "199e57aaef7632d1f3bad291a240aeb35d99bee1ecd036c546c1dd193f502c9e",
+      "packetSha256": "00bb7165dad786e8aafb29b56fe004f1cda2daee880049b7b2993d02a342d3f3",
+      "resultSha256": "abda81daaf1bf3a49e91722c8d08233af31e6b83625879569b6921e0fd34651c",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 12
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 9
+    },
+    {
+      "index": 140,
+      "status": "held",
+      "candidateContentHash": "1acc145cb51169b9ae1882472ab8fad8d826709cfb47ea490e86e0b3003335b0",
+      "packetSha256": "0adc925ef071577ae7806ac4b5ae2b92e4aeac6cedccd821b25288385f3dc9f2",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 147,
+      "status": "held",
+      "candidateContentHash": "011ed1fe8a2560f3187e3a9621df5f9bf7830ac9472d641f6ed4a644a11e5fe3",
+      "packetSha256": "a086541c039a17c760d30539834496d0ee5399aa6c1171c79a8ffc9a1ba74841",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 155,
+      "status": "held",
+      "candidateContentHash": "076a5d63253c59126c264085bb816b5d665ee34a652bd058490f52449e423508",
+      "packetSha256": "1b96382a707016704b9fb6d3f7aaeeb7e93238da5e9148a91ccb345129f38d2a",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 171,
+      "status": "held",
+      "candidateContentHash": "adfce47204e027ea8884330e632967b63e0be475dc50c84d70738b08ba82887c",
+      "packetSha256": "f45a72105d3637833a56a836436a33f1fd05a0d969b641919ff664fff84544a7",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 174,
+      "status": "held",
+      "candidateContentHash": "3b5a27e8ad79fd7a9727b10bd098c31d4f5a2e09dab9d0276a11976aa8bf2d0d",
+      "packetSha256": "eeb00516b2e74e86a65a1b1edc1eab1b5f591fe804f7cbcdb913c67c724c4051",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 180,
+      "status": "completed",
+      "candidateContentHash": "4b2490c2c8c2b49da86f12e6d223cea7ec70d114bd1789c35bea6a18f3c865e0",
+      "packetSha256": "050ec8820595dcc14f6e50a06d84343bf1d114d22c213f8182d5b5dd3d93b4a7",
+      "resultSha256": "908c55661b04d4e79c3343c9a633e8882d81af7732647651d9a30ebb564ecd76",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 14
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 9
+    },
+    {
+      "index": 181,
+      "status": "held",
+      "candidateContentHash": "ffaf0d46715659da5bff6399c67a01de0f024e423a70892e5299d61fa87d9fc1",
+      "packetSha256": "2d7806ee2dde20504ed45b789e27fe10a8bceb410f48795ceffddcbcd6ade5e3",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 189,
+      "status": "completed",
+      "candidateContentHash": "5280bb4997339aa41e735b5c81da00f801ddfbe68952344dc124772384aa1573",
+      "packetSha256": "b09bce2b73b7bba4e848238d4e1679f02cc032ecd5253881e0d1c8651f60002b",
+      "resultSha256": "94e54af5c7b6263447e1b080218948079b6901b1b4f4d40b84f18794d77387ab",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 7,
+        "blocks": 15
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 8
+    },
+    {
+      "index": 190,
+      "status": "completed",
+      "candidateContentHash": "3eda31cc112f2eda5d572e180ae2e54b1d89c624dc19930ce6092c95438ddf51",
+      "packetSha256": "8516a1cd846e058135029edbf0f1472680501799f349f19b2968dd76aa61ae8f",
+      "resultSha256": "618fd0058448a56120c21aec7943603908d05679656252ab600bf82354aede3c",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 3,
+        "blocks": 9
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 6
+    },
+    {
+      "index": 199,
+      "status": "held",
+      "candidateContentHash": "5afbca40a9efcf7293327ea31ab4eb7e8e7725ad44da96a912feffe95e602110",
+      "packetSha256": "f454e7df85bcba1cdc16425890dfc37321201b5104769ff80c9d704898e25424",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 202,
+      "status": "held",
+      "candidateContentHash": "1382c04dbae9bf8a2e52c51d7f9a2552d73f3bc408ceb4d58b1fd6c92eafe432",
+      "packetSha256": "8231fff1276646d99988a6719002f63c6233f06189a43a2190e2b3f289770040",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 203,
+      "status": "held",
+      "candidateContentHash": "15660fa76538a4b09bbff01038297e2ade75a0ee82a324087665d3fab7d49e28",
+      "packetSha256": "ac41f338ec1af0bd4389e1be4de33979bd659da60b28d120e4f72b67af2632c1",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 204,
+      "status": "completed",
+      "candidateContentHash": "1fb880c6329a401d7891e0ffc5035a621e86d39faf71a328a3ec727de4a6a0ae",
+      "packetSha256": "461182ada70bced1874a98cdde92da1dc38f586c63d42df1cbf1f2c32ff1da8f",
+      "resultSha256": "6de0506b4475c0b900573948b9f816cd317308e2fd631f4dda47d167ccc1ec41",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 6,
+        "blocks": 17
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 8
+    },
+    {
+      "index": 205,
+      "status": "held",
+      "candidateContentHash": "d761704da9d1f8c8debf92ef2f19ffaa64dbe23929ea175a1de78b5bf1ade2c4",
+      "packetSha256": "d39d7c82ed1f3c04a22eb0a6595cb6fb476f061c52380b5339ad66e8a75a015d",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 206,
+      "status": "held",
+      "candidateContentHash": "aed6a70bd23162a016f09282f18587a8f27500e1377db7aef8e707cab91fc727",
+      "packetSha256": "752b627904a244d9165b5a373a412125b588e510aed134edb3fd5382d1eaf238",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 208,
+      "status": "held",
+      "candidateContentHash": "a13ef348ac9f67af14cbdcfa4b8136976b8bec95657a1aab710fd62f2aa73a9b",
+      "packetSha256": "b22911e5e02016d1aa57d85a3a605394deafff5e12e9d9ec93626a800e14cc6b",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    },
+    {
+      "index": 226,
+      "status": "held",
+      "candidateContentHash": "2900dcf6a21291cd5591ed82dbf0e207c776c33ae5e89cea0056b70f835b2918",
+      "packetSha256": "c2c4e70562418a7d96033f2a08c695d9b984f24565d4c8f2c2ead57063d42228",
+      "resultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5",
+      "reason": "COMPLETE_EVIDENCE_EXCEEDS_CONSERVATIVE_CONTEXT_BOUND"
+    }
+  ],
+  "monetaryCost": null,
+  "productionWrites": 0,
+  "published": false,
+  "version": 1,
+  "generation": {
+    "initialImplementation": "34adfda5604fbebdb37357df551f5ab3ed5385f1",
+    "continuationImplementation": "2484b85ed0786dd5abbbca894b339761921696e8",
+    "ownerModel": "@cf/google/gemma-4-26b-a4b-it",
+    "initialOwnerUsed": 1089,
+    "finalOwnerUsed": 1250,
+    "ownerLimit": 1300,
+    "additionalRequests": 161,
+    "successfulSteps": 159,
+    "failedRequests": 2,
+    "planning": 89,
+    "draft": 35,
+    "audit": 35,
+    "extraKnowledgeExtractionCalls": 0,
+    "extraMediaProcessing": 0,
+    "newRebuildsDuringContinuation": 0
+  },
+  "localFinalAudit": {
+    "at": "2026-11-28T11:37:28.566Z",
+    "runtimeFilesVerified": 794,
+    "localSnapshotUnchanged": true,
+    "priorBuildRowsUnchanged": true,
+    "knowledgeChunks": 905,
+    "quota": {
+      "used_ai_answers": 1250,
+      "ai_answers_limit": 1300
+    },
+    "candidates": 234,
+    "publications": 0,
+    "stepCountsByBuildRevision": [
+      {
+        "revision": 1,
+        "modelSteps": 0
+      },
+      {
+        "revision": 2,
+        "modelSteps": 89
+      },
+      {
+        "revision": 3,
+        "modelSteps": 102
+      },
+      {
+        "revision": 4,
+        "modelSteps": 159
+      }
+    ],
+    "assessmentCounts": {
+      "completed": 16,
+      "held": 19,
+      "failed": 0,
+      "pending": 0
+    },
+    "modelCallsThisAudit": 0,
+    "productionWrites": 0
+  },
+  "assessmentModel": "gpt-6.1-sol",
+  "assessmentClient": "codex-cli 0.167.1",
+  "assessmentKind": "AI evaluation; not human evaluation or implementation-effect comparison",
+  "frozenAssessmentPlanSha256": "ee1cb273bdcd43f08424d7ce22907cffdea1fc98b90e6e361c18da433316b2a4",
+  "frozenInputManifestSha256": "bb9767a9ba1dcc592d7ad26e874682246f0bd18ad8e8e88a39d5d01965b67940",
+  "assessmentProtocolSha256": "5babcb2d7c3e5e152974da0e9ef5fd52e62dec1caffe8e4c96e5d8e80338ca24",
+  "ci": {
+    "implementation": "2484b85ed0786dd5abbbca894b339761921696e8",
+    "runId": 46138994746,
+    "status": "success",
+    "codeqlRunId": 46138994875,
+    "codeqlStatus": "success",
+    "observedAt": "2026-11-28T12:07:35.588018+00:00",
+    "apiUnit": {
+      "filesPassed": 532,
+      "filesSkipped": 15,
+      "testsPassed": 5695,
+      "testsSkipped": 95
+    },
+    "apiOtherGroups": [
+      {
+        "filesPassed": 17,
+        "testsPassed": 126
+      },
+      {
+        "filesPassed": 2,
+        "testsPassed": 10
+      }
+    ],
+    "apiLogSha256": "fce0b130aa5a9e0b98cec73465c4d338ebe22f351ca43de7cf62106ff1096461",
+    "ciProofSha256": "5905646eca71a77df1d79c6bde1634a99ed2f7b71126988a9f75ee8d6a6eabdb",
+    "codeqlProofSha256": "db86386509ca72a85502355be39e503a3925805be16e73fbbf7f8dc56d2b0665"
+  },
+  "priorComparisonUnchanged": true,
+  "video120Unchanged": true,
+  "allIssuesRemainOpen": true,
+  "privateEvidence": [
+    {
+      "name": "revision4-output-truncation-errors-complete.json",
+      "sha256": "95a4a3e7ca78c21f43d2d6fa4e5fec5f1fb82f23ee2b3dca81addb718504354f"
+    },
+    {
+      "name": "revision4-audit-resume-control.json",
+      "sha256": "831df690dde8feb96487fdb841201c21e209dce54b917d6305d1ce8a0e506126"
+    },
+    {
+      "name": "revision4-audit-resume-assessment-execution-plan.json",
+      "sha256": "74284e1c830b79cd2cceaf8f5f1641def13d577d0d7498fccd0b739a6a2b5996"
+    },
+    {
+      "name": "revision4-independent-assessment-final-audit.json",
+      "sha256": "b629031b3d99fd35b4bf3031d1d9d9bedbc0bef14a6cfc899d63aa78b29f8cf5"
+    },
+    {
+      "name": "revision4-final-local-state-audit.json",
+      "sha256": "3858d9e2c790e834fb5d90112b18b8dd1b8dc2b05bd3a7a7b523a4a77a46f66c"
+    }
+  ],
+  "phase": "initial_frozen_assessment",
+  "supplementPlannedSeparately": {
+    "planSha256": "57a65b2e3b2af533aa2270cb2205be57caee156da695ba3c7cd7df7d0e4980c2",
+    "targets": 19,
+    "postHoc": true,
+    "priorResultsUnchanged": true,
+    "state": "completed",
+    "resultReport": "course-skills-course51-wide-context-ai-evaluation-2026-11-28.json"
+  }
+}
