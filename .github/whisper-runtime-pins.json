@@ -2,14 +2,14 @@
   "engine": "whispercpp",
   "mode": "strict-no-exceptions",
   "images": {
-    "amd64": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:8a0500db924c9974e02cc1ace538743cb86101784b961a564c27c401859435f3",
-    "arm64": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d"
+    "amd64": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:fdded4d2d5fd197af632738eb8b9d7ffcd621a806173966d4c90abe9e25112c4",
+    "arm64": "ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:c4bc8f62d0e07241b8a5f15d00e111836bae240fd4ee4bd54930b14f0d81a27b"
   },
   "configDigests": {
-    "amd64": "sha256:3c19002c29d3a7dbdf90cef48d1208e5adcebee57960dbf7ce61c6aa0320b1e5",
-    "arm64": "sha256:04bce07c1315adf7637a4bdd9c7bd5e9a5c926fe39fc5db8a058e2d236571927"
+    "amd64": "sha256:95dc4a50e97122e69742864c5e38d19bee3dcf037fe0035defc17308ab7e7ce3",
+    "arm64": "sha256:576ec0784bf7342240e50a2f416d4b2b73f9b708f0c55f7ea0e842df28b5c7a5"
   },
-  "sourceRevision": "48d69177d7dfc675c13870457ad172b90c907529",
+  "sourceRevision": "4646c50a3bbaa2c38838a20997e9c6d403d3c9a0",
   "upstreamImages": {
     "amd64": "ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73",
     "arm64": "ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0"
@@ -21,7 +21,7 @@
   "imageEntrypoint": [
     "/app/build/bin/whisper-server"
   ],
-  "nativeSourceRun": 45538276974,
-  "publishedAndAnonymousReadbackRun": 45540057431,
-  "runtimeBase": "cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b"
+  "nativeSourceRun": 46150445031,
+  "publishedAndAnonymousReadbackRun": 46150921021,
+  "runtimeBase": "cgr.dev/chainguard/wolfi-base:latest@sha256:5172a213d2bba8b1c9ca11957db65562b52b0f9844583a0347318ea5fd8e3aa5"
 }

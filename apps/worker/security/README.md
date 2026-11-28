@@ -31,3 +31,14 @@ the worker policy on 2026-12-05. Other CVEs or versions remain blocking.
 Operations scans the image actually deployed without these build-specific VEX
 rules: an older deployed image may not contain the runtime guard. Its binary
 findings remain visible until remediation is deployed and verified.
+
+## Periodic production inspection
+
+Operations resolves the immutable image actually running in Lambda. Before
+applying the FIPS-only production assessment it pulls that digest, checks the
+ARM64 identity and reviewed guard/handler source hashes, and runs a networkless,
+read-only, non-root probe. The affected Python version must reject forced FIPS
+at guard, handler import and invocation. A missing guard, source mismatch or
+expired assessment fails the check. The runtime receipt and unsuppressed
+Syft/Grype inventory are retained; evaluated findings remain visible in the
+summary. The broader FFmpeg assessment is not applied by this production policy.

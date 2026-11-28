@@ -174,7 +174,7 @@ withHelm("private local inference deployment", () => {
   it("selects the native upstream CPU image and rejects architecture mismatches", () => {
     const deployment = render("--set", "whispercpp.architecture=arm64").find(r => r.kind === "Deployment" && r.metadata.name.endsWith("-whisper"));
     expect(deployment.spec.template.spec.nodeSelector["kubernetes.io/arch"]).toBe("arm64");
-    expect(deployment.spec.template.spec.containers[1].image).toContain("4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d");
+    expect(deployment.spec.template.spec.containers[1].image).toBe("ghcr.io/videoq-jp/videoq-whispercpp-candidate@sha256:c4bc8f62d0e07241b8a5f15d00e111836bae240fd4ee4bd54930b14f0d81a27b");
     expect(command("--set", "whispercpp.architecture=arm64", "--set-json", 'whisper.nodeSelector={"kubernetes.io/arch":"amd64"}').status).not.toBe(0);
   });
   it("rejects mutable Whisper revisions and unpinned production images", () => {

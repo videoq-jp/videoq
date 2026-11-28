@@ -222,3 +222,12 @@ expiry of `2026-12-10T21:05:42.246607+00:00`; extending the global policy alone
 cannot renew them. Fresh normal On-prem Release, signature/publication, staging
 and CPU acceptance are tracked in #1754. Customer production promotion and
 upgrades still require their operator's action.
+
+The 2026-11-28 review adds only CVE-2026-137907 (FFmpeg boxblur) for the exact
+FFmpeg 8.1.1 tuple at the 26 physically masked native locations. The review pins
+Operations run46123718202, artifact15254468052 and its archive digest, the complete
+runtime/native checks and an immutable primary CVE record. The separately loaded
+FFmpeg9.1 audio wheel remains subject to its own scan and guard proof. Missing
+proof, different paths/version/PURL, another CVE or the 2026-12-10 expiry blocks
+acceptance. This is physical exclusion in the reviewed serving namespace, not a
+claim that the upstream image is patched or that all filters are unused.

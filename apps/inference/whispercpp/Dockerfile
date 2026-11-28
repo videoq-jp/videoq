@@ -2,7 +2,7 @@
 ARG UPSTREAM_IMAGE=ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73
 FROM ${UPSTREAM_IMAGE} AS upstream
 
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b71197549d072ad4f359219953cb065745604010f24d884d75ab46d651da9a0b AS assembled
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:5172a213d2bba8b1c9ca11957db65562b52b0f9844583a0347318ea5fd8e3aa5 AS assembled
 ARG TARGETARCH
 ARG UPSTREAM_IMAGE
 RUN case "$TARGETARCH:$UPSTREAM_IMAGE" in \
