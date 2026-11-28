@@ -48,6 +48,18 @@ it('bounds overlong proposed names without merging distinct task names', async (
 });
 
 const wireDraft = { slug: 'review-retry', title: 'Review retries', description: 'Inspect retry guarantees.', useWhen: ['Changing retries'], doNotUseWhen: [], criteria: [{ decision: 'Establish identity', factIds: ['f0'] }], steps: [{ action: 'Inspect the request', expectedResult: 'Known identity', factIds: ['f1'] }], exceptions: [{ condition: 'External effect', behavior: 'Check external guarantees', factIds: ['f0'] }], checks: [{ check: 'Repeat concurrently', factIds: ['f2'] }], examples: [{ situation: 'Repeat request', application: 'Keep identity', factIds: ['f1'] }] };
+it('constrains audit output while preserving negative findings and strict issue validation', async () => {
+  const generate: typeof generateCourseSkillJson = async (_env, _owner, options) => {
+    expect(options.name).toBe('skill_draft_audit');
+    expect(options.structuredOutput).toBe(true);
+    expect(options.schema.safeParse({ supported: true, issues: [], extra: true }).success).toBe(false);
+    expect(options.schema.safeParse({ supported: false, issues: Array.from({ length: 33 }, () => 'Unsupported') }).success).toBe(false);
+    return options.schema.parse({ supported: false, issues: ['Unsupported claim'] });
+  };
+  const deps = courseSkillDraftDependencies({} as Bindings, 'owner', 'ja', generate);
+  const draft = { ...wireDraft, criteria: [{ decision: 'Establish identity', factIds: ['fact-0'] }], steps: [], exceptions: [], checks: [], examples: [] };
+  expect(await deps.audit(draft, facts)).toEqual({ supported: false, issues: ['Unsupported claim'] });
+});
 it('constrains synthesis and revision without accepting over-limit applicability lists', async () => {
   const names: string[] = [];
   const generate: typeof generateCourseSkillJson = async (_env, _owner, options) => {

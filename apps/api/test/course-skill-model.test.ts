@@ -63,6 +63,15 @@ describe('metered course skill model boundary', () => {
     await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', options)).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
     expect(mocks.finish).toHaveBeenCalledWith(expect.anything(), expect.anything(), { status: 'failed', quotaConsumed: true });
   });
+  it.each(['{"supported":true,"issues":[]}', '{"supported":true,"issues":['])('rejects truncated constrained audits without accepting partial output or retrying inside the model boundary', async content => {
+    const schema = z.object({ supported: z.boolean(), issues: z.array(z.string().min(1).max(2000)).max(32) }).strict();
+    mocks.invoke.mockResolvedValue(new AIMessage({ content, response_metadata: { finish_reason: 'length' } }));
+    await expect(generateCourseSkillJson({ LLM_MODEL: '@cf/fixture' } as Bindings, 'owner', { ...options, name: 'skill_draft_audit', schema, structuredOutput: true })).rejects.toThrow('SKILL_MODEL_GENERATION_FAILED');
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+    expect(mocks.invoke.mock.calls[0][1].response_format).toEqual({ type: 'json_schema', json_schema: { name: 'skill_draft_audit', strict: true, schema: z.toJSONSchema(schema) } });
+    expect(mocks.finish).toHaveBeenCalledWith(expect.anything(), expect.anything(), { status: 'failed', quotaConsumed: true });
+    expect(mocks.release).not.toHaveBeenCalled();
+  });
   it.each(['toolong', 'BAD'])('lowers incompatible grammar lengths but retains full server validation for %s', async slug => {
     const schema = z.object({ proposals: z.array(z.object({ slug: z.string().regex(/^[a-z]+$/).min(1).max(4) }).strict()), issues: z.array(z.string().max(20)) }).strict();
     const original = z.toJSONSchema(schema);
