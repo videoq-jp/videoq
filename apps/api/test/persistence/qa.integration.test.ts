@@ -65,6 +65,51 @@ for(const backend of ['d1','postgres'] as const){
   const ltiList = (principal: LtiQaPrincipal, input = {}) => listQuestions(env, principal,
     qaInputSchemas['qa.list'].parse({ courseId: 1, ...input }));
 
+  it.each([
+    ['qa.ask','title'],['qa.ask','body'],['qa.updateQuestion','title'],['qa.updateQuestion','body'],['qa.reply','body'],['qa.updateReply','body'],
+  ] as const)('rejects NUL in direct %s %s without changing stored posts',async(name,field)=>{
+    const questionId=await ask('alice'),replyId=await reply(questionId,'alice');
+    const before=await get('alice',questionId);
+    const input={courseId:1,questionId,replyId,videoId:10,title:'Valid title',body:'Valid body',[field]:'Text'+String.fromCharCode(0)+'suffix'};
+    await expect(mutate(env,'alice',{name,input})).rejects.toMatchObject({kind:'validation'});
+    expect(await get('alice',questionId)).toEqual(before);
+    expect((await list('alice')).total).toBe(1);
+    expect((await pool.query('SELECT count(*)::int AS n FROM course_question_replies')).rows[0].n).toBe(1);
+  });
+
+  it('preserves Unicode and newlines across question and reply creation and updates',async()=>{
+    const text='日本語 😀 e\u0301\n本文';
+    const questionId=await ask('alice',{title:` ${text} `,body:` ${text} `});
+    expect((await get('alice',questionId)).question).toMatchObject({title:text,body:text});
+    const updated=` ${text}\n追記 `;
+    await mutate(env,'alice',{name:'qa.updateQuestion',input:{courseId:1,questionId,title:updated,body:updated}});
+    expect((await get('alice',questionId)).question).toMatchObject({title:updated,body:updated});
+    const result=await mutate(env,'alice',{name:'qa.reply',input:{courseId:1,questionId,body:text}});
+    if(!('id'in result))throw new Error('Missing reply');
+    expect((await get('alice',questionId)).replies[0].body).toBe(text);
+    await mutate(env,'alice',{name:'qa.updateReply',input:{courseId:1,questionId,replyId:result.id,body:updated}});
+    expect((await get('alice',questionId)).replies[0].body).toBe(updated);
+  });
+
+  it('rejects NUL over authenticated HTTP without partial writes',async()=>{
+    const questionId=await ask('alice'),replyId=await reply(questionId,'alice');
+    const before=await get('alice',questionId);
+    await pool.query("UPDATE users SET email_verified=true,password_reset_required=false WHERE id='alice'");
+    await pool.query("INSERT INTO account(id,account_id,user_id,provider_id,password) VALUES('account','alice','alice','credential',$1)",[await hashPassword('Qa-contract-password-123')]);
+    const signedIn=await signIn();expect(signedIn.status).toBe(200);
+    const cookie=signedIn.headers.getSetCookie().map(value=>value.split(';')[0]).join('; '),app=createApp();
+    for(const [name,field] of [
+      ['qa.ask','title'],['qa.ask','body'],['qa.updateQuestion','title'],['qa.updateQuestion','body'],['qa.reply','body'],['qa.updateReply','body'],
+    ] as const){
+      const input={courseId:1,questionId,replyId,videoId:10,title:'Valid title',body:'Valid body',[field]:'Text'+String.fromCharCode(0)+'suffix'};
+      const response=await app.request('/api/trpc/'+name,{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify(input)},env);
+      expect(response.status).toBe(400);
+    }
+    expect(await get('alice',questionId)).toEqual(before);
+    expect((await list('alice')).total).toBe(1);
+    expect((await pool.query('SELECT count(*)::int AS n FROM course_question_replies')).rows[0].n).toBe(1);
+  });
+
   it('keeps Moodle authority across disconnects and blocks native invitations and public shares', async () => {
     await pool.query('UPDATE video_courses SET managed_by_lms=true WHERE id=1');
     const id = await ltiAsk();
