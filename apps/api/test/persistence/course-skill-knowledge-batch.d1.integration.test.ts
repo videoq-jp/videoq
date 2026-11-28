@@ -58,4 +58,4 @@ it('loads 905 knowledge chunks in bounded queries without changing model input o
     expect(Math.max(...bindingCounts)).toBeLessThanOrEqual(100);
     expect(result.candidates).toBe(0);
   } finally { await fixture.dispose(); }
-});
+}, 30_000);

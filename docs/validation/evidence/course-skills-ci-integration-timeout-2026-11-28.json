@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "failedRun": 46093895842,
+  "failedHead": "21835f34fab7d7b8c333bf07d507b3ede2dd5eab",
+  "job": 140820834342,
+  "failure": "Test timed out in5000ms",
+  "test": "test/persistence/course-skill-knowledge-batch.d1.integration.test.ts",
+  "ciResult": {
+    "passed": 5641,
+    "failed": 1,
+    "skipped": 95
+  },
+  "change": {
+    "testTimeoutMsBefore": 5000,
+    "testTimeoutMsAfter": 30000,
+    "assertionsUnchanged": true,
+    "productionCodeChanged": false
+  },
+  "localValidation": {
+    "files": 2,
+    "passed": 6,
+    "lint": "passed"
+  },
+  "logSha256": "df65f9a8584bff416441e2a7f78c477c66aefa5b4495f7420d7815409a373bd3",
+  "testSha256": "5a8c418645c775cc4cf249ff1f33cfa83739d5a4e15ad2812b39efe9af304485",
+  "newModelCalls": 0,
+  "productionWrites": 0,
+  "published": false
+}
