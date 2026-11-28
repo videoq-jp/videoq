@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   supply-chain:
-    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1') }}
     name: Supply Chain Security
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -84,7 +84,7 @@ jobs:
       - run: npm run audit:signatures -- --prefix infra/db-maintenance/runtime
 
   workflow-security:
-    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1') }}
     name: Deployment Security Tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -114,7 +114,7 @@ jobs:
     name: CI Success
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1') }}
     needs: [changes, delivery-regression, lab-gitops, supply-chain, workflow-security, container-result, terraform-result, operations-fixture, onprem-validation, local-inference-basic, moodle-installed, hono-test, worker-test, frontend-lint, frontend-test, frontend-coverage, frontend-build, frontend-storybook, docs-build]
     steps:
       - name: Require every selected CI job to pass
@@ -142,7 +142,7 @@ jobs:
   # Always required: message producers/storage policy can change outside narrow
   # path lists, and a skipped compatibility gate must never authorize rollout.
   delivery-regression:
-    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1') }}
     uses: ./.github/workflows/delivery-regression.yml
 
   lab-gitops:
@@ -151,7 +151,7 @@ jobs:
     uses: ./.github/workflows/lab-gitops.yml
 
   changes:
-    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    if: ${{ !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1') }}
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
@@ -969,7 +969,7 @@ jobs:
   container-result:
     name: Container Validation
     needs: [changes, container-checks]
-    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -990,7 +990,7 @@ jobs:
   terraform-result:
     name: Terraform Plan
     needs: [changes, terraform-checks]
-    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1') }}
+    if: ${{ always() && !(github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -1059,13 +1059,13 @@ jobs:
           WORKFLOW_SHA: ${{ github.workflow_sha }}
         run: |
           test "$GITHUB_REPOSITORY" = videoq-jp/videoq
-          test "$GITHUB_REF" = refs/tags/videoq-whisper-candidate-publisher-20261125-v1
+          test "$GITHUB_REF" = refs/tags/videoq-whisper-candidate-publisher-20261128-v1
           [[ "$REVIEWED_REVISION" =~ ^[a-f0-9]{40}$ ]]
           test "$REVIEWED_REVISION" = "$GITHUB_SHA"
           test "$REVIEWED_REVISION" = "$WORKFLOW_SHA"
   whisper-candidate-publish:
     needs: whisper-candidate-dispatch
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1'
     permissions:
       contents: read
       actions: read

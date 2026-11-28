@@ -6,7 +6,7 @@ permissions:
   actions: read
 jobs:
   source:
-    if: github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261125-v1'
+    if: github.repository == 'videoq-jp/videoq' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'whisper-candidate-publish' && github.ref == 'refs/tags/videoq-whisper-candidate-publisher-20261128-v1'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -24,11 +24,11 @@ jobs:
           [[ "$REVIEWED_REVISION" =~ ^[a-f0-9]{40}$ ]]
           test "$REVIEWED_REVISION" = "$GITHUB_SHA"
           test "$REVIEWED_REVISION" = "$WORKFLOW_SHA"
-          actual=$(gh api repos/videoq-jp/videoq/git/ref/tags/videoq-whisper-candidate-publisher-20261125-v1 --jq '.object.type+" "+.object.sha')
+          actual=$(gh api repos/videoq-jp/videoq/git/ref/tags/videoq-whisper-candidate-publisher-20261128-v1 --jq '.object.type+" "+.object.sha')
           test "$actual" = "commit $REVIEWED_REVISION"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ae96bf7ea3db11be1aeb68963e0f9b32265bd428
+          ref: 990c29b7568dc96e61698b37f5e28e7ba3ac3b18
           sparse-checkout: .github/scripts
           persist-credentials: false
       - name: Authorize the fixed successful native run and immutable artifact IDs
@@ -51,13 +51,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ae96bf7ea3db11be1aeb68963e0f9b32265bd428
+          ref: 990c29b7568dc96e61698b37f5e28e7ba3ac3b18
           sparse-checkout: .github/scripts
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           github-token: ${{ github.token }}
-          run-id: 45538276974
+          run-id: 46150445031
           artifact-ids: ${{ matrix.artifact }}
           path: candidate
           merge-multiple: true
@@ -87,13 +87,13 @@ jobs:
       # Never check out or execute the candidate application/PR source in this job.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ae96bf7ea3db11be1aeb68963e0f9b32265bd428
+          ref: 990c29b7568dc96e61698b37f5e28e7ba3ac3b18
           sparse-checkout: .github/scripts
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           github-token: ${{ github.token }}
-          run-id: 45538276974
+          run-id: 46150445031
           artifact-ids: ${{ matrix.artifact }}
           path: candidate
           merge-multiple: true
@@ -148,7 +148,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Reviewed native source, containing only the runtime verification interface.
-          ref: 83aa79e99b14cbdd15d2647a724b5f2c221f26e3
+          ref: 5101d2adb949ee2ef1d88faa1c3af13030d957da
           persist-credentials: false
       - name: Pull the exact published digest anonymously and verify native runtime
         env:
