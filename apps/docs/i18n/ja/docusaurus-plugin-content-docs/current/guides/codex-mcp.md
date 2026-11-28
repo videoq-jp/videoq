@@ -22,7 +22,8 @@ startup_timeout_sec = 30
 tool_timeout_sec = 180
 enabled_tools = [
   "list_courses", "get_course_info", "search_scenes", "read_video_window",
-  "overview_video", "skim_video", "inspect_clip", "focus_clip"
+  "overview_video", "skim_video", "inspect_clip", "focus_clip",
+  "list_course_skills", "get_course_skill", "read_course_skill_resource"
 ]
 ```
 
@@ -67,6 +68,25 @@ codex exec --ephemeral --skip-git-repo-check --sandbox read-only --json \
 ```
 
 `--json`ではツール呼び出しや利用量のイベントがJSON Linesで出力されます。講座情報、字幕、映像観察の内容を含むことがあるため、保存した出力は非公開で管理してください。`--ephemeral`はCodexのセッション保存を省きますが、自分で保存した出力は削除しません。
+
+## 公開済みの講座Skillsを使う
+
+講座Skillsが有効なVideoQ環境では、所有者による生成・レビュー・公開と配信設定が必要です。一覧が空でも、知識がないとは限りません。未公開や権限不足の場合もあります。
+
+MCP Skills拡張に対応していないCodexでは、上の許可リストにある3つのSkills取得ツールと、小さなローカルSkill `videoq-course-skills` を使います。利用するVideoQと同じ版のソースを取得したディレクトリから、対象プロジェクトへ次のようにコピーします。`/path/to/project`は自分のプロジェクトに置き換えてください。
+
+```bash
+mkdir -p /path/to/project/.agents/skills
+cp -R integrations/codex/skills/videoq-course-skills /path/to/project/.agents/skills/
+```
+
+そのプロジェクトでCodexを再起動し、次のように依頼します。
+
+> $videoq-course-skills を使って、講座42の公開済み知識を今回の作業に適用してください。
+
+ローカルSkillに入るのは取得手順だけです。公開メタ情報から選び、必要な本文と出典をMCP経由で取得します。講座知識そのものをローカルに複製せず、取得のたびにアクセス権と根拠動画の有効性を確認します。`SKILL_UNAVAILABLE`が返った版の利用は停止します。すでに会話へ読み込んだ内容をサーバーから消すことはできません。
+
+この経路は標準ツールによる互換方式です。Codexが`skills/list`を扱い、講座内の全Skillをネイティブの一覧へ自動登録するという意味ではありません。
 
 ## 上限とトラブルへの対処
 

@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-27",
+  "courseId": 51,
+  "videoIds": [
+    578,
+    580
+  ],
+  "productionDataChanged": false,
+  "promptVersion": "course-knowledge-v9",
+  "trials": [
+    {
+      "reportSha256": "1875a1eceeb3e9f07abc056a37f165bd78d4fcc305fc660ea0c4937bac824679",
+      "modelCalls": 9,
+      "resumedChunks": 9,
+      "knowledgeChunks": 10,
+      "state": "queued",
+      "stopped": true,
+      "stopReason": "stop_file"
+    },
+    {
+      "reportSha256": "27ba88f838fe2a6c50475072a4fc7cb6551a1b924dd74a44949eb36ac9d17c74",
+      "modelCalls": 7,
+      "resumedChunks": 10,
+      "knowledgeChunks": 11,
+      "state": "failed",
+      "stopped": false,
+      "stopReason": null
+    }
+  ],
+  "finding": {
+    "httpRequestsSucceeded": true,
+    "missingRequiredFactFields": [
+      "exceptions",
+      "requiresVisualEvidence",
+      "versionContext"
+    ],
+    "invalidOutputRejected": true,
+    "serverValidationRelaxed": false
+  },
+  "fix": {
+    "promptVersion": "course-knowledge-v10",
+    "perFactRequiredFieldsExplicit": true,
+    "previousPromptCachesNotReused": true
+  }
+}

@@ -45,6 +45,27 @@ export function selectClipFrames<T extends { timestamp_seconds: number }>(frames
   return sampleByTime(frames.filter(frame => frame.timestamp_seconds >= start && frame.timestamp_seconds <= end), frame => frame.timestamp_seconds, limit);
 }
 
+/** Share a bounded image budget across evidence groups, using interior samples. */
+export function sampleByTimeGroups<T>(values: readonly T[], time: (value: T) => number, groups: readonly (readonly { start: number; end: number }[])[], limit: number): T[] {
+  if (limit <= 0) return [];
+  const candidates = groups.map(windows => values.filter(value => windows.some(w => time(value) >= w.start && time(value) <= w.end))).filter(group => group.length);
+  if (!candidates.length) return [];
+  const selected = new Set<T>();
+  for (const [index, group] of candidates.entries()) {
+    const quota = Math.floor(limit / candidates.length) + (index < limit % candidates.length ? 1 : 0);
+    const start = time(group[0]), end = time(group.at(-1)!);
+    // Endpoints often coincide with slide transitions. Prefer the interior of
+    // each fact's window; later validation still checks the cited image itself.
+    for (let i = 0; i < quota; i++) {
+      const target = start + (end - start) * (i + 0.5) / quota;
+      selected.add(group.reduce((best, value) => Math.abs(time(value) - target) < Math.abs(time(best) - target) ? value : best));
+    }
+  }
+  const eligible = new Set(candidates.flat());
+  for (const value of sampleByTime(values.filter(value => eligible.has(value) && !selected.has(value)), time, limit - selected.size)) selected.add(value);
+  return values.filter(value => selected.has(value));
+}
+
 export function assertFocusInterval(start: number, end: number): void {
   if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end - start > MAX_FOCUS_INTERVAL_SECONDS) {
     throw new Error(`Focus requires a positive interval of at most ${MAX_FOCUS_INTERVAL_SECONDS} seconds`);

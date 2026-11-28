@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "testedImplementationCommit": "936e93375314ea0339fd922690a05e773b4026ea",
+  "recordedAt": "2026-11-27T15:48:58.819057+00:00",
+  "runtime": {
+    "node": "26.13.1",
+    "python": "3.15.0",
+    "vitest": "5.0.5"
+  },
+  "initialFullUnitAttempt": {
+    "exitCode": 1,
+    "passed": 3927,
+    "failed": 3,
+    "skipped": 1605,
+    "causes": [
+      "An older Python was selected before the supported runtime",
+      "Restrictive shell umask changed a deliberately public-file fixture to private, allowing a synthetic database metadata read attempt"
+    ],
+    "remoteReadAttempt": {
+      "operation": "D1 database metadata",
+      "target": "nonexistent synthetic database ID",
+      "result": "not found",
+      "writes": 0
+    },
+    "log": {
+      "sha256": "d24905d0b08862e81d5fe13c0aed90900c09cbb25e18739904909134d47f56ee",
+      "privateLogRetained": true
+    }
+  },
+  "environmentRecheck": {
+    "filesPassed": 3,
+    "testsPassed": 5,
+    "exitCode": 0,
+    "applicationCodeChanged": false,
+    "log": {
+      "sha256": "cd9254e7b3a25c429650ed94ae785cf58f163dd6dffcf19a0c4b9fb926d2a78a",
+      "privateLogRetained": true
+    }
+  },
+  "uncappedSupportedRuntimeAttempt": {
+    "status": "cancelled with SIGINT after three test-case timeouts",
+    "reason": "Use the same worker limit as CI; no test timeout was increased",
+    "knownTimeouts": 3,
+    "log": {
+      "sha256": "15763994a7681512790055face6aa8283dffc4d166aa3911092e34f2067f630f",
+      "privateLogRetained": true
+    }
+  },
+  "isolatedCourseInputRecheck": {
+    "filesPassed": 1,
+    "testsPassed": 20,
+    "exitCode": 0,
+    "durationSeconds": 37.14,
+    "evidence": "Observed completed Vitest process"
+  },
+  "finalFullUnit": {
+    "command": "npm run test:unit -- --maxWorkers=2",
+    "exitCode": 0,
+    "filesPassed": 396,
+    "filesSkipped": 129,
+    "passed": 3930,
+    "failed": 0,
+    "skipped": 1605,
+    "durationSeconds": 369.07,
+    "pythonSelection": "Supported Homebrew Python precedes pyenv shims",
+    "permissions": "Default shell permissions preserve the deliberately public-file fixture",
+    "log": {
+      "sha256": "35558ae487f7acb7faac78b877f4270374b1485e04b8f9bb8a2ee86e2c8559a6",
+      "privateLogRetained": true
+    }
+  },
+  "nativeWorkers": {
+    "command": "npm run test:workers",
+    "exitCode": 0,
+    "filesPassed": 16,
+    "passed": 118,
+    "durationSeconds": 74.27,
+    "evidence": "Observed completed Vitest process",
+    "remoteBindings": false
+  },
+  "typecheck": {
+    "command": "npm run typecheck --workspace @videoq/api",
+    "exitCode": 0,
+    "configurations": [
+      "tsconfig.application.json",
+      "tsconfig.json --noEmit",
+      "tsconfig.d1-tools.json"
+    ],
+    "evidence": "Observed completed process"
+  },
+  "limitations": [
+    "Skipped tests are not claimed as covered",
+    "This run does not replace the optional PostgreSQL or remote rehearsal matrices",
+    "GitHub CI remains pending",
+    "Full course generation and semantic image citation quality remain incomplete",
+    "No deployment, merge, or production publication"
+  ]
+}

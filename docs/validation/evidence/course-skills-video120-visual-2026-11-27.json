@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "scope": {
+    "videoId": 120,
+    "uploaded": true,
+    "existingCacheReused": true,
+    "availableOverviewFrames": 236,
+    "sampledFrames": 8,
+    "sourceExtractionRepeated": false,
+    "productionWrites": 0,
+    "published": false
+  },
+  "initialGeneration": {
+    "provider": "Workers AI",
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "calls": 4,
+    "subtitleChunks": 3,
+    "visualChunks": 1,
+    "visualFactsWithReferences": 4
+  },
+  "initialAiReview": {
+    "decision": "ai-reviewed",
+    "humanAssessmentRecorded": false,
+    "model": "gpt-6.1-sol",
+    "clientVersion": "codex-cli 0.167.1",
+    "freshProcesses": 1,
+    "toolCalls": 0,
+    "elapsedMs": 27783,
+    "usage": [
+      {
+        "input_tokens": 23629,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 1148,
+        "reasoning_output_tokens": 105
+      }
+    ],
+    "claimsSupported": 6,
+    "claimsTotal": 6,
+    "visualObservationsSupported": 2,
+    "visualObservationsUnverifiable": 2,
+    "visualObservationsApplicable": 4,
+    "requestedLanguageMet": 0,
+    "packetSha256": "51b0814ecbe611675128bc90b2982cabff00197b680786643b2d148daed7021d",
+    "protocolSha256": "4e124dbd52a290c8c38a93ce9508c077f679fdefcf2e31c927a7d4853a3aff5f",
+    "resultSha256": "2795828b83afdebf1771dee086ec6ee223b5f7cbbde6b7796552533a4e14f625",
+    "eventsSha256": "f5e5b2153479a59fbb2815a1af74b465357a38f6ef250ab7c0dd56b95b304afa"
+  },
+  "correction": {
+    "visualPolicyVersion": "cue-window-v1",
+    "perFactCueMarginMs": 2000,
+    "oldCacheReused": false,
+    "oldCacheDeleted": false,
+    "rejectedOldVisualReferences": 2,
+    "subtitleChunksRevalidated": 3,
+    "quotaBeforeNextProductionPathCheck": 6,
+    "schemaProbe": {
+      "id": "7d918d43-eaaa-4893-aca7-3c08cd8a12d4",
+      "calls": 1,
+      "schemaPassed": true,
+      "timePassed": true,
+      "before": {
+        "used_ai_answers": 5
+      },
+      "after": {
+        "used_ai_answers": 6
+      },
+      "guardChecks": 3,
+      "productionWrites": 0,
+      "cacheWrites": 0,
+      "localRuntimeClosed": true
+    }
+  },
+  "limitations": [
+    "AI review is not human review or proof of general visual grounding accuracy.",
+    "Temporal matching rejects unrelated times but cannot prove an observation is visually true.",
+    "The first sample and judgments are preserved; fixes and subsequent generation are a separate post-hoc validation, not replacements for the original result.",
+    "Private local validation used bounded reads of exact versioned R2 packs through a read-only local bucket adapter; the Cloudflare object REST endpoint ignored Range. This is not a production R2-binding transport test.",
+    "Whole-video and whole-course generation quality remain incomplete."
+  ],
+  "correctedProductionPathSample": {
+    "generationInvocationId": "787452aa-9cbb-467c-9463-0c8cdf40d752",
+    "meteredCumulativeCalls": 7,
+    "newPolicyVisualChunks": 1,
+    "legacyVisualChunksRetained": 1,
+    "sourceAndTemporalValidationPassed": true,
+    "imageBytesPersistedInKnowledge": false
+  },
+  "correctedAiReview": {
+    "decision": "ai-reviewed",
+    "humanAssessmentRecorded": false,
+    "model": "gpt-6.1-sol",
+    "clientVersion": "codex-cli 0.167.1",
+    "freshProcesses": 1,
+    "toolCalls": 0,
+    "elapsedMs": 24726,
+    "usage": [
+      {
+        "input_tokens": 23909,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 983,
+        "reasoning_output_tokens": 111
+      }
+    ],
+    "claimsSupported": 5,
+    "claimsUnverifiable": 1,
+    "claimsTotal": 6,
+    "visualObservationsSupported": 3,
+    "visualObservationsUnsupported": 1,
+    "visualObservationsApplicable": 4,
+    "requestedLanguageMet": 6,
+    "packetSha256": "f20f432d406dd5f36c8c8cf9823e06ee8840a3c7323851011bf893750db09256",
+    "protocolSha256": "f44691fb5246fd8655cf129cea909ff5da0768fdb199f3e45b1488ddfc931bdd",
+    "resultSha256": "eb3fa6b995c14fec497591ee0d892039cea98bf3e092ab3e6d87b6933cf89a88",
+    "eventsSha256": "9dad5cef4c51ab6cee469bb6bb7edd6a03867134e5e046cdab11c95abdc43dad",
+    "method": "Same rubric, a new generation and fresh grading process after correction. Initial results retained; not a causal or population-level improvement estimate."
+  },
+  "remainingQualityIssues": [
+    "A concrete example was generalized beyond what its cited subtitle establishes.",
+    "One temporally valid frame shows a different slide and does not support its generated visual observation.",
+    "Bounded uniform sampling can miss an important demonstration despite a prepared cache."
+  ],
+  "videoExtractionProgress": {
+    "videosProcessed": 1,
+    "videosTotal": 1,
+    "phase": "planning",
+    "meteredCumulativeCalls": 9,
+    "storedSubtitleChunks": 3,
+    "storedVisualChunksUnderNewPolicy": 2,
+    "legacyVisualChunksRetained": 1,
+    "published": false
+  },
+  "groupedSelectionValidation": {
+    "selection": {
+      "version": 1,
+      "videoId": 120,
+      "chunkIndex": 1,
+      "limit": 8,
+      "oldTimestampsMs": [
+        612000,
+        693000,
+        774000,
+        856000,
+        929000,
+        1010000,
+        1091000,
+        1172000
+      ],
+      "selectedTimestampsMs": [
+        634000,
+        686000,
+        944000,
+        966000,
+        996000,
+        1003000,
+        1114000,
+        1150000
+      ],
+      "oldCoveragePerFact": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "newCoveragePerFact": [
+        2,
+        4,
+        3,
+        2
+      ],
+      "groups": [
+        [
+          {
+            "start": 607,
+            "end": 714
+          }
+        ],
+        [
+          {
+            "start": 911,
+            "end": 951
+          },
+          {
+            "start": 947,
+            "end": 1028
+          }
+        ],
+        [
+          {
+            "start": 947,
+            "end": 1028
+          }
+        ],
+        [
+          {
+            "start": 1095,
+            "end": 1177
+          }
+        ]
+      ],
+      "modelCalls": 0,
+      "productionWrites": 0,
+      "selectorSha256": "b3ba26c050fcbc0a55a3e764db25e763ea305345cf38bab8e651a1527039295b"
+    },
+    "generationInvocationId": "6cf51a22-be2a-40d5-910c-5bbcf816f765",
+    "explicitLocalRebuild": true,
+    "priorJobsAndCachePreserved": true,
+    "meteredCumulativeCalls": 10,
+    "newVisualInterpretations": 1,
+    "aiReview": {
+      "decision": "ai-reviewed",
+      "model": "gpt-6.1-sol",
+      "clientVersion": "codex-cli 0.167.1",
+      "freshProcesses": 1,
+      "toolCalls": 0,
+      "elapsedMs": 24955,
+      "usage": [
+        {
+          "input_tokens": 23862,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 952,
+          "reasoning_output_tokens": 153
+        }
+      ],
+      "claimsSupported": 5,
+      "claimsUnverifiable": 1,
+      "claimsTotal": 6,
+      "visualObservationsSupported": 3,
+      "visualObservationsUnsupported": 1,
+      "visualObservationsApplicable": 4,
+      "requestedLanguageMet": 6,
+      "packetSha256": "15e56587e58be05fc45aa594a1dfdaa54c81da5a3116dcdd6c7ec80bbbd512a5",
+      "protocolSha256": "3e4d149f9602e36424afc43d1b6e03f39a0a33a28e390285b146a86317c7b27e",
+      "resultSha256": "8c227c606be58fcf0460c0353274008f6fc62e6056bac240144a8921a439b818",
+      "eventsSha256": "f7a591fc6a2bb3c547b192e02e50ca6a76f3719b8fcb0605046e06629b5f78b5"
+    },
+    "interpretation": "The previously missed quantization demonstration is now covered. The overall sample score is unchanged; another claim cites the wrong supplied frame. This is a post-hoc functional/quality sample, not an efficacy estimate. No original trial or judgment was overwritten."
+  },
+  "sameModelAuditDiagnostic": {
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "sameAsGenerator": true,
+    "independentAssessment": false,
+    "calls": 1,
+    "schemaPassed": true,
+    "sourceGuardChecks": 3,
+    "before": {
+      "used_ai_answers": 10
+    },
+    "after": {
+      "used_ai_answers": 11
+    },
+    "knownBadFactIndex": 4,
+    "claimAccepted": true,
+    "visualObservationAccepted": true,
+    "knownFailureDetected": false,
+    "integratedIntoGeneration": false,
+    "cacheWrites": 0,
+    "productionWrites": 0,
+    "localRuntimeClosed": true,
+    "packetSha256": "15e56587e58be05fc45aa594a1dfdaa54c81da5a3116dcdd6c7ec80bbbd512a5",
+    "diagnosticRunnerSha256": "0be5ead0d5eb9425df52d94a8f4315d4fba8d88a91dbeee6b3773a007c7efe74",
+    "verdictSha256": "4129c8558122f13fd33879677be5142448750da289243eea6de52b85f650f1d7",
+    "method": "One targeted post-hoc diagnostic on the preserved grouped sample; no prompt retry. Excluded from the independent Sol evaluation and original comparison."
+  }
+}

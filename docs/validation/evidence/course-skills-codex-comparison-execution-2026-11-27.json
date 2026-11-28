@@ -1,0 +1,41 @@
+{
+  "courseId": 51,
+  "frozenVideos": [
+    578,
+    580
+  ],
+  "approvedSkillCount": 2,
+  "implementation": "7b4d3c8909e69142eea38ad44120f6e8251413c7",
+  "executorVersion": "codex-cli 0.167.1",
+  "model": "gpt-6.1-terra",
+  "reasoning": "medium",
+  "contextWindow": 32768,
+  "timeoutMs": 180000,
+  "taskCount": 10,
+  "repetitions": 2,
+  "plannedTrials": 60,
+  "completedTrials": 60,
+  "validTrials": 60,
+  "codeTrials": 48,
+  "groundingTrials": 12,
+  "originalFunctionalPasses": 48,
+  "independentFunctionalPasses": 48,
+  "verificationDiscrepancies": 0,
+  "inputsVerifiedAfterEveryTrial": true,
+  "reviewPackets": 60,
+  "humanAssessmentCompleted": false,
+  "effectImprovementEstablished": false,
+  "productionWrites": 0,
+  "monetaryCostUsd": null,
+  "cohortManifestHash": "b3a8c5148f2f845eb0bcb7200a127c3c786b29e8a679cf1dd82a5333bd8f42e7",
+  "cohortSha256": "977ccdd080674ad852ce2fb078b15183b5b7a9384a0610c3cf46fa9e8bda56f0",
+  "verificationSha256": "c8f64946e02932925be65837fb5d38672a540dd0664739ec8760efdb04b830d4",
+  "reviewPacketSha256": "5dfadd3892f7e03e16c3fdb8b78abaf14d57d0decb97c0498451d03464618877",
+  "limitations": [
+    "Two frozen videos and two owner-reviewed local publications only; not the entire course.",
+    "All code trials passed both checks, so this benchmark does not establish an incremental functional-success benefit.",
+    "Human assessment of applicability, unsupported claims and course adherence is pending.",
+    "Assigned labels and machine scores are masked, but prose and citations may suggest tool use.",
+    "Existing CLI-plan monetary cost is unknown."
+  ]
+}

@@ -19,6 +19,8 @@ import { MANAGEMENT_WRITE_TOOLS, type ManagementToolName } from "../../tools/man
 import { toErrorBody } from "../../shared/errors";
 import type { AppEnv } from "../../types/bindings";
 import { createVideoqMcpServer } from "./server";
+import { isModernMcpRequest, MODERN_MCP_VERSION } from './modern-http';
+import { dispatchCourseSkillsMcp } from '../../integrations/course-skills-mcp';
 
 /**
  * MCP Streamable HTTP（@hono/mcp）。
@@ -119,6 +121,18 @@ const normalizeMcpAccept = createMiddleware<AppEnv>(async (c, next) => {
 mcpRoutes.use("*", normalizeMcpAccept, mcpAuth, requireScope("read"));
 
 mcpRoutes.all("/", async (c) => {
+  if (c.req.header('MCP-Protocol-Version') === MODERN_MCP_VERSION && c.req.method !== 'POST') return c.body(null, 405);
+  const body: unknown = c.req.method === 'POST' ? await c.req.json().catch(() => undefined) : undefined;
+  if (isModernMcpRequest(body, c.req.raw.headers)) {
+    const origin = c.req.header('Origin');
+    const allowed = new Set([new URL(c.req.url).origin, 'https://claude.ai', 'https://chatgpt.com', ...(c.env.CORS_ALLOW_ORIGIN ?? '').split(',').map(s => s.trim()).filter(Boolean)]);
+    if (origin && !allowed.has(origin)) return c.body(null, 403);
+    const result = await dispatchCourseSkillsMcp(body, c.req.raw.headers, {
+      env: c.env, signal: c.req.raw.signal, userId: c.var.userId!, authVia: c.var.authVia, requestId: c.var.requestId,
+      canWrite: isScopeAllowed(c.var.apiKeyAccessLevel ?? '', 'write'),
+    });
+    return c.newResponse(JSON.stringify(result.body), result.status, { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' });
+  }
   const transport = new StreamableHTTPTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

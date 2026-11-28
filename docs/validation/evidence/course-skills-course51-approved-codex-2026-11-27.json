@@ -1,0 +1,63 @@
+{
+  "implementation": "7b4d3c8909e69142eea38ad44120f6e8251413c7",
+  "courseId": 51,
+  "frozenVideos": [
+    578,
+    580
+  ],
+  "ownerApproved": true,
+  "localOnly": true,
+  "publishedVersions": 2,
+  "codexVersion": "codex-cli 0.167.1",
+  "retrieval": {
+    "ready": true,
+    "calls": [
+      {
+        "name": "list_course_skills",
+        "success": true,
+        "durationMs": 26
+      },
+      {
+        "name": "get_course_skill",
+        "success": true,
+        "durationMs": 16
+      },
+      {
+        "name": "read_course_skill_resource",
+        "success": true,
+        "durationMs": 41
+      },
+      {
+        "name": "read_course_skill_resource",
+        "success": true,
+        "durationMs": 21
+      }
+    ],
+    "search": {
+      "embeddingCalls": 0,
+      "vectorQueries": 0,
+      "inputTokens": 0,
+      "failedRequests": 0
+    }
+  },
+  "revocation": {
+    "ready": true,
+    "checks": {
+      "initialPublications": 2,
+      "removedPublications": 0,
+      "removedDenied": true,
+      "readdedDenied": true,
+      "clientCompleted": true,
+      "manifestRejected": true,
+      "resourceRejections": 2
+    }
+  },
+  "productionWrites": 0,
+  "notEffectComparisonResults": true,
+  "limitation": "Exact owner-reviewed artifacts were imported locally; this does not assert fresh generation through the production UI or recall of already downloaded content.",
+  "artifactSha256": {
+    "videoq-course51-owner-approved.json": "d3e40cfe4cb7ba1c8c1786a271bcf397fd29bae0a479f259916f5d9476f55e64",
+    "videoq-course51-approved-codex-retrieval.json": "db4e31cde651988b0521ab2bcc9c539fd701c414b0247568d8f3ec61ec7b6072",
+    "videoq-course51-approved-revocation.json": "57a47fd4744075ffd6056c64f9a634c2393fe443752a485700ee5400b64381c0"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "ready": true,
+  "modelReruns": 0,
+  "originalResultSha256": "f227db4ed8139ca7c4375e926d598fcec46e22c00e1a41f26af873557c5b2ba9",
+  "originalVerifierReady": false,
+  "verifierCorrection": "Initial check wrongly classified normal workspace file_change events as unexpected. Revalidation permits them only within the owned workspace; original record retained. Paths are canonicalized to account for macOS /var to /private/var aliases.",
+  "clientVersion": "codex-cli 0.167.1",
+  "model": "gpt-6.1-terra",
+  "taskId": "01-invoice-seams",
+  "explicitUse": true,
+  "effectTrial": false,
+  "originalCohortModified": false,
+  "productionWrites": 0,
+  "bodyAndReferenceBytesVerified": [
+    {
+      "path": "SKILL.md",
+      "sha256": "d36368e90cde83230f7b26e73a88bc234de1f2d769ad54c77c793aa843b492ed"
+    },
+    {
+      "path": "references/sources.md",
+      "sha256": "7a1194559f9ea64013448ff3b0a2f0674af2db1f4bd4f2c687ae8995688024df"
+    }
+  ],
+  "changesWithinOwnedWorkspace": true,
+  "forbiddenOperations": 0,
+  "functional": true,
+  "citedVideoId": 578,
+  "citedRangesMatchSource": true,
+  "hypotheticalApplicationDistinguished": true,
+  "elapsedMs": 105185,
+  "searchCalls": 0,
+  "successfulCalls": [
+    "list_course_skills",
+    "get_course_skill",
+    "read_course_skill_resource",
+    "read_course_skill_resource"
+  ],
+  "verificationSha256": "87326558e98cbd4ca13706e221e66038bb2f9fbc1bef95554cb5060f6cff2ee9",
+  "verificationScriptSha256": "c62f31ed199d9abbbb54d43f8dee3553df363b2c72610ef041784e92fca7e0ac",
+  "applicationScriptSha256": "cf23dc7f7f8364084cf94cf267b52cf40d1e5d6f4c566cd340190ee5039cfa5d",
+  "notPopulationQualityEvidence": true,
+  "notNaturalDiscoveryComparison": true,
+  "sharedLocalRuntimeClosed": true,
+  "runtimeCloseEvidence": "Owned execution process terminated after awaited MCP close and local fixture disposal; absent database lock is a secondary check."
+}

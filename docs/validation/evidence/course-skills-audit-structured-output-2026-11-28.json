@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "scope": "Local course51 revision4 audit transport fix; no semantic approval",
+  "model": "@cf/google/gemma-4-26b-a4b-it",
+  "baseImplementation": "34adfda5604fbebdb37357df551f5ab3ed5385f1",
+  "ownerQuota": {
+    "used_ai_answers": 1249,
+    "ai_answers_limit": 1300
+  },
+  "savedSteps": 158,
+  "failedAttempts": 2,
+  "replayedSteps": 158,
+  "nextStage": "skill_draft_audit",
+  "nextFactCount": 7,
+  "cacheProof": {
+    "expectedChunks": 905,
+    "verifiedChunks": 905,
+    "supportedFacts": 2832,
+    "heldVisualFacts": 619,
+    "complete": true,
+    "semanticApproval": false,
+    "rowsSha256": "df2d59e1f61fc44146ba953f656d02ae08b6c5ba7f1efbe2584d88da01c7e624"
+  },
+  "errors": [
+    {
+      "contentSha256": "75516663f6009af260c0001c74950cea225c9f841d4c8dfbd4712d08058ffb76",
+      "utf8Bytes": 26604,
+      "error": "Expecting ':' delimiter",
+      "position": 26604,
+      "finishReason": "length",
+      "usage": {
+        "prompt_tokens": 3403,
+        "completion_tokens": 4096,
+        "total_tokens": 7499,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "neurons": 142.64544677734375
+      }
+    },
+    {
+      "contentSha256": "75516663f6009af260c0001c74950cea225c9f841d4c8dfbd4712d08058ffb76",
+      "utf8Bytes": 26604,
+      "error": "Expecting ':' delimiter",
+      "position": 26604,
+      "finishReason": "length",
+      "usage": {
+        "prompt_tokens": 3403,
+        "completion_tokens": 4096,
+        "total_tokens": 7499,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "neurons": 142.64544677734375
+      }
+    }
+  ],
+  "regressionBefore": {
+    "failed": 1,
+    "passed": 14
+  },
+  "checksAfter": {
+    "files": 3,
+    "testsPassed": 36,
+    "typecheckConfigurations": 3,
+    "lintPassed": true
+  },
+  "runtimeFiles": [
+    {
+      "path": "apps/api/src/integrations/course-skill-drafts.ts",
+      "sha256": "da10f0050482aabc8b2bce41146ab62a420ce3a45848cfdc439333b1d499d63a"
+    },
+    {
+      "path": "apps/api/test/course-skill-plan-adapter.test.ts",
+      "sha256": "dabc95557873302d44b4a7a6b5de37f96034452f87591d73a937133453afa9ac"
+    },
+    {
+      "path": "apps/api/test/course-skill-model.test.ts",
+      "sha256": "a07080affdd7fa5794f449be09f84970b67e73dbd96d1a71c100046daf0dd466"
+    }
+  ],
+  "modelCallsThisVerification": 0,
+  "localStateUnchanged": true,
+  "productionWrites": 0,
+  "published": false,
+  "remoteCi": "pending",
+  "fullCourseGeneration": "not_complete",
+  "independentAiEvaluation": "not_started"
+}

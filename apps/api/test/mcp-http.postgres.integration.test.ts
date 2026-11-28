@@ -14,6 +14,9 @@ import { postgresRateLimitBackend } from "../src/runtime/postgres-rate-limit";
 import { withAuth } from "../src/persistence/auth";
 import { connectEvidenceMcp } from "../src/integrations/evidence-mcp";
 import type { Bindings } from "../src/types/bindings";
+import { courseSkillManagement } from '../src/integrations/course-skill-management';
+import { executeNextCourseSkillBuild } from '../src/integrations/course-skill-execution';
+import { MODERN_MCP_VERSION } from '../src/features/mcp/modern-http';
 
 // Real sockets, API-key verification, PostgreSQL, pgvector, quotas and S3 reads.
 // Only AI and object-storage responses are deterministic local HTTP fixtures.
@@ -47,6 +50,7 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
   let key: string;
   let embeddings = 0;
   let inspections = 0;
+  let skillGenerations = 0;
   let databaseCreated = false;
   const clients: Client[] = [];
 
@@ -91,6 +95,21 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
     });
     provider.post("/v1/chat/completions", async c => {
       const body = await c.req.json();
+      const name = body.response_format?.json_schema?.name as string | undefined;
+      if (name && ['course_knowledge', 'skill_task_plan', 'skill_draft', 'skill_draft_audit'].includes(name)) {
+        // Fixed provider responses exercise the real model adapter and quota
+        // ledger; this is a transport/authentication test, not semantic evidence.
+        const input = JSON.parse(body.messages.at(-1).content) as { cues: { id: string }[]; facts: { id: string; kind: string }[]; existing: { skillId: string }[]; task: { slug: string } };
+        let result: unknown;
+        switch (name) {
+          case 'course_knowledge': result = { facts: ['principle', 'procedure', 'verification'].map(kind => ({ kind, claim: 'A red line rises on the graph.', appliesWhen: [], exceptions: [], evidence: [{ cueId: input.cues[0].id }], requiresVisualEvidence: false, versionContext: { language: '', framework: '', version: '' } })), verificationFacts: [] }; break;
+          case 'skill_task_plan': result = { proposals: [{ existingSkillId: input.existing[0]?.skillId ?? null, slug: 'inspect-graph', objective: 'Inspect graph evidence', criterionFactIds: input.facts.filter(f => f.kind === 'principle').map(f => f.id), procedureFactIds: input.facts.filter(f => f.kind === 'procedure').map(f => f.id), verificationFactIds: input.facts.filter(f => f.kind === 'verification').map(f => f.id), additionalFactIds: [] }], issues: [] }; break;
+          case 'skill_draft': result = { slug: input.task.slug, title: 'Inspect graph', description: 'Inspect the graph evidence.', useWhen: ['Inspecting the graph'], doNotUseWhen: [], criteria: [{ decision: 'A red line rises on the graph.', factIds: [input.facts[0].id] }], steps: [{ action: 'A red line rises on the graph.', expectedResult: 'Graph evidence is available', factIds: [input.facts[1].id] }], exceptions: [], checks: [{ check: 'A red line rises on the graph.', factIds: [input.facts[2].id] }], examples: [] }; break;
+          default: result = { supported: true, issues: [] };
+        }
+        skillGenerations++;
+        return c.json({ id: 'skill-provider-fixture', object: 'chat.completion', created: 1, model: 'fixture-model', choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(result) } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } });
+      }
       expect(JSON.stringify(body.messages)).toContain("data:image/jpeg;base64,");
       inspections++;
       return c.json({ id: "fixture", object: "chat.completion", created: 1, model: "fixture-model",
@@ -146,7 +165,7 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
   it("discovers all tools and runs search → subtitles → visual inspection without an agent", async () => {
     const client = await external();
     const tools = (await client.listTools()).tools;
-    expect(tools).toHaveLength(19);
+    expect(tools).toHaveLength(22);
     expect(tools.some(tool => tool.name === "get_skill")).toBe(false);
     const scenes = await call(client, "search_scenes", { course_id: 3, query: "red graph", video_ids: null });
     expect(scenes.structuredContent).toMatchObject({ result: { scenes: [{ videoId: 42, text: "A red line rises on the graph." }] } });
@@ -239,5 +258,93 @@ withPostgres("external HTTP MCP with real authentication and PostgreSQL", () => 
     expect(Number(retryAfter)).toBeLessThanOrEqual(60);
     console.info(JSON.stringify({ event: "mcp_api_key_limit_observation", defaultKeyPolicy: defaults, probe: { maxRequests: 3, windowMs: 60_000, statuses, error: lastBody } }));
   });
+
+  it('generates, reviews and publishes through runtime factories, then enforces live Skill fences over authenticated HTTP', async () => {
+    const scheduler = env.TASK_SCHEDULER;
+    env.TASK_SCHEDULER = { getByName: () => ({ armAt: async () => undefined }) } as unknown as Bindings['TASK_SCHEDULER'];
+    try {
+      const owner = courseSkillManagement(env, 'owner');
+      await expect(courseSkillManagement(env, 'member').configure(3, { generationEnabled: true, distributionEnabled: true, language: 'en', policyVersion: '1' })).rejects.toMatchObject({ kind: 'not_found' });
+      await owner.configure(3, { generationEnabled: true, distributionEnabled: true, language: 'en', policyVersion: '1' });
+      let finished = false;
+      for (let tick = 0; tick < 12; tick++) {
+        const before = skillGenerations;
+        await executeNextCourseSkillBuild(env);
+        expect(skillGenerations - before).toBeLessThanOrEqual(1);
+        const state = await owner.list(3);
+        expect(state.jobs[0].state).not.toBe('failed');
+        if (state.jobs[0].state === 'completed') { finished = true; break; }
+        await db.query('UPDATE course_skill_builds SET lease_until=0 WHERE course_id=3');
+      }
+      expect(finished).toBe(true);
+      expect(skillGenerations).toBe(4);
+      const state = await owner.list(3), candidate = await owner.get(3, state.candidates[0].id);
+      await owner.update(3, candidate.id, candidate.contentHash, { ...candidate.draft!, title: 'Owner-reviewed graph guide' });
+      const reviewed = await owner.get(3, candidate.id);
+      await owner.publish(3, reviewed.id, reviewed.contentHash);
+      expect(skillGenerations).toBe(5);
+
+      const client = await external();
+      const listed = await call(client, 'list_course_skills', {});
+      const result = listed.structuredContent as { result: { skills: { uri: string; resources: { uri: string }[] }[] } };
+      expect(result.result.skills).toHaveLength(1);
+      const entry = result.result.skills[0], reference = entry.resources.find(r => r.uri.endsWith('/references/sources.md'))!.uri;
+      expect(await call(client, 'get_course_skill', { uri: entry.uri })).toMatchObject({ structuredContent: { result: { skill: { uri: entry.uri } } } });
+      expect(await call(client, 'read_course_skill_resource', { uri: entry.uri })).toMatchObject({ structuredContent: { result: { contents: [{ text: expect.stringContaining('Owner-reviewed graph guide') }] } } });
+
+      async function modern(method: string, uri?: string) {
+        const response = await fetch(`${origin}/api/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': key, 'MCP-Protocol-Version': MODERN_MCP_VERSION, 'Mcp-Method': method, ...(uri ? { 'Mcp-Name': uri } : {}) },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params: { ...(uri ? { uri } : {}), _meta: { 'io.modelcontextprotocol/protocolVersion': MODERN_MCP_VERSION, 'io.modelcontextprotocol/clientCapabilities': { extensions: { 'io.modelcontextprotocol/skills': {} } } } } }) });
+        expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+        return response.json();
+      }
+      expect(await modern('skills/get', entry.uri)).toMatchObject({ result: { skill: { uri: entry.uri } } });
+      expect(await modern('resources/read', reference)).toMatchObject({ result: { contents: [{ text: expect.stringContaining('A red line rises') }] } });
+
+      // Opt-in real-client check. CI and ordinary integration tests never invoke
+      // a paid model. The independently logged-in client receives only a fresh
+      // local read-only API key, never the database/provider credentials.
+      if (process.env.VIDEOQ_CODEX_HTTP_COMPATIBILITY === '1') {
+        const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+        const { tmpdir } = await import('node:os');
+        const { join } = await import('node:path');
+        const { runCodexTrial, codexVersion } = await import('../scripts/course-skill-evaluation/codex');
+        const workspace = await mkdtemp(join(tmpdir(), 'videoq-codex-app-http-'));
+        try {
+          const clientVersion = await codexVersion();
+          const execution = await runCodexTrial({ workspace, model: process.env.VIDEOQ_CODEX_HTTP_MODEL ?? 'gpt-6.1-terra', timeoutMs: 120000,
+            server: { url: `${origin}/api/mcp`, bearer: key, allowedTools: ['list_course_skills', 'get_course_skill', 'read_course_skill_resource'] },
+            prompt: `これは合成教材の実アプリHTTP認証・取得確認です。get_course_skillで ${entry.uri} のmanifestを取得し、read_course_skill_resourceで同じURIの本文と ${reference} の参照資料を読んでください。取得した出典の動画IDと時刻を短く回答してください。コード変更・検索・外部Webは不要です。` });
+          const calls = execution.events.flatMap(event => {
+            const item = (event as { item?: { type?: string; tool?: string; status?: string; error?: unknown; arguments?: { uri?: string }; result?: { isError?: boolean; is_error?: boolean } } }).item;
+            return event.type === 'item.completed' && item?.type === 'mcp_tool_call' ? [{ name: item.tool, uri: item.arguments?.uri, success: item.status === 'completed' && !item.error && Boolean(item.result) && item.result?.isError !== true && item.result?.is_error !== true }] : [];
+          });
+          const ready = execution.completed && calls.some(call => call.name === 'get_course_skill' && call.uri === entry.uri && call.success)
+            && [entry.uri, reference].every(uri => calls.some(call => call.name === 'read_course_skill_resource' && call.uri === uri && call.success));
+          expect(await codexVersion()).toBe(clientVersion);
+          await writeFile(process.env.VIDEOQ_CODEX_HTTP_EVIDENCE ?? join(tmpdir(), 'videoq-authenticated-skill-http-codex.json'), JSON.stringify({ ready, clientVersion, execution, calls,
+            authenticatedApplicationRoute: true, fixedLocalModelProvider: true, effectTrial: false, productionWrites: 0 }, null, 2), { mode: 0o600, flag: 'wx' });
+          expect(ready).toBe(true);
+        } finally { await rm(workspace, { recursive: true, force: true }); }
+      }
+
+      await db.query("DELETE FROM video_course_memberships WHERE course_id=3 AND user_id='member'");
+      expect(await call(client, 'list_course_skills', {})).toMatchObject({ structuredContent: { result: { skills: [] } } });
+      expect(await modern('resources/read', entry.uri)).toMatchObject({ error: { code: -32602 } });
+      await db.query("INSERT INTO video_course_memberships(course_id,user_id,joined_at) VALUES(3,'member',now())");
+      expect(await modern('skills/get', entry.uri)).toMatchObject({ result: { skill: { uri: entry.uri } } });
+
+      await db.query('DELETE FROM video_course_members WHERE course_id=3 AND video_id=42');
+      expect(await modern('skills/list')).toMatchObject({ result: { skills: [] } });
+      for (const uri of [entry.uri, reference]) {
+        expect(await call(client, 'read_course_skill_resource', { uri })).toMatchObject({ isError: true, structuredContent: { code: 'SKILL_UNAVAILABLE' } });
+        expect(await modern('resources/read', uri)).toMatchObject({ error: { code: -32602 } });
+      }
+      await db.query('INSERT INTO video_course_members(course_id,video_id,"order",added_at) VALUES(3,42,0,now())');
+      expect(await modern('skills/get', entry.uri)).toMatchObject({ error: { code: -32602 } });
+      expect(await modern('resources/read', reference)).toMatchObject({ error: { code: -32602 } });
+      expect(skillGenerations).toBe(5);
+    } finally { env.TASK_SCHEDULER = scheduler; }
+  }, process.env.VIDEOQ_CODEX_HTTP_COMPATIBILITY === '1' ? 180000 : 60000);
 
 });

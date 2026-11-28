@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-28",
+  "scope": "Schema-constrained task planning and Workers AI grammar compatibility; no semantic-quality claim",
+  "baselineImplementation": "a74155c5d7f52c0ed6d772069ca58f4657585f04",
+  "observedResponseFailures": [
+    "Existing task identifier outside accepted form",
+    "issues field had invalid type"
+  ],
+  "firstProbe": {
+    "providerRequests": 1,
+    "accepted": false,
+    "reason": "XGrammar rejects pattern combined with minLength/maxLength",
+    "privateResultSha256": "bb037b85157d54b244ccb03b7c0ca5c2415d9e61275094261b8009737814360d"
+  },
+  "revisedProbe": {
+    "providerRequests": 1,
+    "accepted": true,
+    "facts": 32,
+    "existingTaskIds": 60,
+    "originalSchemaSha256": "774773f6b33a53ba8bb93f16c2bebfa78f51df2676800a52e3730fb453e7ccbe",
+    "wireGrammarSchemaSha256": "c7c83e2907ff0557242a93c02d7bb1286a43f1b5a0c1c74398dfa8bdd43611bb",
+    "privateResultSha256": "8451dcacba714788dfa815a0f1a481f5632e667e77462660d4be55709596e2c4"
+  },
+  "quota": {
+    "beforeProbes": 919,
+    "afterProbes": 921,
+    "limit": 1000,
+    "reset": false
+  },
+  "invariants": {
+    "originalServerSchemaUnchanged": true,
+    "originalPromptConstraintsRetained": true,
+    "responsesRevalidatedBeforeCaching": true,
+    "checkpointAndCacheUnchangedDuringProbes": true,
+    "automaticJsonModeFallback": false,
+    "productionWrites": 0,
+    "published": false
+  },
+  "verification": {
+    "initialRed": {
+      "failed": 3,
+      "passed": 24
+    },
+    "focusedRegression": {
+      "files": 8,
+      "passed": 71
+    },
+    "typecheck": [
+      "tsconfig.application.json",
+      "tsconfig.json",
+      "tsconfig.d1-tools.json"
+    ],
+    "changedFilesLint": "passed",
+    "remoteCiForThisChange": "not yet run"
+  },
+  "sourceHashes": [
+    {
+      "path": "apps/api/src/integrations/course-skill-model.ts",
+      "sha256": "ce0d931d0aafef187038470fe009fa88096dea812405db2c8e6da11f29604510"
+    },
+    {
+      "path": "apps/api/src/integrations/course-skill-drafts.ts",
+      "sha256": "fc00faf1b6b9aa1ae2a545800a6e540ce3c87f122023830ccad8b5b79538337d"
+    },
+    {
+      "path": "apps/api/test/course-skill-model.test.ts",
+      "sha256": "0fec44f68dc8b6e3d84365c8cfb4a1f382e31ca6279494ad055c2d949063c986"
+    },
+    {
+      "path": "apps/api/test/course-skill-plan-adapter.test.ts",
+      "sha256": "a1ffd4dd24f8564585ba5ee1cf77390c14e4753ace20f57aec76fb8eb3b5e5c6"
+    }
+  ]
+}

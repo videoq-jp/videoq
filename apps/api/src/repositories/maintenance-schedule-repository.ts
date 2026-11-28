@@ -4,5 +4,7 @@ import { createMaintenanceRepository } from "../persistence/factory";
 export type { MaintenanceWindows, MaintenanceWakeup } from "../persistence/contracts/maintenance-repository";
 
 export async function getNextMaintenanceWakeup(env: Bindings, windows: MaintenanceWindows) {
-  return (await createMaintenanceRepository(env)).getNextWakeup(windows);
+  const base = await (await createMaintenanceRepository(env)).getNextWakeup(windows);
+  const { courseSkillWakeup } = await import('../integrations/course-skill-wakeup');
+  return courseSkillWakeup(env, base);
 }

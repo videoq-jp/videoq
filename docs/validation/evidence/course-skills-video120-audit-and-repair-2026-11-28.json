@@ -1,0 +1,308 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-27T16:19:32.765292+00:00",
+  "scope": "Development diagnostics and one repair attempt per video120 draft; not held-out evaluation",
+  "implementationCommit": "3c1e47dd988d12d247501a3e678cc928a3b7eb2b",
+  "productionIntegration": false,
+  "productionWrites": 0,
+  "blockAuditDiagnostic": {
+    "planSha256": "4d7836092987e125219c4e0a80f7278901c91f195f7fb81c815e971bf080e8c3",
+    "resultSha256": "44ad28eb076f4ca1bc2d844160c20057f04e4835de2e091c45ce76098b044e2a",
+    "runnerSha256": "54e663b376ed7f53011977a3242d54218c0aea69b7e651b4ec9afb2528a85613",
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "systemSha256": "240a59f5ae1a2f1eb0e5d9fb76974e45a14699fed9b88b4fe112abfe022a9af4",
+    "calls": 4,
+    "quotaBefore": {
+      "used_ai_answers": 19,
+      "ai_answers_limit": 30
+    },
+    "quotaAfter": {
+      "used_ai_answers": 23,
+      "ai_answers_limit": 30
+    },
+    "cases": [
+      {
+        "index": 0,
+        "kind": "known-development-failure",
+        "expectedAccepted": false,
+        "modelAllBlocksSupported": true,
+        "workflow": {
+          "scopePreserved": true,
+          "stepsAreOrdered": true,
+          "checksAreExecutable": true
+        },
+        "blocks": 17,
+        "supportedBlocksWithoutCueIds": [],
+        "deterministicEvidenceCheckPassed": true,
+        "inputSha256": "321be2193303b22f386f4e4decf53531348f0856aa05a3aeea3f46b455acf880",
+        "responseSha256": "dd24eb1a29ab8e551c050a11d9f76d2f9d3f8f18e5ccfd49ad4cbe6c767df364",
+        "usage": {
+          "prompt_tokens": 8344,
+          "completion_tokens": 1422,
+          "total_tokens": 9766,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "neurons": 114.63636779785156
+        }
+      },
+      {
+        "index": 1,
+        "kind": "known-development-failure",
+        "expectedAccepted": false,
+        "modelAllBlocksSupported": true,
+        "workflow": {
+          "scopePreserved": true,
+          "stepsAreOrdered": true,
+          "checksAreExecutable": true
+        },
+        "blocks": 17,
+        "supportedBlocksWithoutCueIds": [],
+        "deterministicEvidenceCheckPassed": true,
+        "inputSha256": "0d2e501be3f31abe111b6885501d3002155a1f077f9c147ac40d0ef9c79f42a5",
+        "responseSha256": "0e1b1484db13b01f3e1fb2e9d2e26d64d673f55f9a2c331ceb44f5a46c351a88",
+        "usage": {
+          "prompt_tokens": 14653,
+          "completion_tokens": 1486,
+          "total_tokens": 16139,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "neurons": 173.73635864257812
+        }
+      },
+      {
+        "index": 2,
+        "kind": "synthetic-positive-control",
+        "expectedAccepted": true,
+        "modelAllBlocksSupported": true,
+        "workflow": {
+          "scopePreserved": true,
+          "stepsAreOrdered": true,
+          "checksAreExecutable": true
+        },
+        "blocks": 9,
+        "supportedBlocksWithoutCueIds": [
+          "draft.title",
+          "draft.description",
+          "draft.useWhen.0"
+        ],
+        "deterministicEvidenceCheckPassed": false,
+        "inputSha256": "90ce5931d6e762f051e4df89b4bdbd812f09d05135ff468365cbff9e29860684",
+        "responseSha256": "5956d38796740e5052f4f279d63a69d1477e0c385641a3ceb6e0c51f3b924b48",
+        "usage": {
+          "prompt_tokens": 1924,
+          "completion_tokens": 758,
+          "total_tokens": 2682,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "neurons": 38.16363525390625
+        }
+      },
+      {
+        "index": 3,
+        "kind": "synthetic-positive-control",
+        "expectedAccepted": true,
+        "modelAllBlocksSupported": true,
+        "workflow": {
+          "scopePreserved": true,
+          "stepsAreOrdered": true,
+          "checksAreExecutable": true
+        },
+        "blocks": 9,
+        "supportedBlocksWithoutCueIds": [
+          "draft.title",
+          "draft.description",
+          "draft.useWhen.0"
+        ],
+        "deterministicEvidenceCheckPassed": false,
+        "inputSha256": "6b622349a2822de9c6f9ccc69e26519b56821cb4f5508c32d8aea7ec20d30b14",
+        "responseSha256": "9f0a61f3b9a54165f07339c4dfc7447b673bd065332bca850f5a39137bbfa0f9",
+        "usage": {
+          "prompt_tokens": 1889,
+          "completion_tokens": 786,
+          "total_tokens": 2675,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "neurons": 38.609092712402344
+        }
+      }
+    ],
+    "knownBadDraftsAccepted": 2,
+    "positiveControls": "Both failed the added cue-reference check for title, description and applicability metadata; not treated as semantic false-positive measurements",
+    "decision": "not_adopted",
+    "localRuntimeClosed": true
+  },
+  "oneAttemptRepair": {
+    "planSha256": "fede9d247af3eb4973311d9e5768377a81bc7918c95a811fdd94c1e5ea623a51",
+    "resultSha256": "ae131c74b47343905edc902c550e7bf3a6393f94592367a2f301b27bcbfad2cf",
+    "runnerSha256": "1315eeda36c7a641ed797eef1f0dedef97df2fa40a2027bfba3bd25252d9def0",
+    "generatorModel": "@cf/google/gemma-4-26b-a4b-it",
+    "attemptsPerCandidate": 1,
+    "providerCalls": 4,
+    "quotaBefore": {
+      "used_ai_answers": 23,
+      "ai_answers_limit": 30
+    },
+    "quotaAfter": {
+      "used_ai_answers": 27,
+      "ai_answers_limit": 30
+    },
+    "sourceFactsUnchanged": true,
+    "cacheWrites": 0,
+    "taskIdentityUnchanged": true,
+    "sourceFeedback": "Prior supplementary independent AI review, withheld from the new grading process",
+    "criteriaUnchangedFromSupplementaryReview": true,
+    "reviews": [
+      {
+        "candidateIndex": 0,
+        "beforeContentSha256": "6bcbd1ee4480c375ed9387ea7f6243b47ddcbc89d4f73f492c8c4eb2c6cdaac0",
+        "afterContentSha256": "c7ce61e96b67d98ee28564bcd880769d2a0a940d2844eee33758e7b2af04cbe2",
+        "sourceFactsSha256": "7bee57aa7ff49a0c592061ac0b99cd4e2d27415c7d91916af9232c182114dde3",
+        "sourceFactsUnchanged": true,
+        "packetSha256": "998853d55ce75467c4cbfbec6bd358810bd42627826cff9ccd6a9b558cba3cc4",
+        "generatorSelfAuditIssues": 0,
+        "reviewModel": "gpt-6.1-sol",
+        "clientVersion": "codex-cli 0.167.1",
+        "toolCalls": 0,
+        "nativeSkillsEnabled": 0,
+        "protocolSha256": "d6fe74cc79f5d25b6834f894d56bb8dd7c580035c8bd9974e037c12d2bb3f2d2",
+        "answerSha256": "72c34fca3986605d82809ad58e4ce97c1d79354de4e7f7a92f51575a2c41fa67",
+        "eventsSha256": "889ee31f1dc2871603ad7ec791e63dd0a02eca9e10116ac6b7e37894ae58d2f0",
+        "elapsedMs": 22255,
+        "usage": [
+          {
+            "input_tokens": 18879,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 876,
+            "reasoning_output_tokens": 97
+          }
+        ],
+        "candidateSupport": "unsupported",
+        "recommendation": "revise",
+        "applicabilityPreserved": true,
+        "verificationGrounded": true,
+        "issueCount": 2,
+        "facts": [
+          {
+            "index": 0,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": true
+          },
+          {
+            "index": 1,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 2,
+            "grounding": "supported",
+            "visualObservation": "supported",
+            "requestedLanguageMet": true
+          }
+        ]
+      },
+      {
+        "candidateIndex": 1,
+        "beforeContentSha256": "9c1a3b0e00c8dd7fb882893be1f31400ad5d8e3b2ab1c2787d2f0802c1d61a4b",
+        "afterContentSha256": "9cda485a8501df99fe8dd7d51bcfd5780adb634870db753b6e1f0b4f27aabe30",
+        "sourceFactsSha256": "d78112577749ea6158ef6e4ba9752936df2e82222df889b7f995052f678392db",
+        "sourceFactsUnchanged": true,
+        "packetSha256": "f4f7e5687e68cd6e00e1dcd611d9e6c67c1a62819465e223960939e4d5032a41",
+        "generatorSelfAuditIssues": 0,
+        "reviewModel": "gpt-6.1-sol",
+        "clientVersion": "codex-cli 0.167.1",
+        "toolCalls": 0,
+        "nativeSkillsEnabled": 0,
+        "protocolSha256": "062b8cf1669e08e9b2233555a34977a62a9305931dc3b0aadf599bd4cd4214fe",
+        "answerSha256": "93b5b83f0c36409d3038e950073a02c474f7158ce2921acbf26e39f411ce384c",
+        "eventsSha256": "1312bd55cc02c60535b16fa2583da74c896dde50b9cae4dff88cb9b4b94c2f7d",
+        "elapsedMs": 38030,
+        "usage": [
+          {
+            "input_tokens": 24989,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1614,
+            "reasoning_output_tokens": 192
+          }
+        ],
+        "candidateSupport": "unsupported",
+        "recommendation": "revise",
+        "applicabilityPreserved": true,
+        "verificationGrounded": false,
+        "issueCount": 4,
+        "facts": [
+          {
+            "index": 0,
+            "grounding": "unverifiable",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 1,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 2,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 3,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": false
+          },
+          {
+            "index": 4,
+            "grounding": "supported",
+            "visualObservation": "supported",
+            "requestedLanguageMet": true
+          },
+          {
+            "index": 5,
+            "grounding": "supported",
+            "visualObservation": "supported",
+            "requestedLanguageMet": true
+          },
+          {
+            "index": 6,
+            "grounding": "supported",
+            "visualObservation": "not_applicable",
+            "requestedLanguageMet": true
+          }
+        ]
+      }
+    ],
+    "localRuntimeClosed": true
+  },
+  "disposition": {
+    "proofSha256": "0451e2aa3bb050b717300ffab9d79c59b88346e3f7728fbca95901ec37980a3a",
+    "repairedDraftsRejected": 2,
+    "incompleteTasksHeld": 2,
+    "publications": 0,
+    "quota": {
+      "used_ai_answers": 27,
+      "ai_answers_limit": 30
+    },
+    "noFurtherRepairScheduled": true
+  },
+  "conclusion": "Block-by-block self-audit and one feedback repair did not establish acceptable output quality; no reliability or efficacy improvement claimed",
+  "limitations": [
+    "Known development failures and synthetic controls are not representative held-out data",
+    "AI assessments are not human reviews and fresh processes do not prove independent errors",
+    "Source knowledge and requested-language shortcomings were not repaired by editing draft prose",
+    "Known 966-second citation error is outside these selected drafts and remains unresolved",
+    "Monetary costs are unknown; provider usage is retained in private responses",
+    "Full course generation and GitHub CI remain incomplete"
+  ]
+}

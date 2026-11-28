@@ -484,6 +484,55 @@
       "when": 1795600733780,
       "tag": "0068_agent_skill_state_parts",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1795757927524,
+      "tag": "0069_course_skill_inputs",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1795758508510,
+      "tag": "0070_course_skill_knowledge",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795758915898,
+      "tag": "0071_course_skill_candidates",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1795759226110,
+      "tag": "0072_course_skill_publications",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795760064121,
+      "tag": "0073_course_skill_steps",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1795760339465,
+      "tag": "0074_course_skill_generation_epoch",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795764061140,
+      "tag": "0075_course_skill_publication_fk_name",
+      "breakpoints": true
     }
   ]
 }

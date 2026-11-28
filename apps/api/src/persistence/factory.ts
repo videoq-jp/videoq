@@ -203,7 +203,12 @@ export async function createTranscriptionCheckpoints(env: Bindings): Promise<imp
 export async function finishWorkerTranscriptionRun(env: Bindings, videoId: number, runId: string, transcript: string | null) {
   const checkpoints = await createTranscriptionCheckpoints(env);
   const transcription = await createWorkerTranscriptionRepository(env);
-  return finishTranscriptionRun(checkpoints, transcription, videoId, runId, transcript);
+  const result = await finishTranscriptionRun(checkpoints, transcription, videoId, runId, transcript);
+  if (result.completed && !result.stale) {
+    const { notifyVideoSkillInput } = await import('../integrations/course-skill-inputs');
+    await notifyVideoSkillInput(env, videoId);
+  }
+  return result;
 }
 
 export async function createVisualCheckpoints(env: Bindings): Promise<import("./contracts/visual-checkpoints").VisualCheckpoints> {

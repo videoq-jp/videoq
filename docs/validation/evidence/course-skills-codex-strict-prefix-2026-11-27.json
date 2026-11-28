@@ -1,0 +1,14 @@
+{
+  "summary": {
+    "throughTrials": 41,
+    "codeTrials": 32,
+    "verifiedPasses": 32,
+    "discrepancies": 0,
+    "modelReruns": 0,
+    "originalRecordsModified": false,
+    "partial": true
+  },
+  "nodeVersion": "v26.13.1",
+  "cohortManifestHash": "b3a8c5148f2f845eb0bcb7200a127c3c786b29e8a679cf1dd82a5333bd8f42e7",
+  "snapshotSha256": "85c074d4097671e3404a046d92a90a782a237ce73ec8b31d99a59b0686bc3828"
+}

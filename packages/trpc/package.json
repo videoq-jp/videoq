@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./course-skills": { "types": "./src/course-skills.ts", "default": "./src/course-skills.ts" },
     "./moodle-management": {
       "types": "./src/moodle-management.ts",
       "default": "./src/moodle-management.ts"

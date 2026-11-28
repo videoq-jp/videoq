@@ -1,0 +1,152 @@
+{
+  "date": "2026-11-27",
+  "scope": {
+    "courseId": 51,
+    "videoIds": [
+      578,
+      580
+    ],
+    "productionWrites": false,
+    "mediaReextracted": false,
+    "incrementalExistingSkillReuseTested": false,
+    "removalTested": false
+  },
+  "model": "@cf/google/gemma-4-26b-a4b-it",
+  "promptVersions": [
+    "course-knowledge-v10"
+  ],
+  "reportSha256": "aece2813d1b9a5d4597ead1a82f5bd360645d241c0ec7566ad1216f012c4e458",
+  "result": {
+    "state": "completed",
+    "phase": "review_required",
+    "knowledgeChunks": 22,
+    "facts": 81,
+    "factsByKind": {
+      "principle": 44,
+      "procedure": 21,
+      "criterion": 13,
+      "verification": 3
+    },
+    "candidates": 9,
+    "drafts": 2,
+    "held": 7,
+    "modelCalls": 29,
+    "elapsedMs": 411695,
+    "missingRequiredFieldResponses": 0,
+    "published": false,
+    "ownerApproved": false
+  },
+  "candidates": [
+    {
+      "hasDraft": false,
+      "sourceVideoIds": [
+        578
+      ],
+      "issues": [
+        "SKILL_INSUFFICIENT_TASK_KNOWLEDGE"
+      ]
+    },
+    {
+      "hasDraft": true,
+      "sourceVideoIds": [
+        578,
+        580
+      ],
+      "issues": []
+    },
+    {
+      "hasDraft": false,
+      "sourceVideoIds": [
+        578
+      ],
+      "issues": [
+        "SKILL_INSUFFICIENT_TASK_KNOWLEDGE"
+      ]
+    },
+    {
+      "hasDraft": false,
+      "sourceVideoIds": [
+        578,
+        580
+      ],
+      "issues": [
+        "SKILL_INSUFFICIENT_TASK_KNOWLEDGE"
+      ]
+    },
+    {
+      "hasDraft": true,
+      "sourceVideoIds": [
+        580
+      ],
+      "issues": []
+    },
+    {
+      "hasDraft": false,
+      "sourceVideoIds": [
+        580
+      ],
+      "issues": [
+        "SKILL_INSUFFICIENT_TASK_KNOWLEDGE"
+      ]
+    },
+    {
+      "hasDraft": false,
+      "sourceVideoIds": [
+        580
+      ],
+      "issues": [
+        "SKILL_INSUFFICIENT_TASK_KNOWLEDGE"
+      ]
+    },
+    {
+      "hasDraft": false,
+      "sourceVideoIds": [
+        580
+      ],
+      "issues": [
+        "SKILL_INSUFFICIENT_TASK_KNOWLEDGE"
+      ]
+    },
+    {
+      "hasDraft": false,
+      "sourceVideoIds": [
+        580
+      ],
+      "issues": [
+        "SKILL_INSUFFICIENT_TASK_KNOWLEDGE"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "contentHash": "638a4b72a68e4d7b9b622113ccd3ad0460a2ed7e14d638ae6ad1ec9ad6946000",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "4a8522a8eb5f0a1920a8c7d9a07fde23d4563d7f4c3b7d3c76e4f45738f037c8"
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "3b1e9fac98ec9c46d5e5062954b0f05c8af0ffd98cf51f39434cf761c71e143c"
+        }
+      ]
+    },
+    {
+      "contentHash": "ff27e864bbe0999f88b19f164337f17439a0bd19727936729fb8d64e32bfad62",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "a9c0f5e06941ef68986f2e8eea1bca41a9772ae2d99d43e8c600eb87ec28b727"
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "b96b5849d664857228159f27dc8b3ee756c0b5b2fcd341534ef97649e304c6a0"
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "inputTokens": 210410,
+    "outputTokens": 19660
+  }
+}

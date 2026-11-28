@@ -1,0 +1,198 @@
+{
+  "date": "2026-11-27",
+  "scope": {
+    "courseId": 51,
+    "videoIds": [
+      578,
+      580
+    ],
+    "deferredVideoId": 580,
+    "isolatedD1": true,
+    "productionWrites": false,
+    "mediaReextracted": false,
+    "ownerApproved": false,
+    "published": false,
+    "realPublishedMcpRevocationTested": false
+  },
+  "runtimeSources": {
+    "baseCommit": "5233b8fe94b7edadd43b29552fc67e1a819a0a93",
+    "files": [
+      {
+        "path": "apps/api/scripts/evaluate-course-skills.ts",
+        "sha256": "9bcf101ce0ac8d4175f4dfa64da6d30630fa85cf5079fc5fc638297ab364a076"
+      },
+      {
+        "path": "apps/api/src/persistence/course-skill-input-sql.ts",
+        "sha256": "ef7b3a35b7386639ce46b695a7b18436fe99474ea0156c7eb9c935e45225828d"
+      },
+      {
+        "path": "apps/api/src/integrations/course-skill-candidates.ts",
+        "sha256": "ea0d47cf67722b1fcd00b65990e3cf6f8be3bd66c7d89fc612ff49f5951db275"
+      },
+      {
+        "path": "apps/api/src/integrations/course-skill-model.ts",
+        "sha256": "f1c9bf08fb5babaf90ac7d4f1a504d99b56400efeaa5e2a42d476507c2c2bc03"
+      }
+    ]
+  },
+  "reportSha256": "5fabdb5a70f890418eafb6cce9eb31dac1570fdf9848f3dfd5fcfad5d4ac1696",
+  "previousAttempts": [
+    {
+      "reportSha256": "a0d3e9af97b5212d1f4368fb6b1f1bd2d9c06ec1997586cd66540fe0544d584a",
+      "modelCalls": 10,
+      "error": "PILOT_EXECUTION_FAILED",
+      "stopped": false,
+      "completedStages": [
+        "initial",
+        "added"
+      ]
+    },
+    {
+      "reportSha256": "e04f32cfb1409b73a9be5225c1bce439ca481543b351316589e7e419d83ee484",
+      "modelCalls": 7,
+      "error": null,
+      "stopped": true,
+      "completedStages": [
+        "initial"
+      ]
+    },
+    {
+      "reportSha256": "6494296f1c441dd3abdee22ca56e03e0038d6dcfcb094bd7266d9f91af9b2873",
+      "modelCalls": 18,
+      "error": null,
+      "stopped": false,
+      "completedStages": [
+        "initial",
+        "added",
+        "removed"
+      ]
+    }
+  ],
+  "isolatedDraftReplay": {
+    "reportSha256": "c01591bc5708ea8eee6a1efa1e35c5defb582f66c1500a06cfaf07f688e52ac2",
+    "modelCalls": 1,
+    "schemaValid": true,
+    "domainValid": true
+  },
+  "result": {
+    "completed": true,
+    "modelCalls": 21,
+    "resumedKnowledgeChunks": 22,
+    "elapsedMs": 257634,
+    "extractionResponseCount": 0,
+    "stages": [
+      {
+        "stage": "initial",
+        "revision": 1,
+        "buildId": "dd0d1851-3648-4c75-8501-30768abe0774",
+        "state": "completed",
+        "candidates": 4,
+        "drafts": 1,
+        "eligibleForOwnerPublication": 1,
+        "sourceVideoIds": [
+          578
+        ],
+        "memberships": [
+          {
+            "id": 1,
+            "video_id": 578
+          }
+        ]
+      },
+      {
+        "stage": "added",
+        "revision": 2,
+        "buildId": "5101bd27-03a4-4799-b31a-6dfb16d5510a",
+        "state": "completed",
+        "candidates": 8,
+        "drafts": 2,
+        "eligibleForOwnerPublication": 2,
+        "sourceVideoIds": [
+          578,
+          580
+        ],
+        "memberships": [
+          {
+            "id": 1,
+            "video_id": 578
+          },
+          {
+            "id": 2,
+            "video_id": 580
+          }
+        ]
+      },
+      {
+        "stage": "removed",
+        "revision": 3,
+        "buildId": "698bbc88-857a-40fd-a583-1d98092a4889",
+        "state": "completed",
+        "candidates": 8,
+        "drafts": 2,
+        "eligibleForOwnerPublication": 2,
+        "sourceVideoIds": [
+          578
+        ],
+        "memberships": [
+          {
+            "id": 1,
+            "video_id": 578
+          }
+        ]
+      },
+      {
+        "stage": "readded",
+        "revision": 4,
+        "buildId": "1e9e9d00-2222-429f-b164-f4d102c70f00",
+        "state": "completed",
+        "candidates": 11,
+        "drafts": 4,
+        "eligibleForOwnerPublication": 4,
+        "sourceVideoIds": [
+          578,
+          580
+        ],
+        "memberships": [
+          {
+            "id": 1,
+            "video_id": 578
+          },
+          {
+            "id": 3,
+            "video_id": 580
+          }
+        ]
+      }
+    ],
+    "transitions": [
+      {
+        "to": "added",
+        "staleCandidatesBlocked": true,
+        "staleEditRejected": true,
+        "modelCallsUnchanged": true
+      },
+      {
+        "to": "removed",
+        "staleCandidatesBlocked": true,
+        "staleEditRejected": true,
+        "modelCallsUnchanged": true
+      },
+      {
+        "to": "readded",
+        "staleCandidatesBlocked": true,
+        "staleEditRejected": true,
+        "modelCallsUnchanged": true
+      }
+    ],
+    "initialSkillIdsRetainedAfterAddition": 4,
+    "initialSkillCount": 4,
+    "allStageBuildIdsDistinct": true,
+    "removedVideoKnowledgeAbsent": true,
+    "readdedMembershipHasNewId": true,
+    "failedModelAttempts": 1
+  },
+  "usage": {
+    "inputTokens": 170968,
+    "outputTokens": 10446
+  }
+}

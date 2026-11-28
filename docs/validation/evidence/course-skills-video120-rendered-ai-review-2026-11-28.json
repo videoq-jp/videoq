@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-27T16:04:30.977924+00:00",
+  "scope": "Supplementary independent AI evaluation of delivered Markdown for two video120 drafts",
+  "postHoc": true,
+  "protocolChangeReason": "Initial packets omitted the canonical delivered Markdown and its shared hypothetical-example disclaimer. Assess the actual delivered artifact with the same original evidence; retain the first evaluation.",
+  "initialReportSha256": "c3884f1134f27efae352474a5c7e1b819b7334352c7c15aa46a418aa17520080",
+  "initialReportUnchanged": true,
+  "candidateContentChanged": false,
+  "sourceEvidenceChanged": false,
+  "priorGradesWithheld": true,
+  "generatorSelfAuditsWithheld": true,
+  "humanReview": false,
+  "results": [
+    {
+      "candidateIndex": 0,
+      "candidateContentSha256": "6bcbd1ee4480c375ed9387ea7f6243b47ddcbc89d4f73f492c8c4eb2c6cdaac0",
+      "packetSha256": "a01a881ee2710c9843064d0c43401a5d2fa9136828467a1e2ce4574db430eaa3",
+      "initialPacketSha256": "ad3baafe1c7a66e8daa5345686b892574e7a2fe4a8b65b2d693ce163317d68dd",
+      "renderedFiles": [
+        {
+          "path": "SKILL.md",
+          "sha256": "b7a62dbcab9aa617dd32942dbd990a0c9b9f0e991e5268f3bde2c3712bafd1ca"
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "88ba933848079e749a8390ace61c2c2f4e665841542fee11d075653f2b283c88"
+        }
+      ],
+      "protocolSha256": "4c6f2ebd290c0633b972f08b9e78744a2de0b1eb5b87e57ab2070d6bd286a3bc",
+      "answerSha256": "16fd1517b99e339fcf27f3c65d3a0f3363894564cba5f0498a88849ccfc747ab",
+      "eventsSha256": "a629fda5f28b6f10ee3a05f3eca48e41c2306a930960910bb59b04a4eaae9e7b",
+      "model": "gpt-6.1-sol",
+      "clientVersion": "codex-cli 0.167.1",
+      "nativeSkillsEnabled": 0,
+      "toolCalls": 0,
+      "elapsedMs": 27949,
+      "usage": [
+        {
+          "input_tokens": 18898,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1168,
+          "reasoning_output_tokens": 155
+        }
+      ],
+      "candidateSupport": "unsupported",
+      "recommendation": "revise",
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 4,
+      "facts": [
+        {
+          "index": 0,
+          "grounding": "supported",
+          "visualObservation": "not_applicable",
+          "requestedLanguageMet": true
+        },
+        {
+          "index": 1,
+          "grounding": "supported",
+          "visualObservation": "not_applicable",
+          "requestedLanguageMet": false
+        },
+        {
+          "index": 2,
+          "grounding": "supported",
+          "visualObservation": "supported",
+          "requestedLanguageMet": true
+        }
+      ]
+    },
+    {
+      "candidateIndex": 1,
+      "candidateContentSha256": "9c1a3b0e00c8dd7fb882893be1f31400ad5d8e3b2ab1c2787d2f0802c1d61a4b",
+      "packetSha256": "653d1e25e321b357b52cbaebd480a8930cbc082440693e809b46355258e56937",
+      "initialPacketSha256": "f76869c6e3429e43059904fd8ff47442d8a8e8a0125171ac696f0df537b23b37",
+      "renderedFiles": [
+        {
+          "path": "SKILL.md",
+          "sha256": "388000a848248a4891c4a86bac473b9533e2f937dfdcaaf2f2fcf5f1c63558e0"
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "25ca36889625d0112973b7492a278b14f8896fd9d8d01bc099a15f586ccaf35a"
+        }
+      ],
+      "protocolSha256": "795c79ed3fa482e4bbe5497a511645b521ab880cfb770610bbe2466b876d2f1e",
+      "answerSha256": "e18379cb50de731034993fd6cc167ecb98713a9583594f5db7eabdbd9585ea70",
+      "eventsSha256": "e0156abd3a4b5ecdd2bf96cdccaed6a719ff60ee0d039542450ccb93a7d26722",
+      "model": "gpt-6.1-sol",
+      "clientVersion": "codex-cli 0.167.1",
+      "nativeSkillsEnabled": 0,
+      "toolCalls": 0,
+      "elapsedMs": 30071,
+      "usage": [
+        {
+          "input_tokens": 25018,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1277,
+          "reasoning_output_tokens": 170
+        }
+      ],
+      "candidateSupport": "unsupported",
+      "recommendation": "revise",
+      "applicabilityPreserved": true,
+      "verificationGrounded": false,
+      "issueCount": 2,
+      "facts": [
+        {
+          "index": 0,
+          "grounding": "unverifiable",
+          "visualObservation": "not_applicable",
+          "requestedLanguageMet": false
+        },
+        {
+          "index": 1,
+          "grounding": "supported",
+          "visualObservation": "not_applicable",
+          "requestedLanguageMet": false
+        },
+        {
+          "index": 2,
+          "grounding": "supported",
+          "visualObservation": "not_applicable",
+          "requestedLanguageMet": false
+        },
+        {
+          "index": 3,
+          "grounding": "supported",
+          "visualObservation": "not_applicable",
+          "requestedLanguageMet": false
+        },
+        {
+          "index": 4,
+          "grounding": "supported",
+          "visualObservation": "supported",
+          "requestedLanguageMet": true
+        },
+        {
+          "index": 5,
+          "grounding": "supported",
+          "visualObservation": "supported",
+          "requestedLanguageMet": true
+        },
+        {
+          "index": 6,
+          "grounding": "supported",
+          "visualObservation": "not_applicable",
+          "requestedLanguageMet": true
+        }
+      ]
+    }
+  ],
+  "recommendations": {
+    "revise": 2,
+    "readyForOwnerReview": 0
+  },
+  "localCandidatesRemainRejected": true,
+  "publications": 0,
+  "additionalGenerationCalls": 0,
+  "monetaryCost": "unknown",
+  "limitations": [
+    "Post-hoc protocol correction; not a preregistered comparison or improvement estimate",
+    "Fresh model processes do not imply statistically independent errors",
+    "Previously known 966-second image mismatch is outside these packets and remains unresolved",
+    "This supplementary evaluator is not integrated into the production approval gate"
+  ]
+}

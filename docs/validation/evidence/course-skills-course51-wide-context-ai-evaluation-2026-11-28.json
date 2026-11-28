@@ -1,0 +1,1079 @@
+{
+  "at": "2026-11-28T12:19:36.339Z",
+  "kind": "Descriptive combined AI results from16 initially scored candidates and19 post-hoc supplementary targets; two context conditions, not one frozen trial",
+  "baseline": {
+    "counts": {
+      "completed": 16,
+      "held": 19,
+      "failed": 0,
+      "pending": 0
+    },
+    "auditSha256": "b629031b3d99fd35b4bf3031d1d9d9bedbc0bef14a6cfc899d63aa78b29f8cf5"
+  },
+  "supplement": {
+    "counts": {
+      "completed": 19,
+      "held": 0,
+      "failed": 0,
+      "pending": 0
+    },
+    "planSha256": "57a65b2e3b2af533aa2270cb2205be57caee156da695ba3c7cd7df7d0e4980c2"
+  },
+  "counts": {
+    "completed": 35,
+    "held": 0,
+    "failed": 0,
+    "pending": 0
+  },
+  "recommendations": {
+    "revise": 35
+  },
+  "candidateSupport": {
+    "unsupported": 28,
+    "unverifiable": 7
+  },
+  "grounding": {
+    "usedFacts": {
+      "unverifiable": 91,
+      "unsupported": 35,
+      "supported": 131
+    },
+    "unusedMetadataFacts": {
+      "unsupported": 7,
+      "supported": 63,
+      "unverifiable": 26
+    },
+    "deliveredBlocks": {
+      "unverifiable": 147,
+      "unsupported": 84,
+      "supported": 289
+    }
+  },
+  "requestedLanguageFailures": {
+    "usedFacts": 257,
+    "unusedMetadataFacts": 96,
+    "blocks": 198
+  },
+  "applicabilityFailed": 34,
+  "verificationFailed": 15,
+  "usageFromAvailableEnvelopes": {
+    "input_tokens": 1009691,
+    "cached_input_tokens": 78848,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 141604,
+    "reasoning_output_tokens": 12554
+  },
+  "toolCalls": 0,
+  "records": [
+    {
+      "index": 2,
+      "status": "completed",
+      "candidateContentHash": "96be4523ce3edaebbe34f01ef9690ee94a28d638db8c6dd15563b26ead46d1ac",
+      "packetSha256": "ec22f9bed286d6436bd01b4afd63ebaa7377cbf3b222f4b5176d20f90a824f45",
+      "resultSha256": "6e1bd10d969cecb404b0baa90bc3d3f68b9c92f2cac354ea5dc21f4668fd77fb",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 7,
+        "blocks": 16
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 9,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 7,
+      "status": "completed",
+      "candidateContentHash": "17751d012acbb92931a2657a97e0c46fb9a09e64cf95d315bc6bd6d9bcfab30c",
+      "packetSha256": "07b53d94cb6ead8cbc71793c9a2b953cc45f3847da1dded7eb9046845503aa4e",
+      "resultSha256": "d98bd81f6e82acc587d08b13a18947b645df2f9cecca80ab146f5a36908e1cb8",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 4,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 6,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 17,
+      "status": "completed",
+      "candidateContentHash": "f6a0875a7f90f32d6716c1392268a49423bea04382b4eba1c509cad19799647a",
+      "packetSha256": "372e9764bb0b2872df78220ffd09059866f48989a9e6ce86534279591ffe216c",
+      "resultSha256": "dee21006aea23c45d5098f9d950dc71f3a6d3749591e268027e49c6e7429b950",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 16,
+        "blocks": 19
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 13,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 30,
+      "status": "completed",
+      "candidateContentHash": "c127ec8a0688b4afab6f55239295e161e997e8e9f172540b3cee0f4094603b22",
+      "packetSha256": "b3e38fb6776ae139f7b2a87ecb723798a229aecee40621cb11796786596722f2",
+      "resultSha256": "dc0b69de39949b9ad7085b630d66140f46380885ba36c1980c34ed21131bc6f5",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 6,
+        "blocks": 14
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 6,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 39,
+      "status": "completed",
+      "candidateContentHash": "0792fefd8892ef9785728831db682fb8e4ca696b81603ced07cdf9459cbf1eb7",
+      "packetSha256": "54effcea94477c7665f949096fba3ca3a0d3fc9a92082c6784b8262e876c811e",
+      "resultSha256": "c81dc71f5cd0c7f5e854341def7d50b3f303b7abd39479f9928938eeaca063a8",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 26,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 6,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 43,
+      "status": "completed",
+      "candidateContentHash": "785a7f539023f44e807d85ae3c90ec1a0178d21724c5f3e5c8dd0130b4be3430",
+      "packetSha256": "e9d4505c982d80980828c81301790e8c235f8f14453b71b2d51e583fc6568bde",
+      "resultSha256": "11612ea794f90ead85a2d9cf0ff93f63748a1a5c37669dbd8fb5b60a3b2a964e",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 14,
+        "blocks": 19
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 13,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 58,
+      "status": "completed",
+      "candidateContentHash": "3a82a1db4233e796addd01330e9114fb8f8f97ea3d7e36ebd52b789c7140e0a9",
+      "packetSha256": "e9841fd8bde0bed64531b0c9be14c452ea533957fa5c05736ed7722ef3ef63fb",
+      "resultSha256": "0e1027525386a132754a04f362354bd5c04489794af684ec66172205564bbdda",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 4,
+        "blocks": 8
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 5,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 61,
+      "status": "completed",
+      "candidateContentHash": "f6dc2f43e4267d1c99f90a4663e45aaa131ed9af6e59a7b0a51052aa95014c74",
+      "packetSha256": "3d1f9f4ffa88d135b8d672174e19cd84bead1738ca176b949ba0e0127409d2b3",
+      "resultSha256": "c4efaa0e2023994ffbb271513e746ba755858bd93fbda71f27785354dea84c9f",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 14
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 4,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 72,
+      "status": "completed",
+      "candidateContentHash": "8ebe75b01c773fb27da081dea4669b7dcef6d2e0b7480a83fa80d33589bd3601",
+      "packetSha256": "09480519111f677a252aa87fca10fb61cf378f06b310ff3c4b1c8491bbcd8e04",
+      "resultSha256": "cdb46da20338d8b1bd443c5b45e84cba1f46982af633c884c7217f219733a283",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 7,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 3,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 84,
+      "status": "completed",
+      "candidateContentHash": "f0029437dbe978944827864695e3015b0f184bf38c0e5475f6d137bba2311214",
+      "packetSha256": "7869247cd330bc5310b4f2074df6b40be7b7de19b6421ff9e843fea6ba5c6c46",
+      "resultSha256": "d44dfc841efa6d9bde81147361898700fd3b0aa9319e4bab9a25b1ad5b965cda",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 5,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 85,
+      "status": "completed",
+      "candidateContentHash": "07a5550a2217a06db2a4ad146afd07acb04c55a96bbefbe90cce0bf15ca2cdea",
+      "packetSha256": "92ddb4c16b50c24a918d9a6efe9e99b516bb7b3c3e7abccc74b5bb6cc0af5d78",
+      "resultSha256": "87f3e0d4a577fbc09a3a350a15f9ff8d5a1368512e6d84df9b21fdbb0adc64b7",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 16
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 6,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 88,
+      "status": "completed",
+      "candidateContentHash": "073f91e2679c7bc0fad4b1aa54f6ebc0c4b9614e7b2e17eff4e662236731969a",
+      "packetSha256": "1d5740ed164f217c162a9d4cb9e555eaee36e67e4b6912e808291b02479aeb2c",
+      "resultSha256": "625b558c92cd5b18e21fed3ed68e769bc7c03d080c3f1ad2fc9abcb8d101336c",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 7,
+        "blocks": 12
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 7,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 91,
+      "status": "completed",
+      "candidateContentHash": "6a4a80aa4ed93366cdf44efc60c7f2ebbdfbcdd7278e88f9bdbc62b38e5980eb",
+      "packetSha256": "dcd650ef79da17fa9faba59458041208f37b0efb3253b144050271bb5f7e8962",
+      "resultSha256": "c19cbd20ff8c25d4cb0ba17209c04765fdbe7950909e6e320e2fff7442e0f883",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 6,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 5,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 99,
+      "status": "completed",
+      "candidateContentHash": "2becebca99eae314e7f02745477d5f63b5c79599ec5385c1e35902890faf566e",
+      "packetSha256": "bbea9a06092659975c31597741502623fffe8e871ec9d9b10c47e66c4c591b19",
+      "resultSha256": "4070e9bc02c1ae0d57740d43469b73a2a63e04b862c08be2b0b856c80224aa25",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 12,
+        "blocks": 16
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 10,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 105,
+      "status": "completed",
+      "candidateContentHash": "a229dd42b28997c436b98426e53b63481ee1afe281739eedb8967f53536941a7",
+      "packetSha256": "d7568d4dc79f5c6bade4a8f811aeaa04e87a1bc0733338f22e38e7d75a1d202b",
+      "resultSha256": "c10d275ebdca5707891059a01872ee1ed5f5f6b055459e147348ee3566a94664",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 11
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 5,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 117,
+      "status": "completed",
+      "candidateContentHash": "308e66a45d4bae30d48bbdd1e2f7fe912106fefffd718da6246946a0bd458c20",
+      "packetSha256": "f9cdc7ed2cb5b571874156262d0d82933d22a9cb1775e06abcb7186d958adace",
+      "resultSha256": "cdbc6fd2bbf793fde3c64bf590729088e5732f06d95cbefdfd434138b94ab052",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 15,
+        "blocks": 18
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 12,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 134,
+      "status": "completed",
+      "candidateContentHash": "5de47d5e96bf09f323c53c65cbe2a41b3cfeed8c31ce93bd2e0a06896aa0d21c",
+      "packetSha256": "56f4e81a06a8f137dff1a926a18fbdcf74545efedf61e343c145fbeb4dce7300",
+      "resultSha256": "6af22699a1c78ae1b6eb5750d6377080d1e67e51707bdb7327342831b1aeaef4",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 4,
+        "blocks": 9
+      },
+      "applicabilityPreserved": true,
+      "verificationGrounded": true,
+      "issueCount": 4,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 136,
+      "status": "completed",
+      "candidateContentHash": "199e57aaef7632d1f3bad291a240aeb35d99bee1ecd036c546c1dd193f502c9e",
+      "packetSha256": "00bb7165dad786e8aafb29b56fe004f1cda2daee880049b7b2993d02a342d3f3",
+      "resultSha256": "abda81daaf1bf3a49e91722c8d08233af31e6b83625879569b6921e0fd34651c",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 12
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 9,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 140,
+      "status": "completed",
+      "candidateContentHash": "1acc145cb51169b9ae1882472ab8fad8d826709cfb47ea490e86e0b3003335b0",
+      "packetSha256": "0adc925ef071577ae7806ac4b5ae2b92e4aeac6cedccd821b25288385f3dc9f2",
+      "resultSha256": "0cba86061f2b6e1abd774215d0b4deb4ae8c03b60dc4101b2a8d8ccca9af6f8a",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 10,
+        "blocks": 15
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 8,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 147,
+      "status": "completed",
+      "candidateContentHash": "011ed1fe8a2560f3187e3a9621df5f9bf7830ac9472d641f6ed4a644a11e5fe3",
+      "packetSha256": "a086541c039a17c760d30539834496d0ee5399aa6c1171c79a8ffc9a1ba74841",
+      "resultSha256": "185e3365fec773a740088e605dc43bcddddcc04f76ae174c468a4868f9489547",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 11,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 11,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 155,
+      "status": "completed",
+      "candidateContentHash": "076a5d63253c59126c264085bb816b5d665ee34a652bd058490f52449e423508",
+      "packetSha256": "1b96382a707016704b9fb6d3f7aaeeb7e93238da5e9148a91ccb345129f38d2a",
+      "resultSha256": "529ede915b4967f2488369ed9f3b5c88a8ee0a5e56c0f5acb96b67891580a3ae",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 9,
+        "blocks": 19
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 9,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 171,
+      "status": "completed",
+      "candidateContentHash": "adfce47204e027ea8884330e632967b63e0be475dc50c84d70738b08ba82887c",
+      "packetSha256": "f45a72105d3637833a56a836436a33f1fd05a0d969b641919ff664fff84544a7",
+      "resultSha256": "999a521d492a35ea881ac1b4bb2e08ad5fd224174333d16089552e735ef9715e",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 15,
+        "blocks": 19
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 10,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 174,
+      "status": "completed",
+      "candidateContentHash": "3b5a27e8ad79fd7a9727b10bd098c31d4f5a2e09dab9d0276a11976aa8bf2d0d",
+      "packetSha256": "eeb00516b2e74e86a65a1b1edc1eab1b5f591fe804f7cbcdb913c67c724c4051",
+      "resultSha256": "6c97458559f5aa6146b4886263034a677050811cf0bcc09c35386d32a436a585",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 33,
+        "blocks": 16
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 11,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 180,
+      "status": "completed",
+      "candidateContentHash": "4b2490c2c8c2b49da86f12e6d223cea7ec70d114bd1789c35bea6a18f3c865e0",
+      "packetSha256": "050ec8820595dcc14f6e50a06d84343bf1d114d22c213f8182d5b5dd3d93b4a7",
+      "resultSha256": "908c55661b04d4e79c3343c9a633e8882d81af7732647651d9a30ebb564ecd76",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 5,
+        "blocks": 14
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 9,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 181,
+      "status": "completed",
+      "candidateContentHash": "ffaf0d46715659da5bff6399c67a01de0f024e423a70892e5299d61fa87d9fc1",
+      "packetSha256": "2d7806ee2dde20504ed45b789e27fe10a8bceb410f48795ceffddcbcd6ade5e3",
+      "resultSha256": "763e23077b91fbe23fd4bd91ae58f902f271b8c7c82fac41c0f66d3e1af3d593",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 6,
+        "blocks": 14
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 8,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 189,
+      "status": "completed",
+      "candidateContentHash": "5280bb4997339aa41e735b5c81da00f801ddfbe68952344dc124772384aa1573",
+      "packetSha256": "b09bce2b73b7bba4e848238d4e1679f02cc032ecd5253881e0d1c8651f60002b",
+      "resultSha256": "94e54af5c7b6263447e1b080218948079b6901b1b4f4d40b84f18794d77387ab",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 7,
+        "blocks": 15
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 8,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 190,
+      "status": "completed",
+      "candidateContentHash": "3eda31cc112f2eda5d572e180ae2e54b1d89c624dc19930ce6092c95438ddf51",
+      "packetSha256": "8516a1cd846e058135029edbf0f1472680501799f349f19b2968dd76aa61ae8f",
+      "resultSha256": "618fd0058448a56120c21aec7943603908d05679656252ab600bf82354aede3c",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 3,
+        "blocks": 9
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 6,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 199,
+      "status": "completed",
+      "candidateContentHash": "5afbca40a9efcf7293327ea31ab4eb7e8e7725ad44da96a912feffe95e602110",
+      "packetSha256": "f454e7df85bcba1cdc16425890dfc37321201b5104769ff80c9d704898e25424",
+      "resultSha256": "4c76804ba86b8e0e3cb8bc7f41ae4750bf8ba13e72c56ff1e28464cef97825d0",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 13,
+        "blocks": 13
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 6,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 202,
+      "status": "completed",
+      "candidateContentHash": "1382c04dbae9bf8a2e52c51d7f9a2552d73f3bc408ceb4d58b1fd6c92eafe432",
+      "packetSha256": "8231fff1276646d99988a6719002f63c6233f06189a43a2190e2b3f289770040",
+      "resultSha256": "d02418e0a1102b92dedaa4a315ce544743e46ca77fe5daebe28e1c53b6fde563",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 23,
+        "blocks": 28
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 13,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 203,
+      "status": "completed",
+      "candidateContentHash": "15660fa76538a4b09bbff01038297e2ade75a0ee82a324087665d3fab7d49e28",
+      "packetSha256": "ac41f338ec1af0bd4389e1be4de33979bd659da60b28d120e4f72b67af2632c1",
+      "resultSha256": "e15d1ce2edac7c48a576f18cd6c87bb89bcbf873ecfcb5be5174fc302e64dc26",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 14,
+        "blocks": 18
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 10,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 204,
+      "status": "completed",
+      "candidateContentHash": "1fb880c6329a401d7891e0ffc5035a621e86d39faf71a328a3ec727de4a6a0ae",
+      "packetSha256": "461182ada70bced1874a98cdde92da1dc38f586c63d42df1cbf1f2c32ff1da8f",
+      "resultSha256": "6de0506b4475c0b900573948b9f816cd317308e2fd631f4dda47d167ccc1ec41",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 6,
+        "blocks": 17
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 8,
+      "phase": "initial",
+      "contextWindow": 65536
+    },
+    {
+      "index": 205,
+      "status": "completed",
+      "candidateContentHash": "d761704da9d1f8c8debf92ef2f19ffaa64dbe23929ea175a1de78b5bf1ade2c4",
+      "packetSha256": "d39d7c82ed1f3c04a22eb0a6595cb6fb476f061c52380b5339ad66e8a75a015d",
+      "resultSha256": "33e1619178c4d088123a0d56fad42994658f72a21e4dd148ea2fce76566993c1",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 11,
+        "blocks": 14
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 9,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 206,
+      "status": "completed",
+      "candidateContentHash": "aed6a70bd23162a016f09282f18587a8f27500e1377db7aef8e707cab91fc727",
+      "packetSha256": "752b627904a244d9165b5a373a412125b588e510aed134edb3fd5382d1eaf238",
+      "resultSha256": "1a2119e80a07d1179023b70786608a8b11602d03a4aa1843c49ae492f8a95fae",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 19,
+        "blocks": 16
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 8,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 208,
+      "status": "completed",
+      "candidateContentHash": "a13ef348ac9f67af14cbdcfa4b8136976b8bec95657a1aab710fd62f2aa73a9b",
+      "packetSha256": "b22911e5e02016d1aa57d85a3a605394deafff5e12e9d9ec93626a800e14cc6b",
+      "resultSha256": "b40472c10f9f22e1cbb7c2b1b4e0427cfef98558c78369287245fab41ea8ec5b",
+      "recommendation": "revise",
+      "candidateSupport": "unsupported",
+      "coverage": {
+        "facts": 6,
+        "blocks": 15
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": true,
+      "issueCount": 6,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    },
+    {
+      "index": 226,
+      "status": "completed",
+      "candidateContentHash": "2900dcf6a21291cd5591ed82dbf0e207c776c33ae5e89cea0056b70f835b2918",
+      "packetSha256": "c2c4e70562418a7d96033f2a08c695d9b984f24565d4c8f2c2ead57063d42228",
+      "resultSha256": "a31a4e2b4a3cf21b33d89fa4d1b781996b1627c55e90c5cd136dfd65ca7328b2",
+      "recommendation": "revise",
+      "candidateSupport": "unverifiable",
+      "coverage": {
+        "facts": 9,
+        "blocks": 16
+      },
+      "applicabilityPreserved": false,
+      "verificationGrounded": false,
+      "issueCount": 11,
+      "phase": "post_hoc_supplement",
+      "contextWindow": 262144
+    }
+  ],
+  "originalBaselineResultsUnchanged": true,
+  "completeSourcePromptsUnchanged": true,
+  "monetaryCost": null,
+  "productionWrites": 0,
+  "published": false,
+  "version": 1,
+  "courseId": 51,
+  "jobId": "7c3b7fd8-17df-4464-a052-d2a5eaf6003b",
+  "scope": "Whole35 candidate population;16 initial assessments and19 post-hoc supplementary assessments; no human grading, publication or implementation-effect trial",
+  "supplementDetails": {
+    "at": "2026-11-28T12:19:36.338Z",
+    "kind": "Post-hoc wide-context supplementary AI evaluation; original complete prompt bytes unchanged; no human grading",
+    "baselineCounts": {
+      "completed": 16,
+      "held": 19,
+      "failed": 0,
+      "pending": 0
+    },
+    "planSha256": "57a65b2e3b2af533aa2270cb2205be57caee156da695ba3c7cd7df7d0e4980c2",
+    "jobId": "7c3b7fd8-17df-4464-a052-d2a5eaf6003b",
+    "inventoryTotals": {
+      "candidates": 234,
+      "withDraft": 35,
+      "withoutDraft": 199,
+      "withGeneratorIssues": 199,
+      "readyForAiAssessment": 35,
+      "mechanicallyHeld": 0
+    },
+    "counts": {
+      "completed": 19,
+      "held": 0,
+      "failed": 0,
+      "pending": 0
+    },
+    "recommendations": {
+      "revise": 19
+    },
+    "candidateSupport": {
+      "unsupported": 16,
+      "unverifiable": 3
+    },
+    "grounding": {
+      "usedFacts": {
+        "supported": 94,
+        "unverifiable": 66,
+        "unsupported": 19
+      },
+      "unusedMetadataFacts": {
+        "supported": 58,
+        "unverifiable": 24,
+        "unsupported": 6
+      },
+      "deliveredBlocks": {
+        "supported": 175,
+        "unverifiable": 94,
+        "unsupported": 48
+      }
+    },
+    "requestedLanguageFailures": {
+      "usedFacts": 179,
+      "unusedMetadataFacts": 88,
+      "blocks": 153
+    },
+    "applicabilityFailed": 19,
+    "verificationFailed": 10,
+    "heldReasons": {},
+    "failureReasons": {},
+    "usageFromAvailableEnvelopes": {
+      "input_tokens": 660686,
+      "cached_input_tokens": 49280,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 91925,
+      "reasoning_output_tokens": 7238
+    },
+    "toolCalls": 0,
+    "monetaryCost": null,
+    "productionWrites": 0,
+    "published": false
+  },
+  "localFinalAudit": {
+    "at": "2026-11-28T12:19:54.191Z",
+    "runtimeFilesVerified": 794,
+    "localSnapshotUnchanged": true,
+    "priorBuildRowsUnchanged": true,
+    "knowledgeChunks": 905,
+    "quota": {
+      "used_ai_answers": 1250,
+      "ai_answers_limit": 1300
+    },
+    "candidates": 234,
+    "publications": 0,
+    "stepCountsByBuildRevision": [
+      {
+        "revision": 1,
+        "modelSteps": 0
+      },
+      {
+        "revision": 2,
+        "modelSteps": 89
+      },
+      {
+        "revision": 3,
+        "modelSteps": 102
+      },
+      {
+        "revision": 4,
+        "modelSteps": 159
+      }
+    ],
+    "assessmentCounts": {
+      "completed": 35,
+      "held": 0,
+      "failed": 0,
+      "pending": 0
+    },
+    "modelCallsThisAudit": 0,
+    "productionWrites": 0
+  },
+  "languageObservation": {
+    "at": "2026-11-28T12:12:02.005301+00:00",
+    "method": "Count Hiragana, Katakana and Han characters in generated prose only; exclude source quotations, source identifiers and fact IDs; this is a mechanical diagnostic, not semantic language validation",
+    "requestedLanguage": "ja",
+    "drafts": 35,
+    "draftsWithoutJapaneseCharacters": 11,
+    "cacheFacts": 3451,
+    "cacheClaimsWithoutJapaneseCharacters": 3437,
+    "uniqueUsedFacts": 253,
+    "uniqueUsedClaimsWithoutJapaneseCharacters": 253,
+    "modelCalls": 0,
+    "localStateMutations": 0
+  },
+  "generation": {
+    "initialImplementation": "34adfda5604fbebdb37357df551f5ab3ed5385f1",
+    "continuationImplementation": "2484b85ed0786dd5abbbca894b339761921696e8",
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "courseVideos": 177,
+    "knowledgeChunksReused": 905,
+    "candidateRecords": 234,
+    "drafts": 35,
+    "heldWithoutDraft": 199,
+    "initialOwnerUsed": 1089,
+    "finalOwnerUsed": 1250,
+    "ownerLimit": 1300,
+    "additionalRequests": 161,
+    "successfulSteps": 159,
+    "failedRequests": 2,
+    "newGenerationCallsForSupplement": 0
+  },
+  "assessor": {
+    "model": "gpt-6.1-sol",
+    "clientVersion": "codex-cli 0.167.1",
+    "reasoning": "medium",
+    "initialContextWindow": 65536,
+    "supplementContextWindow": 262144,
+    "maximumSupplementPromptUtf8Bytes": 180000,
+    "reservedSupplementTokens": 65536,
+    "supplementTimeoutMs": 360000,
+    "maximumSupplementAttempts": 19,
+    "retries": 0,
+    "completePromptsUnchanged": true
+  },
+  "sourceIdentities": [
+    {
+      "index": 17,
+      "packetSha256": "372e9764bb0b2872df78220ffd09059866f48989a9e6ce86534279591ffe216c",
+      "candidateContentHash": "f6a0875a7f90f32d6716c1392268a49423bea04382b4eba1c509cad19799647a",
+      "promptSha256": "6b7ce50bc4fde0df86ce7645b3a31d32a424cef752c697e8b4b6ffe898fa3d7a",
+      "promptUtf8Bytes": 82761,
+      "facts": 16,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 39,
+      "packetSha256": "54effcea94477c7665f949096fba3ca3a0d3fc9a92082c6784b8262e876c811e",
+      "candidateContentHash": "0792fefd8892ef9785728831db682fb8e4ca696b81603ced07cdf9459cbf1eb7",
+      "promptSha256": "5046f8b734b4bb50e6798e52acc532b6e9ef764bc19c0702bcca5424fe1f8b24",
+      "promptUtf8Bytes": 123122,
+      "facts": 26,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 43,
+      "packetSha256": "e9d4505c982d80980828c81301790e8c235f8f14453b71b2d51e583fc6568bde",
+      "candidateContentHash": "785a7f539023f44e807d85ae3c90ec1a0178d21724c5f3e5c8dd0130b4be3430",
+      "promptSha256": "efa39814fb885085ed01be2ca1aa8c3f73da9c00613eed30c97c4fadf1af1e1b",
+      "promptUtf8Bytes": 76439,
+      "facts": 14,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 85,
+      "packetSha256": "92ddb4c16b50c24a918d9a6efe9e99b516bb7b3c3e7abccc74b5bb6cc0af5d78",
+      "candidateContentHash": "07a5550a2217a06db2a4ad146afd07acb04c55a96bbefbe90cce0bf15ca2cdea",
+      "promptSha256": "66b6f32db2e6dd6d3bda871a250af04c369e6b2954d247cf551c4211ec56982a",
+      "promptUtf8Bytes": 43233,
+      "facts": 5,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 99,
+      "packetSha256": "bbea9a06092659975c31597741502623fffe8e871ec9d9b10c47e66c4c591b19",
+      "candidateContentHash": "2becebca99eae314e7f02745477d5f63b5c79599ec5385c1e35902890faf566e",
+      "promptSha256": "96445b9c51fc974dc20447efbfbe72fab8acd5d995d35d2c301bdc9a30cb68e7",
+      "promptUtf8Bytes": 65779,
+      "facts": 12,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 117,
+      "packetSha256": "f9cdc7ed2cb5b571874156262d0d82933d22a9cb1775e06abcb7186d958adace",
+      "candidateContentHash": "308e66a45d4bae30d48bbdd1e2f7fe912106fefffd718da6246946a0bd458c20",
+      "promptSha256": "fd97a9bbfebc54efdc2689d8f514bf49c11d73331540bf22bd030199f8ebb841",
+      "promptUtf8Bytes": 87078,
+      "facts": 15,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 140,
+      "packetSha256": "0adc925ef071577ae7806ac4b5ae2b92e4aeac6cedccd821b25288385f3dc9f2",
+      "candidateContentHash": "1acc145cb51169b9ae1882472ab8fad8d826709cfb47ea490e86e0b3003335b0",
+      "promptSha256": "9b84bada70e503ba80ec17d98c21d88e281b5fd80e55527f6b8ffa89b3c27548",
+      "promptUtf8Bytes": 45022,
+      "facts": 10,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 147,
+      "packetSha256": "a086541c039a17c760d30539834496d0ee5399aa6c1171c79a8ffc9a1ba74841",
+      "candidateContentHash": "011ed1fe8a2560f3187e3a9621df5f9bf7830ac9472d641f6ed4a644a11e5fe3",
+      "promptSha256": "fd4fdd3c5d9c5616c19e9774ec69555aac348ec91d0d8b248b1cbf4551151552",
+      "promptUtf8Bytes": 61178,
+      "facts": 11,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 155,
+      "packetSha256": "1b96382a707016704b9fb6d3f7aaeeb7e93238da5e9148a91ccb345129f38d2a",
+      "candidateContentHash": "076a5d63253c59126c264085bb816b5d665ee34a652bd058490f52449e423508",
+      "promptSha256": "844f4659e2da16c183828eb04da55c989260c0c5c6e073e8afd0e83fb4bfef22",
+      "promptUtf8Bytes": 50416,
+      "facts": 9,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 171,
+      "packetSha256": "f45a72105d3637833a56a836436a33f1fd05a0d969b641919ff664fff84544a7",
+      "candidateContentHash": "adfce47204e027ea8884330e632967b63e0be475dc50c84d70738b08ba82887c",
+      "promptSha256": "a5567e879cb970c148c7c93605ecffbe568f1b69b8086177785574280b09584e",
+      "promptUtf8Bytes": 93023,
+      "facts": 15,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 174,
+      "packetSha256": "eeb00516b2e74e86a65a1b1edc1eab1b5f591fe804f7cbcdb913c67c724c4051",
+      "candidateContentHash": "3b5a27e8ad79fd7a9727b10bd098c31d4f5a2e09dab9d0276a11976aa8bf2d0d",
+      "promptSha256": "bf68990b511f535cdcd6a0c9e09522ad43a5a18dc2f5b9753c78ef13aefc2318",
+      "promptUtf8Bytes": 147532,
+      "facts": 33,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 181,
+      "packetSha256": "2d7806ee2dde20504ed45b789e27fe10a8bceb410f48795ceffddcbcd6ade5e3",
+      "candidateContentHash": "ffaf0d46715659da5bff6399c67a01de0f024e423a70892e5299d61fa87d9fc1",
+      "promptSha256": "8ad8d139062389ee63a4a5b60232a64a5d1f4cfdead9d3b240d65098e154b305",
+      "promptUtf8Bytes": 41019,
+      "facts": 6,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 199,
+      "packetSha256": "f454e7df85bcba1cdc16425890dfc37321201b5104769ff80c9d704898e25424",
+      "candidateContentHash": "5afbca40a9efcf7293327ea31ab4eb7e8e7725ad44da96a912feffe95e602110",
+      "promptSha256": "cf9b709df984a2d3110e8618738d130f0e3058d089154cce08bfe0961c536a91",
+      "promptUtf8Bytes": 80820,
+      "facts": 13,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 202,
+      "packetSha256": "8231fff1276646d99988a6719002f63c6233f06189a43a2190e2b3f289770040",
+      "candidateContentHash": "1382c04dbae9bf8a2e52c51d7f9a2552d73f3bc408ceb4d58b1fd6c92eafe432",
+      "promptSha256": "8568524fd405a2662c74c17d76e78baffed03d554ce589ad3ce3e7a0b88b33aa",
+      "promptUtf8Bytes": 121450,
+      "facts": 23,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 203,
+      "packetSha256": "ac41f338ec1af0bd4389e1be4de33979bd659da60b28d120e4f72b67af2632c1",
+      "candidateContentHash": "15660fa76538a4b09bbff01038297e2ade75a0ee82a324087665d3fab7d49e28",
+      "promptSha256": "acb281fd25ab16f45a153b7eff19802dd9e1c13f47dd443b92d4c5f148916874",
+      "promptUtf8Bytes": 72469,
+      "facts": 14,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 205,
+      "packetSha256": "d39d7c82ed1f3c04a22eb0a6595cb6fb476f061c52380b5339ad66e8a75a015d",
+      "candidateContentHash": "d761704da9d1f8c8debf92ef2f19ffaa64dbe23929ea175a1de78b5bf1ade2c4",
+      "promptSha256": "b3f4a891a78fda6ace36a838eb7a4920bbe1a2fd785a81c185dfbcf84247d335",
+      "promptUtf8Bytes": 58223,
+      "facts": 11,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 206,
+      "packetSha256": "752b627904a244d9165b5a373a412125b588e510aed134edb3fd5382d1eaf238",
+      "candidateContentHash": "aed6a70bd23162a016f09282f18587a8f27500e1377db7aef8e707cab91fc727",
+      "promptSha256": "af2ead7ef7a844c8524df2154aa3807b4922d7dacce6c1d835d3217116df3aad",
+      "promptUtf8Bytes": 87797,
+      "facts": 19,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 208,
+      "packetSha256": "b22911e5e02016d1aa57d85a3a605394deafff5e12e9d9ec93626a800e14cc6b",
+      "candidateContentHash": "a13ef348ac9f67af14cbdcfa4b8136976b8bec95657a1aab710fd62f2aa73a9b",
+      "promptSha256": "3b233efbfe10e6e33d8b6f61b1508cd8de7e97a0ee17cf673e80c6c4cea8acc5",
+      "promptUtf8Bytes": 52547,
+      "facts": 6,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    },
+    {
+      "index": 226,
+      "packetSha256": "c2c4e70562418a7d96033f2a08c695d9b984f24565d4c8f2c2ead57063d42228",
+      "candidateContentHash": "2900dcf6a21291cd5591ed82dbf0e207c776c33ae5e89cea0056b70f835b2918",
+      "promptSha256": "fbcac45d8d7ac3c8cd0480ee926e811622d6ad6eb18b7c5ff1cb1cc405a04463",
+      "promptUtf8Bytes": 52941,
+      "facts": 9,
+      "baselineResultSha256": "b43797f3c6377bc568feef9331edb8c57c6e070225eaf2e195dbd26b5fa5ceb5"
+    }
+  ],
+  "sourceCi": {
+    "runId": 46138994746,
+    "codeqlRunId": 46138994875,
+    "implementation": "2484b85ed0786dd5abbbca894b339761921696e8",
+    "conclusion": "success",
+    "codeqlConclusion": "success",
+    "apiTestsPassed": 5695,
+    "apiTestsSkipped": 95
+  },
+  "pastComparisonUnchanged": true,
+  "video120Unchanged": true,
+  "allIssuesRemainOpen": true,
+  "privateEvidence": [
+    {
+      "name": "revision4-wide-context-assessment-plan.json",
+      "sha256": "57a65b2e3b2af533aa2270cb2205be57caee156da695ba3c7cd7df7d0e4980c2"
+    },
+    {
+      "name": "revision4-wide-context-assessment-execution.json",
+      "sha256": "e1d3370e5d019c55b1ca90f6bb708ee5edae3a5341c6f9618768d7facba3cb23"
+    },
+    {
+      "name": "revision4-wide-context-preflight-proof.json",
+      "sha256": "63ba9a745028a7fc4892c9ac44ab268a5121e507bbe71d6fdfe0f9510cb3f8f8"
+    },
+    {
+      "name": "revision4-wide-context-assessment-summary.json",
+      "sha256": "1b47ea1daac2290a87e84740ac0cc6fd08abedb6e894b9efeb72c164ed0cea10"
+    },
+    {
+      "name": "revision4-wide-context-assessment-final-audit.json",
+      "sha256": "475167bf9d2cf0dc14afaf9f9ade0e59f1d8209e47a077d691dfacb19e2288e6"
+    },
+    {
+      "name": "revision4-combined-assessment-final-audit.json",
+      "sha256": "6416b3d8b9b9f6d7dcfeadcc198318ad21459ce8aaf7f91c3876fe812a1b69b1"
+    },
+    {
+      "name": "revision4-generated-language-observation.json",
+      "sha256": "c04afc8eebf8790ead69ff7f1bde747b8ce160159d077e4eb866508a5038026b"
+    },
+    {
+      "name": "revision4-final-local-state-after-supplement.json",
+      "sha256": "da4027ff8bf1f93a056ebbc94d7b49cd581cbd984dbdcdb1e56e17b998512644"
+    }
+  ]
+}

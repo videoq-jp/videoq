@@ -14,7 +14,7 @@ const schema = z.object({
   ])).min(1).max(240),
 }).strict();
 
-export type VisualVideo = { id: number; fileKey: string; visualRunId?: string | null;visualManifestVersion?:string|null };
+export type VisualVideo = { id: number; fileKey: string; visualRunId?: string | null;visualManifestVersion?:string|null; expectedRunId?: string };
 export const visualChunkKey = (fileKey: string, runId: string, index: number, version?: string) => `${fileKey}.visual-v2/${runId}/${index}${version ? `/${version}` : ""}.bin`;
 
 export async function readVisualManifest(env: Bindings, video: VisualVideo, signal: AbortSignal) {
@@ -23,7 +23,7 @@ export async function readVisualManifest(env: Bindings, video: VisualVideo, sign
   const bytes = await readMediaBytes(env, key, (video.visualRunId === undefined ? 32 : 64) * 1024, signal);
   if (!bytes) return null;
   const plan = schema.parse(JSON.parse(new TextDecoder().decode(bytes)));
-  if (plan.video_id !== video.id || (video.visualRunId !== undefined && (plan.run_id !== video.visualRunId || !plan.chunk_versions)) ||
+  if (plan.video_id !== video.id || (video.expectedRunId !== undefined && plan.run_id !== video.expectedRunId) || (video.visualRunId !== undefined && (plan.run_id !== video.visualRunId || !plan.chunk_versions)) ||
     (plan.chunk_versions && plan.chunk_versions.length !== plan.chunk_count) || plan.chunk_count !== Math.ceil(plan.duration_seconds / 60)) {
     throw new Error("Invalid visual chunk manifest");
   }

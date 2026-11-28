@@ -22,6 +22,6 @@ type Story = StoryObj<typeof meta>;
 export const ManagementMenu: Story = {
   async play({ canvas, userEvent }) {
     await userEvent.click(await canvas.findByRole('button', { name: i18n.t('videos.courseDetail.manage') }));
-    await expect(canvas.queryByRole('button', { name: /skills|スキル/i })).not.toBeInTheDocument();
+    await expect(canvas.getByRole('button', { name: i18n.t('courseSkills.title') })).toBeVisible();
   },
 };

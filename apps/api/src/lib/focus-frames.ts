@@ -56,7 +56,7 @@ export async function readFocusFrames(
     return frames.length ? { frames, duration_seconds: plan.duration_seconds, sampling_interval_seconds: 1 }
       : { unavailable: "No dense frames fall in this interval; the source may have a gap or the interval may be outside the video.", sampling_interval_seconds: 1 };
   }
-  if (video.visualRunId !== undefined) return unpreparedVisualEvidence();
+  if (video.visualRunId !== undefined || video.expectedRunId !== undefined) return unpreparedVisualEvidence();
   return readFocusPack(env, video, start, end, signal, maxFrames, focusCacheKey(video.fileKey));
 }
 

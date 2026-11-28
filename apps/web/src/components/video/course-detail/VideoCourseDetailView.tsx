@@ -22,6 +22,7 @@ import {
 } from '@dnd-kit/sortable';
 import {
   ArrowLeft,
+  BookOpen,
   BarChart3,
   Pencil,
   Plus,
@@ -64,6 +65,7 @@ import {
 import { SortableVideoItem } from './SortableVideoItem';
 import { PickFromLibraryDialog } from './PickFromLibraryDialog';
 import { ShareLinkDialog } from './ShareLinkDialog';
+import { CourseSkillsDialog } from './CourseSkillsDialog';
 
 interface VideoCourseDetailViewProps {
   course: VideoCourse | null;
@@ -410,6 +412,7 @@ export function VideoCourseDetailView({
   const [playerExpanded, setPlayerExpanded] = useState(true);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [isSkillsOpen, setIsSkillsOpen] = useState(false);
   const [requestedTab, setPanelTab] = useState<PanelTab>('assistant');
   const panelId = useId();
   const pageRef = useRef<HTMLDivElement>(null);
@@ -495,6 +498,7 @@ export function VideoCourseDetailView({
 
 
           {canManage && courseId ? <DashboardDialog courseId={courseId} open={isDashboardOpen} onOpenChange={setIsDashboardOpen} /> : null}
+          {canManage && courseId && isSkillsOpen ? <CourseSkillsDialog key={courseId} courseId={courseId} isOpen={isSkillsOpen} onOpenChange={setIsSkillsOpen} onPlay={onVideoPlayFromTime} /> : null}
 
           <div ref={pageRef} data-course-viewer style={{ height: viewportHeight }} className="flex h-dvh flex-col overflow-hidden bg-white">
             <ViewerHeader title={course?.name ?? t('navigation.coursesNav')} backHref="/videos/courses">
@@ -533,6 +537,7 @@ export function VideoCourseDetailView({
                         <span>{t('videos.courseDetail.delete')}</span>
                       </MenuListItemButton>
                     </MenuListItem>
+                    <MenuListItem><MenuListItemButton type="box" size="regular" onClick={() => setIsSkillsOpen(true)}><BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{t('courseSkills.title')}</span></MenuListItemButton></MenuListItem>
                   </MenuList>
                 </ViewerActionsMenu> : course ? (
                   <Button

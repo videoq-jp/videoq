@@ -276,7 +276,7 @@ describe("MCP JSON-RPC", () => {
     expect(body.result.protocolVersion).toBe("2025-03-26");
     expect(body.result.serverInfo).toEqual({
       name: "videoq-api",
-      version: "0.3.0",
+      version: "0.4.0",
     });
   });
 
@@ -301,6 +301,7 @@ describe("MCP JSON-RPC", () => {
         "confirm_video_upload",
         "create_youtube_video",
         "list_courses",
+        "list_course_skills", "get_course_skill", "read_course_skill_resource",
         "get_course",
         "create_course",
         "add_video_to_course",
@@ -341,7 +342,7 @@ describe("MCP JSON-RPC", () => {
         (tool) =>
           (tool.annotations as { readOnlyHint?: boolean }).readOnlyHint === true,
       ),
-    ).toHaveLength(14);
+    ).toHaveLength(17);
     expect(
       tools.filter(
         (tool) =>
@@ -605,7 +606,7 @@ describe("MCP JSON-RPC", () => {
     });
   });
 
-  it("returns a tool error when the per-user MCP rate limit is exhausted", async () => {
+  it.each(["list_videos", "list_course_skills", "get_course_skill", "read_course_skill_resource"])("returns a tool error when the per-user MCP rate limit is exhausted for %s", async name => {
     setRateLimitBackendForTests({
       consume: async () => ({ allowed: false, retryAfterSec: 17 }),
       release: async () => {},
@@ -613,7 +614,7 @@ describe("MCP JSON-RPC", () => {
       record: async () => {},
     });
     const res = await post(
-      jsonrpc("tools/call", { name: "list_videos", arguments: {} }),
+      jsonrpc("tools/call", { name, arguments: name === "get_course_skill" || name === "read_course_skill_resource" ? { uri: "skill://unavailable" } : {} }),
     );
     const result = (await res.json()).result;
     expect(result.isError).toBe(true);

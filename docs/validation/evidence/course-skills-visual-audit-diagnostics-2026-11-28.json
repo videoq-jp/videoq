@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-27T15:01:00.403988+00:00",
+  "decision": "diagnostics-not-adopted",
+  "videoId": 120,
+  "source": "Frozen grouped-selection sample; original generation and Sol assessment retained",
+  "packetSha256": "15e56587e58be05fc45aa594a1dfdaa54c81da5a3116dcdd6c7ec80bbbd512a5",
+  "separateModelDiagnostic": {
+    "model": "@cf/qwen/qwen3.8-27b",
+    "reasoning": "medium",
+    "calls": 1,
+    "schemaPassed": true,
+    "quotaBefore": 11,
+    "quotaAfter": 12,
+    "knownVisualMismatchIndex": 4,
+    "mismatchedVisualAccepted": true,
+    "knownFailureDetected": false,
+    "verdictSha256": "9a21e970e5826ec66ca9cbd89344e8064478ad5e86f9465fdf2d4d792d0c5256",
+    "responseSha256": "a04c7d0af04aa56430025c36eba337cc702f8f71ed289e9f83f7c64431ac06aa",
+    "runnerSha256": "8fcd3112771b86051e9f9ab4ad74fdafebcb87f25c5cca8a461b18f8b0de8a72",
+    "officialModelDocumentation": "https://developers.cloudflare.com/workers-ai/models/qwen3.8-27b/"
+  },
+  "isolatedCitationControls": {
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "calls": 2,
+    "schemaPassed": true,
+    "quotaBefore": 12,
+    "quotaAfter": 14,
+    "conditionsFixedBeforeRequests": true,
+    "sameFactAndCues": true,
+    "imagesPerRequest": 1,
+    "results": [
+      {
+        "control": "cited-frame",
+        "expectedVisualSupported": false,
+        "index": 0,
+        "claimSupported": true,
+        "visualSupported": true
+      },
+      {
+        "control": "corrected-frame",
+        "expectedVisualSupported": true,
+        "index": 0,
+        "claimSupported": true,
+        "visualSupported": true
+      }
+    ],
+    "knownFailureDetected": false,
+    "planSha256": "81965f55424e41542e29bad710a4362a572fcaf3dbba6ed4ec40f83460eae2af",
+    "verdictSha256": "628d614fae3f8099f04284902c7a81c94903cea27fe8263b1cd58902368d6556",
+    "runnerSha256": "4e2c6c7bf06cf56b3ae9d93e2f550e71ce4671b63d3ba77917f7e3667d908c00"
+  },
+  "integratedIntoGeneration": false,
+  "originalComparisonChanged": false,
+  "solAssessmentChanged": false,
+  "productionWrites": 0,
+  "knowledgeCacheWrites": 0,
+  "localRuntimesClosed": true,
+  "limitations": [
+    "These are targeted post-hoc diagnostics on one frozen fact, not representative model accuracy estimates.",
+    "Changing model and restricting inputs did not detect this known visual-citation mismatch. No automated approval gate was added from these results.",
+    "AI agreement is not source verification; independent evaluation and owner review remain necessary.",
+    "Paid diagnostic requests remain counted; original inputs, failures and judgments were not overwritten."
+  ]
+}

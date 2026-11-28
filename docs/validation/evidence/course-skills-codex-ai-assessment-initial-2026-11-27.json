@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "executionCompleted": true,
+  "humanAssessmentRecorded": false,
+  "aiAssessmentRecorded": true,
+  "assessor": {
+    "provider": "Codex CLI",
+    "model": "gpt-6.1-sol",
+    "clientVersion": "codex-cli 0.167.1",
+    "reasoning": "medium",
+    "freshProcesses": 60,
+    "enabledNativeSkills": 0,
+    "toolCalls": 0,
+    "elapsedMs": 736675,
+    "usage": {
+      "observed": 60,
+      "inputTokens": 927849,
+      "cachedInputTokens": 252928,
+      "outputTokens": 21977
+    },
+    "monetaryCostUsd": null
+  },
+  "conditions": [
+    {
+      "condition": "A",
+      "trials": 20,
+      "functional": {
+        "passed": 16,
+        "total": 16
+      },
+      "originalFunctionalPasses": 16,
+      "verificationPasses": 16,
+      "verificationDiscrepancies": 0,
+      "timeouts": 0,
+      "toolUse": {
+        "trialsWithSuccessfulSearch": 0,
+        "trialsWithSuccessfulResourceRead": 0,
+        "successfulCallsByName": {}
+      },
+      "judgment": {
+        "misapplied": 1,
+        "unsupportedClaims": 20,
+        "total": 20,
+        "criteriaMet": 40,
+        "criteriaTotal": 44
+      },
+      "elapsedMs": {
+        "count": 20,
+        "min": 13215,
+        "median": 30950.5,
+        "max": 42380,
+        "total": 581768
+      },
+      "inputTokens": {
+        "count": 20,
+        "min": 36666,
+        "median": 50290.5,
+        "max": 77981,
+        "total": 1085722
+      },
+      "outputTokens": {
+        "count": 20,
+        "min": 310,
+        "median": 1128,
+        "max": 1717,
+        "total": 20810
+      },
+      "monetaryCostUsd": null
+    },
+    {
+      "condition": "B",
+      "trials": 20,
+      "functional": {
+        "passed": 16,
+        "total": 16
+      },
+      "originalFunctionalPasses": 16,
+      "verificationPasses": 16,
+      "verificationDiscrepancies": 0,
+      "timeouts": 0,
+      "toolUse": {
+        "trialsWithSuccessfulSearch": 3,
+        "trialsWithSuccessfulResourceRead": 0,
+        "successfulCallsByName": {
+          "search_scenes": 4
+        }
+      },
+      "judgment": {
+        "misapplied": 2,
+        "unsupportedClaims": 19,
+        "total": 20,
+        "criteriaMet": 41,
+        "criteriaTotal": 44
+      },
+      "elapsedMs": {
+        "count": 20,
+        "min": 13227,
+        "median": 33040.5,
+        "max": 60725,
+        "total": 658193
+      },
+      "inputTokens": {
+        "count": 20,
+        "min": 48727,
+        "median": 50772,
+        "max": 88862,
+        "total": 1188597
+      },
+      "outputTokens": {
+        "count": 20,
+        "min": 234,
+        "median": 1160.5,
+        "max": 1940,
+        "total": 22964
+      },
+      "monetaryCostUsd": null
+    },
+    {
+      "condition": "C",
+      "trials": 20,
+      "functional": {
+        "passed": 16,
+        "total": 16
+      },
+      "originalFunctionalPasses": 16,
+      "verificationPasses": 16,
+      "verificationDiscrepancies": 0,
+      "timeouts": 0,
+      "toolUse": {
+        "trialsWithSuccessfulSearch": 3,
+        "trialsWithSuccessfulResourceRead": 0,
+        "successfulCallsByName": {
+          "list_course_skills": 7,
+          "get_course_skill": 3,
+          "search_scenes": 5
+        }
+      },
+      "judgment": {
+        "misapplied": 1,
+        "unsupportedClaims": 20,
+        "total": 20,
+        "criteriaMet": 41,
+        "criteriaTotal": 44
+      },
+      "elapsedMs": {
+        "count": 20,
+        "min": 15558,
+        "median": 42411,
+        "max": 82874,
+        "total": 855497
+      },
+      "inputTokens": {
+        "count": 20,
+        "min": 55824,
+        "median": 81622.5,
+        "max": 130313,
+        "total": 1656383
+      },
+      "outputTokens": {
+        "count": 20,
+        "min": 428,
+        "median": 1585,
+        "max": 2254,
+        "total": 29238
+      },
+      "monetaryCostUsd": null
+    }
+  ],
+  "hashes": {
+    "packet": "5dfadd3892f7e03e16c3fdb8b78abaf14d57d0decb97c0498451d03464618877",
+    "protocol": "a0b699c261995de713e9c2dd84db35d7dd0e38168f7db0b1841afc240a69880b",
+    "source": "17115b55e87cfb0b411519f2890c94962495f175257beb3e50db16242c95b81d",
+    "evidence": "09ac10b8cd64edfea6a1a0945eac0efbbe48ea1628dbbb7c6d84ea38bdbe69b0",
+    "assessments": "7f7cbf83e63b334ca0ec3fb30a4f6632d0a7363b97faa8d011cc7dfb5c6227f4",
+    "report": "363a62f9a110c645c5e0af6df3cdaa3fa00c76fc786f8bc761ce4cd0b449f5bc"
+  },
+  "limitations": [
+    "AI judgments are model-based assessments, not human review; separate requests or a different model do not prove statistical independence.",
+    "Condition labels and machine grades were hidden; citations and prose may reveal tool use.",
+    "Functional success requires both original and independent checks; the additional checker was introduced after an output-forgery probe, without rerunning models or changing original records.",
+    "Descriptive results for these tasks and frozen videos only; no population-wide causal or statistical-significance claim.",
+    "Monetary cost is unknown for the existing CLI plan; missing token observations retain their own counts.",
+    "Assessor model chosen after preliminary Gemma format checks; all preliminary judgments excluded.",
+    "Shared bounded source references only; no images or full-course evidence.",
+    "Machine execution logs were withheld; an AI unsupported-claim flag is a judgment from the supplied review packet, not proof that an execution claim was false."
+  ],
+  "productionWrites": 0,
+  "assessmentStage": "initial packets without execution evidence",
+  "qualityAcceptanceCompleted": false,
+  "measurementCaveats": {
+    "unsupportedClaimFlags": {
+      "total": 59,
+      "denominator": 60,
+      "validatedFalseClaimRate": false,
+      "reason": "Assessor frequently flagged absent command/tool logs as unsupported execution claims. Original packets withheld these logs. Do not interpret this as 59 false claims."
+    },
+    "skillInstructionExposure": {
+      "successfulResourceReadTrialsInConditionC": 0,
+      "denominator": 20,
+      "manifestIsNotInstructionBody": true,
+      "conclusion": "Measures availability under this setup; does not establish effects from applying fetched Skill instructions."
+    },
+    "supplementaryAssessment": "All 60 frozen outputs are being reassessed with observed execution evidence and configured tool catalogs; initial judgments are retained unchanged. Post-hoc methodology change disclosed."
+  },
+  "syntheticAssessorChecks": {
+    "synthetic": true,
+    "assessorModel": "gpt-6.1-sol",
+    "count": 3,
+    "passed": 3,
+    "controls": [
+      {
+        "control": "correct-implementation",
+        "passed": true,
+        "expected": {
+          "met": true,
+          "misapplied": false,
+          "unsupportedClaim": false
+        },
+        "actual": {
+          "met": true,
+          "misapplied": false,
+          "unsupportedClaim": false
+        },
+        "resultSha256": "4f6a38368a53a65ee6e75020e1d69f232f997bad5f9cfba8ae183f750ea33b25"
+      },
+      {
+        "control": "incorrect-implementation-and-injection",
+        "passed": true,
+        "expected": {
+          "met": false,
+          "misapplied": true
+        },
+        "actual": {
+          "met": false,
+          "misapplied": true,
+          "unsupportedClaim": false
+        },
+        "resultSha256": "b598db9e42311b625c9b3a066c707fc369c99f705eb6d5c6b7fcb8aa7cebd7e3"
+      },
+      {
+        "control": "fabricated-screen-observation",
+        "passed": true,
+        "expected": {
+          "met": false,
+          "unsupportedClaim": true
+        },
+        "actual": {
+          "met": false,
+          "misapplied": true,
+          "unsupportedClaim": true
+        },
+        "resultSha256": "0334b20421037483b7425cb92a0daf23a607ac0b91ff36c671faebb99814dda9"
+      }
+    ]
+  },
+  "syntheticAssessorChecksSha256": "2221294786ab413a4e0dd259c76560d0e3a03d3a3245bd284dd495b504211e09"
+}

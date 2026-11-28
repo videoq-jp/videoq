@@ -27,7 +27,8 @@ startup_timeout_sec = 30
 tool_timeout_sec = 180
 enabled_tools = [
   "list_courses", "get_course_info", "search_scenes", "read_video_window",
-  "overview_video", "skim_video", "inspect_clip", "focus_clip"
+  "overview_video", "skim_video", "inspect_clip", "focus_clip",
+  "list_course_skills", "get_course_skill", "read_course_skill_resource"
 ]
 ```
 
@@ -90,6 +91,33 @@ codex exec --ephemeral --skip-git-repo-check --sandbox read-only --json \
 private course information, transcripts and observations; keep any saved output
 private. `--ephemeral` avoids saving the Codex session, but does not erase output
 you save yourself.
+
+## Apply published course Skills
+
+In a VideoQ installation with course Skills enabled, the course owner generates,
+reviews and publishes each skill and enables distribution. An empty skill list
+can mean that no reviewed version is available or that the current user lacks access.
+
+For Codex clients without the MCP Skills extension, use the standard tools in the
+allow list above plus the small `videoq-course-skills` local skill. From a checkout
+of the matching VideoQ version, copy the folder into your target project's skill directory:
+
+```bash
+mkdir -p /path/to/project/.agents/skills
+cp -R integrations/codex/skills/videoq-course-skills /path/to/project/.agents/skills/
+```
+
+Restart Codex in that project, then ask:
+
+> Use $videoq-course-skills to apply the published knowledge from course 42 to this task.
+
+The local skill contains retrieval instructions. It discovers published metadata,
+fetches the selected manifest and reads its instructions and sources through MCP.
+Course knowledge stays on the server until requested; the local skill is not a copy
+of a course. Every lookup rechecks access and source validity. Stop using a version
+when a lookup returns `SKILL_UNAVAILABLE`; the server cannot erase material already
+read into a conversation. This compatibility route does not imply native support for
+`skills/list` or automatic registration of every course skill in Codex's catalog.
 
 ## Limits and troubleshooting
 

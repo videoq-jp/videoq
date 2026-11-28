@@ -6,7 +6,7 @@ import type { Bindings } from "../types/bindings";
 import { DEFAULT_LLM_MODEL, resolveLlmConnection, llmMaxTokens, llmModelKwargs, llmReasoningEffort, LlmProviderError } from "./openai";
 import { deadlineSignal } from "./request-timeout";
 import { frameCacheKey, MAX_FRAME_CACHE_BYTES } from './video-evidence';
-import { MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, sampleByTime, selectClipFrames } from '../domain/conversation/video-evidence';
+import { MAX_CLIP_FRAMES, MAX_OVERVIEW_FRAMES, sampleByTime, sampleByTimeGroups, selectClipFrames } from '../domain/conversation/video-evidence';
 import { readFocusFrames, type FrameSelection } from "./focus-frames";
 import { readVisualManifest, visualChunkKey, jpegBase64, type VisualVideo } from "./visual-manifest";
 import type { UsageRecorder } from "../tools/usage";
@@ -34,13 +34,15 @@ export { selectClipFrames } from '../domain/conversation/video-evidence';
 import type { VisualMode, VisualInspectionResult } from "../domain/media/visual-evidence";
 export type { VisualMode } from "../domain/media/visual-evidence";
 
-async function readSparseFrames(
+export async function readSparseFrames(
   env: Bindings, video: VisualVideo,
   start: number, end: number, signal: AbortSignal, limit: number,
+  evidenceGroups?: readonly (readonly { start: number; end: number }[])[],
 ): Promise<FrameSelection> {
   const plan = await readVisualManifest(env, video, signal);
   if (plan) {
-    const selected = sampleByTime(plan.overview.filter(([time]) => time / 1000 >= start && time / 1000 <= end), item => item[0], limit);
+    const available = plan.overview.filter(([time]) => time / 1000 >= start && time / 1000 <= end);
+    const selected = evidenceGroups ? sampleByTimeGroups(available, item => item[0] / 1000, evidenceGroups, limit) : sampleByTime(available, item => item[0], limit);
     if (!selected.length) return { unavailable: "No sampled frames fall in this interval; this does not prove the scene is absent." };
     const frames: Frame[] = [];
     for (const [time, index, offset, length] of selected) {
@@ -51,7 +53,7 @@ async function readSparseFrames(
     }
     return { frames, duration_seconds: plan.duration_seconds, sampling_interval_seconds: Math.max(5, plan.duration_seconds / plan.overview.length) };
   }
-  if (video.visualRunId !== undefined) return unpreparedVisualEvidence();
+  if (video.visualRunId !== undefined || video.expectedRunId !== undefined) return unpreparedVisualEvidence();
   const bytes = await readMediaBytes(env, frameCacheKey(video.fileKey), MAX_FRAME_CACHE_BYTES, signal);
   if (!bytes) return unpreparedVisualEvidence();
   const cache = cacheSchema.parse(JSON.parse(new TextDecoder().decode(bytes)));
@@ -60,7 +62,7 @@ async function readSparseFrames(
     (i > 0 && frame.timestamp_seconds <= cache.frames[i - 1].timestamp_seconds))) {
     throw new Error("Invalid visual cache identity or timestamps");
   }
-  const frames = selectClipFrames(cache.frames, start, end, limit);
+  const frames = evidenceGroups ? sampleByTimeGroups(cache.frames.filter(frame => frame.timestamp_seconds >= start && frame.timestamp_seconds <= end), frame => frame.timestamp_seconds, evidenceGroups, limit) : selectClipFrames(cache.frames, start, end, limit);
   if (!frames.length) return {
     unavailable: "No sampled frames fall in this interval; this does not prove the scene is absent.",
     sampling_interval_seconds: cache.sampling_interval_seconds,

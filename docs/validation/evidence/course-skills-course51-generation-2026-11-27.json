@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-27",
+  "scope": {
+    "courseId": 51,
+    "courseVideoCount": 177,
+    "evaluatedVideoIds": [
+      578
+    ],
+    "transcriptCharacters": 72920,
+    "wholeCourseEvaluated": false,
+    "remoteCourseReadsOnly": true,
+    "productionDataChanged": false,
+    "mediaReextracted": false,
+    "visualQualityEvaluated": false
+  },
+  "model": "@cf/google/gemma-4-26b-a4b-it",
+  "knowledgePromptVersion": "course-knowledge-v9",
+  "draftPromptVersion": "course-draft-v3",
+  "result": {
+    "buildState": "completed",
+    "phase": "review_required",
+    "knowledgeChunks": 9,
+    "facts": 34,
+    "factKinds": {
+      "principle": 19,
+      "criterion": 5,
+      "procedure": 5,
+      "verification": 5
+    },
+    "candidates": 5,
+    "drafts": 2,
+    "held": 3,
+    "heldReasons": [
+      "SKILL_INSUFFICIENT_TASK_KNOWLEDGE"
+    ],
+    "automaticAuditsPassed": 2,
+    "humanApproved": false,
+    "published": 0,
+    "unsourcedNegativeConditionsRemoved": true,
+    "illustrativeApplicationNotice": true
+  },
+  "lineage": {
+    "extractionReportSha256": "4bb24f26bcad311f48297edd19a48a0bff3a72da523628e6e57c35b58503bf4d",
+    "finalReportSha256": "60428cb9a033ddbda7f19033d91d6f98556beb62840c416c09c264b61a46949d",
+    "extractionSuccessfulModelCalls": 9,
+    "sourceReportAllModelCalls": 12,
+    "sourceReportDiscardedPlanningCalls": 3,
+    "finalResumeModelCalls": 6,
+    "finalResumeReusedChunks": 9,
+    "finalResumeElapsedMs": 82229,
+    "finalResumeUsage": {
+      "inputTokens": 36391,
+      "outputTokens": 2640,
+      "neurons": 402.8272762298584
+    },
+    "usageAcrossTheseTwoReports": {
+      "inputTokens": 155756,
+      "outputTokens": 19799,
+      "neurons": 1954.4817914962769
+    },
+    "earlierDiagnosticsAndCodexUsageExcluded": true,
+    "notAProductionLatencyOrEffectBenchmark": true
+  },
+  "files": [
+    {
+      "contentHash": "c66c92d6a658a04bd2b9832272bd976865854d2bc2dd0cf3d61851180b41897e",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "7989794493a57bf265b416855fbed9fb723af52719fa7a03d8b06ce19511770e",
+          "utf8Bytes": 4542
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "de556d222be75af8edca97e7ba22af75b495cf3ce1e5a6d2cfdb5153ffbe39b3",
+          "utf8Bytes": 3226
+        }
+      ]
+    },
+    {
+      "contentHash": "22966ca6ffd33b7cea375b2dab29a201706665381b24ea80dff0680aa74ca044",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "fe900c214bfb3c4dd7354a8410f270e3ed1f53703af03f983d38a5a97607518e",
+          "utf8Bytes": 5763
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "d9775ac52ddb76cb45a47222b0ebb09b4dcdbb35e0b75504d803519c881f966e",
+          "utf8Bytes": 6934
+        }
+      ]
+    }
+  ],
+  "remaining": [
+    "Owner review of real-course drafts",
+    "Whole-course consolidation across 177 videos",
+    "Authenticated retrieval and revocation of an owner-approved real-course publication from Codex",
+    "Fixed-condition multi-task effect comparison"
+  ]
+}

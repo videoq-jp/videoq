@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "executionCompleted": true,
+  "humanAssessmentRecorded": false,
+  "aiAssessmentRecorded": true,
+  "assessor": {
+    "provider": "Codex CLI",
+    "model": "gpt-6.1-sol",
+    "clientVersion": "codex-cli 0.167.1",
+    "reasoning": "medium",
+    "freshProcesses": 60,
+    "enabledNativeSkills": 0,
+    "toolCalls": 0,
+    "elapsedMs": 698312,
+    "usage": {
+      "observed": 60,
+      "inputTokens": 1110193,
+      "cachedInputTokens": 447488,
+      "outputTokens": 17171
+    },
+    "monetaryCostUsd": null
+  },
+  "conditions": [
+    {
+      "condition": "A",
+      "trials": 20,
+      "functional": {
+        "passed": 16,
+        "total": 16
+      },
+      "originalFunctionalPasses": 16,
+      "verificationPasses": 16,
+      "verificationDiscrepancies": 0,
+      "timeouts": 0,
+      "toolUse": {
+        "trialsWithSuccessfulSearch": 0,
+        "trialsWithSuccessfulResourceRead": 0,
+        "successfulCallsByName": {}
+      },
+      "judgment": {
+        "misapplied": 0,
+        "unsupportedClaims": 0,
+        "total": 20,
+        "criteriaMet": 43,
+        "criteriaTotal": 44
+      },
+      "elapsedMs": {
+        "count": 20,
+        "min": 13215,
+        "median": 30950.5,
+        "max": 42380,
+        "total": 581768
+      },
+      "inputTokens": {
+        "count": 20,
+        "min": 36666,
+        "median": 50290.5,
+        "max": 77981,
+        "total": 1085722
+      },
+      "outputTokens": {
+        "count": 20,
+        "min": 310,
+        "median": 1128,
+        "max": 1717,
+        "total": 20810
+      },
+      "monetaryCostUsd": null
+    },
+    {
+      "condition": "B",
+      "trials": 20,
+      "functional": {
+        "passed": 16,
+        "total": 16
+      },
+      "originalFunctionalPasses": 16,
+      "verificationPasses": 16,
+      "verificationDiscrepancies": 0,
+      "timeouts": 0,
+      "toolUse": {
+        "trialsWithSuccessfulSearch": 3,
+        "trialsWithSuccessfulResourceRead": 0,
+        "successfulCallsByName": {
+          "search_scenes": 4
+        }
+      },
+      "judgment": {
+        "misapplied": 0,
+        "unsupportedClaims": 0,
+        "total": 20,
+        "criteriaMet": 42,
+        "criteriaTotal": 44
+      },
+      "elapsedMs": {
+        "count": 20,
+        "min": 13227,
+        "median": 33040.5,
+        "max": 60725,
+        "total": 658193
+      },
+      "inputTokens": {
+        "count": 20,
+        "min": 48727,
+        "median": 50772,
+        "max": 88862,
+        "total": 1188597
+      },
+      "outputTokens": {
+        "count": 20,
+        "min": 234,
+        "median": 1160.5,
+        "max": 1940,
+        "total": 22964
+      },
+      "monetaryCostUsd": null
+    },
+    {
+      "condition": "C",
+      "trials": 20,
+      "functional": {
+        "passed": 16,
+        "total": 16
+      },
+      "originalFunctionalPasses": 16,
+      "verificationPasses": 16,
+      "verificationDiscrepancies": 0,
+      "timeouts": 0,
+      "toolUse": {
+        "trialsWithSuccessfulSearch": 3,
+        "trialsWithSuccessfulResourceRead": 0,
+        "successfulCallsByName": {
+          "list_course_skills": 7,
+          "get_course_skill": 3,
+          "search_scenes": 5
+        }
+      },
+      "judgment": {
+        "misapplied": 0,
+        "unsupportedClaims": 0,
+        "total": 20,
+        "criteriaMet": 42,
+        "criteriaTotal": 44
+      },
+      "elapsedMs": {
+        "count": 20,
+        "min": 15558,
+        "median": 42411,
+        "max": 82874,
+        "total": 855497
+      },
+      "inputTokens": {
+        "count": 20,
+        "min": 55824,
+        "median": 81622.5,
+        "max": 130313,
+        "total": 1656383
+      },
+      "outputTokens": {
+        "count": 20,
+        "min": 428,
+        "median": 1585,
+        "max": 2254,
+        "total": 29238
+      },
+      "monetaryCostUsd": null
+    }
+  ],
+  "hashes": {
+    "packet": "d5e708259321b8c0c5fd4ff62175cccd6845224de6e404a37823b71d570fe20a",
+    "protocol": "e97b360b661f9b918275907a8d6d282fa44e33fc33fff83e2bfe432cf3ff8f6a",
+    "source": "17115b55e87cfb0b411519f2890c94962495f175257beb3e50db16242c95b81d",
+    "evidence": "9c28be5073965148e63b9026b0c88029f76cb19c3f6f7da6a3e3a4c663d28338",
+    "assessments": "055cdb88fdf86ccab7bdf406c3da6d978803e1ec9248365edd53f2c18be8779a",
+    "report": "a0395dce42f7768ed5d1f1ae7168e7d2fc9462e75262033ba96a7bb336879c83"
+  },
+  "limitations": [
+    "AI judgments are model-based assessments, not human review; separate requests or a different model do not prove statistical independence.",
+    "Condition labels and machine grades were hidden; citations and prose may reveal tool use.",
+    "Functional success requires both original and independent checks; the additional checker was introduced after an output-forgery probe, without rerunning models or changing original records.",
+    "Descriptive results for these tasks and frozen videos only; no population-wide causal or statistical-significance claim.",
+    "Monetary cost is unknown for the existing CLI plan; missing token observations retain their own counts.",
+    "Assessor model chosen after preliminary Gemma format checks; all preliminary judgments excluded.",
+    "Shared bounded source references only; no images or full-course evidence.",
+    "Observed execution evidence and tool catalogs were added after initial judgments exposed missing-evidence confounding; this is a post-hoc supplementary assessment. Initial results are preserved. Absence of evidence is not proof of falsity; independent functional grades remain withheld. Tool evidence may reveal the treatment despite hidden condition labels."
+  ],
+  "productionWrites": 0,
+  "assessmentStage": "supplementary expanded-evidence assessment",
+  "postHocMethodChange": true,
+  "initialAssessmentPreserved": true,
+  "initialAssessmentArtifact": "course-skills-codex-ai-assessment-initial-2026-11-27.json",
+  "furtherInterpretation": {
+    "resourceReadTrialsInConditionC": 0,
+    "resourceReadDenominator": 20,
+    "notAnAppliedSkillEffectEstimate": true,
+    "functionalSuccessImprovementObserved": false,
+    "noPopulationQualityGuarantee": true
+  },
+  "assessmentDiagnostics": [
+    {
+      "condition": "A",
+      "unverifiableMentionTrials": 2,
+      "trialsWithUnmetCriteriaByTask": {
+        "02-clock-seam": 1
+      }
+    },
+    {
+      "condition": "B",
+      "unverifiableMentionTrials": 4,
+      "trialsWithUnmetCriteriaByTask": {
+        "02-clock-seam": 2
+      }
+    },
+    {
+      "condition": "C",
+      "unverifiableMentionTrials": 7,
+      "trialsWithUnmetCriteriaByTask": {
+        "02-clock-seam": 2
+      }
+    }
+  ],
+  "independentFunctionalGradesWithheld": true,
+  "observedExecutionEvidenceIncluded": true
+}

@@ -11,6 +11,8 @@ const PROTOCOL_ALLOW_HEADERS = [
   "Accept",
   "Mcp-Session-Id",
   "Mcp-Protocol-Version",
+  "Mcp-Method",
+  "Mcp-Name",
   "Last-Event-ID",
 ];
 

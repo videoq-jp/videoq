@@ -1,0 +1,183 @@
+{
+  "date": "2026-11-27",
+  "scope": {
+    "courseId": 51,
+    "videoIds": [
+      578,
+      580
+    ],
+    "sceneCount": 239,
+    "wholeCourseEvaluated": false,
+    "productionWrites": false,
+    "mediaReextracted": false,
+    "sourceRevisionRemapping": "local-only transcript SHA-256; byte-identical source verified",
+    "realProductionSearchReadOnly": true,
+    "ownerApproved": false,
+    "published": false,
+    "effectComparisonCompleted": false
+  },
+  "sources": {
+    "frozenFileSha256": [
+      "ffa0cc500da0a36479d6bec92f88ec55db29362595b47f1844afa3e2cddc390a",
+      "c886189826b1012472672ff474a3c54d014866967c93b3111b72ac5741add241",
+      "243721995b6f707ced8dc13f2917f5b4aa777ee9d471178521dcea3603dc0ad5",
+      "58e2ba11b715a5976b6acf7f89c98b497c7726b3b4b589d1a4070028325ae269"
+    ],
+    "preflightReportSha256": "6ed5d5dac56b34c05f9f2b48410e9bf6441234c1d979248b6bca9e7cfbe7156f",
+    "codePilotReportSha256": "9c708147c09ecc5f366c996fe29177108e6e55c7495291c8cbd95613a2c11e5e",
+    "bootstrapIsolationReportSha256": "536553cd8bae586c022c8c55a3aa8ff11fa30bae4448fc7c0a2a04be4d98c001",
+    "gitCodePilotReportSha256": "08ace2d7dc9c94894c8e9d3b1c38308c8607935fdd61b9fade6a03616be11243"
+  },
+  "fixtureValidation": {
+    "cases": 10,
+    "coding": 8,
+    "grounding": 2,
+    "initialCodeContractsFail": 8,
+    "referenceCodeContractsPass": 8,
+    "regressionTests": 12,
+    "plannedRepetitions": 2,
+    "plannedExecutions": 60,
+    "executedEffectTrials": 0,
+    "identicalBaseCommitsVerified": true
+  },
+  "searchPreflight": {
+    "ready": true,
+    "unauthenticatedStatus": 401,
+    "foreignCourseDenied": true,
+    "tools": [
+      "get_course_info",
+      "read_video_window",
+      "search_scenes"
+    ],
+    "hitCount": 20,
+    "stats": {
+      "embeddingCalls": 2,
+      "vectorQueries": 2,
+      "inputTokens": 46,
+      "failedRequests": 0
+    },
+    "liveIndex": "existing embeddinggemma2 768; no vector writes",
+    "embeddingModel": "@cf/google/embeddinggemma-2"
+  },
+  "codex": {
+    "version": "codex-cli 0.160.0",
+    "model": "gpt-6.1-terra",
+    "reasoning": "medium",
+    "contextWindow": 32768,
+    "contextIsNotAggregateTokenBudget": true,
+    "globalSettingsModified": false,
+    "webSearchEnabled": false,
+    "pluginsEnabled": false,
+    "searchRun": {
+      "completed": true,
+      "enabledSkillCount": 0,
+      "elapsedMs": 29336,
+      "usage": [
+        {
+          "input_tokens": 106288,
+          "cached_input_tokens": 90496,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 415,
+          "reasoning_output_tokens": 68
+        }
+      ],
+      "tool": "get_course_info"
+    },
+    "codePilot": {
+      "completed": true,
+      "functional": true,
+      "enabledSkillCount": 0,
+      "elapsedMs": 24325,
+      "usage": [
+        {
+          "input_tokens": 50354,
+          "cached_input_tokens": 37376,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 815,
+          "reasoning_output_tokens": 17
+        }
+      ],
+      "excludedFromBenchmark": true,
+      "task": "quiz-selection infrastructure pilot; separate from the invoice evaluation task"
+    },
+    "bootstrapPreflight": {
+      "enabledSkillCount": 1,
+      "enabledName": "videoq-course-skills",
+      "modelCalls": 0,
+      "courseContentInstalled": false
+    },
+    "monetaryCostUsd": null,
+    "costReason": "Existing authenticated Codex CLI plan; no monetary billing record obtained.",
+    "gitCodePilot": {
+      "task": "greeting infrastructure pilot; excluded from all ten evaluation tasks",
+      "baseCommit": "11ca746ec2795b14dae3eff6f362f7cb165eac76",
+      "completed": true,
+      "functional": true,
+      "enabledSkillCount": 0,
+      "logsOutsideWorkspace": true,
+      "elapsedMs": 26782,
+      "usage": [
+        {
+          "input_tokens": 62498,
+          "cached_input_tokens": 41344,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 665,
+          "reasoning_output_tokens": 7
+        }
+      ],
+      "excludedFromBenchmark": true
+    }
+  },
+  "failedPreflight": {
+    "reportSha256": "c1c6d35cd22a0e822c7bcc1f3c506b9aee471a73b57fcd035db44848510d4837",
+    "ready": false,
+    "stats": {
+      "embeddingCalls": 1,
+      "vectorQueries": 0,
+      "inputTokens": 0,
+      "failedRequests": 1
+    },
+    "authenticationCheckStatus": 401,
+    "existingWranglerAuthenticationRefreshed": true,
+    "excludedFromBenchmark": true
+  },
+  "priorImplementationApiCi": {
+    "commit": "2a18f35d",
+    "workflowRun": 45976924795,
+    "job": 140431124648,
+    "conclusion": "success",
+    "wholeWorkflowCompleted": true,
+    "workflowConclusion": "success",
+    "testBatches": [
+      {
+        "passed": 5489,
+        "skipped": 95
+      },
+      {
+        "passed": 126,
+        "skipped": 0
+      },
+      {
+        "passed": 10,
+        "skipped": 0
+      }
+    ]
+  },
+  "remaining": [
+    "Owner approval of the two corrected review artifacts before local publication and condition C",
+    "Paired A/B/C cohort execution with identical frozen inputs",
+    "Blind human assessment of applicability, unsupported assertions and source fidelity",
+    "Whole-course 177-video consolidation",
+    "Codex retrieval and revocation of an approved real-course publication"
+  ],
+  "evaluationDefinitionSha256": {
+    "cases.ts": "0143c295718d1fa39bd02e5b829b2e5cfeecf4658406b61a1c098118644f0969",
+    "fixtures.ts": "a996e60deacf3681922a48e921c96121bbc359cbae472220197bdc6c081a6aff",
+    "plan.ts": "1616bb2be1ee94d2f9aec4bfb396d77a9f8beeb9d46b32215f9ed896f4890ad8",
+    "environment.ts": "0cb36d663d89e119178295a32b8df875234088dec67a13c79cfde44117a8f63d",
+    "mcp-server.ts": "5984177c2e05ccf28a16a6f3636e47e146e2d1375237ab3014ae36376c4e4823",
+    "codex.ts": "34f7103d51af2446140a787f47a36c34804d68260fedb9b2b9f460fb98fd6e55",
+    "preflight-course-skill-evaluation.ts": "1f33d3bc7d2b384bc2981eecded44f86e5015e2081a030fcf2baf21e43b6cf2c"
+  },
+  "nodeVersion": "v26.13.1"
+}
