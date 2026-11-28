@@ -516,22 +516,24 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
       startTime: '00:01:00', endTime: '00:01:30', content: `Evidence for ${query}` }]);
     vi.spyOn(vectors, 'openSceneSearch').mockResolvedValue({ search, close: async () => {} });
     const bodies: Array<{ messages: Array<{ role: string; content: unknown }> }> = [];
-    let calls = 0;
+    let plannedQuery = 'first';
     vi.stubGlobal('fetch', (_url: unknown, init: RequestInit) => {
       const body = JSON.parse(requestBodyText(init.body));
       if (!body.response_format) return Promise.resolve(chatCompletionResponse({ choices: [{ finish_reason: 'stop',
         message: { role: 'assistant', content: 'Evidence for first is source 1; evidence for second is source 2.' },
       }] }, false, crypto.randomUUID()));
-      bodies.push(body);
-      const call = ++calls;
-      const query = call === 1 ? 'first' : call === 4 ? 'second' : null;
-      const message = query ? { role: 'assistant', content: null, tool_calls: [{ id: `call_${call}`, type: 'function' as const,
-        function: { name: 'search_scenes', arguments: JSON.stringify({ query, video_ids: null }) } }] }
-        : { role: 'assistant', content: JSON.stringify({ segments: [{ text: 'Grounded answer.', sourceIds: call === 5 ? [1, 2] : [1] }] }) };
-      return Promise.resolve(chatCompletionResponse({ choices: [{ finish_reason: query ? 'tool_calls' : 'stop', message }] }, !!body.stream, crypto.randomUUID()));
+      const planning = JSON.stringify(body.response_format).includes('"requested_video"');
+      if (!planning) bodies.push(body);
+      const content = planning
+        ? { requested_video: null, query: plannedQuery, video_ids: null }
+        : { segments: [{ text: 'Grounded answer.', sourceIds: plannedQuery === 'second' ? [1, 2] : [1] }] };
+      return Promise.resolve(chatCompletionResponse({ choices: [{ finish_reason: 'stop',
+        message: { role: 'assistant', content: JSON.stringify(content) },
+      }] }, !!body.stream, crypto.randomUUID()));
     });
     const modelEnv = { ...env, OPENAI_API_KEY: 'test', OPENAI_BASE_URL: 'https://model.test/v1' } as Bindings;
     for (const question of ['Find first', 'Explain it again', 'Find second']) {
+      plannedQuery = question === 'Find second' ? 'second' : 'first';
       const params = { ownerUserId: 'owner', videoIds: [60, 61], courseId: 1, locale: 'en', messages: [{ role: 'user', content: question }] };
       const request = { id, scope, resume: question !== 'Find first' };
       if (streaming) {
@@ -540,7 +542,7 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
         expect(chunks.at(-1)).toHaveProperty('final.persistedTurn');
       } else await runChatRag(modelEnv, params, request);
     }
-    expect(search).toHaveBeenCalledTimes(2);
+    expect(search.mock.calls.map(([query]) => query)).toEqual(['first', 'first', 'second']);
     expect(JSON.stringify(bodies[2].messages)).toContain('Evidence for first');
     const detail = await getConversation(env, scope, { conversationId: id, limit: 50 });
     expect(detail.turns[1].answer.segments[0].sourceIds).toEqual([1]);
@@ -550,7 +552,8 @@ const databaseUrl = process.env.QUOTA_TEST_DATABASE_URL;
     try {
       const snapshot = await chat.saver.get({ configurable: { thread_id: chat.threadId, checkpoint_id: chat.checkpointId } });
       const messages = snapshot!.channel_values.messages as BaseMessage[];
-      expect(messages.filter(message => message.type === 'tool')).toHaveLength(2);
+      expect(messages.filter(message => message.type === 'tool')).toHaveLength(3);
+      expect(snapshot!.channel_values.confirmedSearchScope).toEqual({ videoIds: null });
       expect(snapshot!.channel_values.evidenceSources).toHaveLength(2);
       expect(messages.some(message => message.additional_kwargs.lc_source === 'summarization')).toBe(false);
     } finally { await chat.close(); }

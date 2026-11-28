@@ -1,3 +1,5 @@
+// Initial retrieval is integrated in initial-scene-search.test.ts; these tests isolate the subsequent ReAct loop.
+vi.mock("../src/lib/initial-scene-search", () => ({ retrieveInitialScenes: async () => [] }));
 import { requestBodyText } from "./helpers/request-body";
 import { applyChatPart, chatAnswerText, type ChatAnswer } from "@videoq/trpc/chat";
 import { embedding as testEmbedding } from "./helpers/embedding";

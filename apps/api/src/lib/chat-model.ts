@@ -1,3 +1,4 @@
+import { VideoSelectionError } from "./video-selection-error";
 import { ChatOpenAICompletions } from "@langchain/openai";
 import type OpenAI from "openai";
 import type { Callbacks } from "@langchain/core/callbacks/manager";
@@ -210,7 +211,7 @@ function statusOf(error: unknown): number | null {
  * AbortError は呼び出し側（クライアント切断）に委ねるのでそのまま投げ直す。
  */
 export function toLlmError(error: unknown): unknown {
-  if (error instanceof LlmConfigurationError || error instanceof LlmProviderError) {
+  if (error instanceof VideoSelectionError || error instanceof LlmConfigurationError || error instanceof LlmProviderError) {
     return error;
   }
   if (error instanceof Error && error.name === "AbortError") return error;

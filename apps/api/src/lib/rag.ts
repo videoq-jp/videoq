@@ -17,6 +17,7 @@ import { MAX_COURSE_INFO_CALLS, MAX_SCENE_SEARCHES } from '../domain/conversatio
 import { MAX_TOOL_ROUNDS, AnswerAgentBudget, hasAgentContext } from '../domain/conversation/agent-execution';
 export { MAX_TOOL_ROUNDS } from '../domain/conversation/agent-execution';
 export { MAX_SCENE_SEARCHES } from "../tools/contract";
+import { retrieveInitialScenes } from "./initial-scene-search";
 import { loadRagMcpTools } from "./rag-mcp-tools";
 import { evidenceProgressSchema as searchProgressSchema } from "../tools/contract";
 import { connectEvidenceMcp } from "../integrations/evidence-mcp";
@@ -33,7 +34,7 @@ import type { AnswerCostLedger } from "./answer-cost-ledger";
 /**
  * QA モードの RAG 本体（ReAct）。
  * 最新 user 質問を抽出 → 講座メタ情報取得 / シーン検索 → 取得した根拠から回答する。
- * 検索は最大 MAX_SCENE_SEARCHES 回。メタ情報だけの回答では検索接続を開かない。
+ * 検索は最大 MAX_SCENE_SEARCHES 回。メタ情報の質問も含め、回答生成前に最低1回検索する。
  * 会話・ツール結果はエージェントが保持し、根拠が足りない場合は追加取得する。
  */
 type ChatMessageInput = { role: string; content: string };
@@ -103,9 +104,14 @@ async function prepareAgent(
     question: params.queryText, usage: params.scope.costLedger,
   }) : undefined;
   try {
-    const tools = connection ? await loadRagMcpTools(connection.client, params.signal, {
-      addSource: hit => collector.add(hit), collectContext: text => collector.courseContexts.add(text),
-    }) : [];
+    let selectedVideoIds: number[] | null = null;
+    const answerSources = () => collector.sources.filter(source => selectedVideoIds === null || selectedVideoIds.includes(source.video_id));
+    const evidenceOptions = {
+      addSource: (hit: Parameters<SceneCollector["add"]>[0]) => collector.add(hit),
+      collectContext: (text: string) => collector.courseContexts.add(text),
+      selectedVideoIds: () => selectedVideoIds,
+    };
+    const tools = connection ? await loadRagMcpTools(connection.client, params.signal, evidenceOptions) : [];
     const agent = createAgent({
       checkpointer: params.scope.memory?.saver ?? false,
       model: createChatModel(env, { maxTokens: MAX_TOKENS, timeoutMs: params.timeoutMs, costLedger: params.scope.costLedger }),
@@ -114,16 +120,28 @@ async function prepareAgent(
       middleware: [
         createMiddleware({
           name: "citationRegistry",
-          stateSchema: new StateSchema({ evidenceSources: z.array(chatSourceSchema).default([]) }),
-          beforeAgent(state, runtime) {
+          stateSchema: new StateSchema({ evidenceSources: z.array(chatSourceSchema).default([]),
+            confirmedSearchScope: z.object({ videoIds: z.array(z.number().int().positive().safe()).min(1).max(50).nullable() }).nullable().optional(),
+          }),
+          async beforeAgent(state, runtime) {
             collector.restore(state.evidenceSources);
             // Capture the request's custom stream writer for summary callbacks;
             // callback execution does not inherit the graph's async-local config.
             if (params.streaming) writeProgress = runtime.writer;
+            if (!connection) return;
+            const messages = await retrieveInitialScenes({
+              env, timeoutMs: params.timeoutMs, costLedger: params.scope.costLedger,
+              signal: params.signal, messages: state.messages, sources: collector.sources, confirmedScope: state.confirmedSearchScope ?? undefined,
+              allowedVideoIds: params.scope.videoIds ?? [], tools, locale: params.scope.locale,
+              client: connection.client, evidenceOptions, writer: runtime.writer,
+              selectVideos: ids => { selectedVideoIds = ids; },
+              nextCallId: () => ++toolCalls,
+            });
+            return { messages, evidenceSources: collector.savedSources, confirmedSearchScope: { videoIds: selectedVideoIds } };
           },
           afterAgent(state) {
             assertCompletedAnswer(state.messages.at(-1));
-            completedResult = toResult(params.queryText, collector, state.structuredResponse);
+            completedResult = toResult(params.queryText, collector, state.structuredResponse, answerSources());
             // Keep citation identities alongside native agent history, including
             // across summarization. Never reuse an old ID for a different scene.
             return { evidenceSources: collector.savedSources };
@@ -168,7 +186,7 @@ async function prepareAgent(
           return handler({
             ...request,
             // Prepend trusted application instructions to the current conversation context.
-            messages: [new SystemMessage(systemPrompt), ...request.messages],
+            messages: [new SystemMessage(systemPrompt + (selectedVideoIds ? `\nFor this answer, use evidence only from selected video IDs: ${selectedVideoIds.join(", ")}. Earlier evidence from other videos is outside this question's scope.` : "")), ...request.messages],
             modelSettings: {
               ...request.modelSettings,
               ...(params.streaming ? { callbacks: [new ModelStreamHandler(request.runtime.writer)] } : {}),
@@ -184,14 +202,14 @@ async function prepareAgent(
     agent,
     input: {
       messages: params.scope.memory?.checkpointId === null ? [new RemoveMessage({ id: REMOVE_ALL_MESSAGES }), ...inputMessages] : inputMessages,
-      ...(params.scope.memory?.checkpointId === null ? { evidenceSources: [], structuredResponse: undefined } : {}),
+      ...(params.scope.memory?.checkpointId === null ? { evidenceSources: [], confirmedSearchScope: null, structuredResponse: undefined } : {}),
     },
     result: () => {
       if (!completedResult) throw new Error("Missing completed agent answer");
       return completedResult;
     },
     generated: () => completedResult !== undefined,
-    sources: () => collector.sources,
+    sources: answerSources,
   };
   } catch (error) {
     await connection?.close();
@@ -203,11 +221,12 @@ function toResult(
   queryText: string,
   collector: SceneCollector,
   answer: unknown,
+  sources: readonly ChatSource[] = collector.sources,
 ): RagResult {
-  const hits = collector.hits;
+  const hits = collector.hits.filter(hit => sources.some(source => source.video_id === hit.videoId));
   return {
     queryText,
-    answer: validateChatAnswer(answer, collector.sources),
+    answer: validateChatAnswer(answer, sources),
     retrievedContexts: [
       ...hits.map((hit) => hit.evidenceType === "visual"
         ? `Visual observation at ${hit.startTime}: ${hit.content}` : hit.content).filter((text) => text !== ""),
