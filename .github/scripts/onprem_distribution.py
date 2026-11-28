@@ -165,13 +165,45 @@ def fetch_json(url):
         return json.load(response)
 
 
+def check_git_ref(ref, *, branch=False):
+    if not isinstance(ref, str) or not ref or ref.startswith('-'):
+        raise ValueError('Invalid protected Git ref')
+    commands = [['git', 'check-ref-format', 'refs/heads/' + ref],
+                ['git', 'check-ref-format', '--branch', ref]] if branch else [
+                    ['git', 'check-ref-format', '--allow-onelevel', ref]]
+    for command in commands:
+        if subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+            raise ValueError('Invalid protected Git ref')
+
+
+def open_pr_source_refs(pulls):
+    refs = set()
+    for pull in pulls:
+        head = pull['head']
+        repository = head.get('repo')
+        if not isinstance(repository, dict) or not isinstance(repository.get('full_name'), str) or not repository['full_name']:
+            raise ValueError('Cannot identify open-PR head repository')
+        if repository['full_name'] != REPO:
+            continue
+        branch = head['ref']
+        check_git_ref(branch, branch=True)
+        subprocess.run(['git', 'fetch', '--quiet', 'origin',
+                        f'refs/heads/{branch}:refs/remotes/origin/{branch}'], check=True)
+        refs.add('refs/remotes/origin/' + branch)
+    return refs
+
+
 def source_roots(refs):
     roots = {p: set() for p in PACKAGES}
     pattern = re.compile(r'ghcr\.io/videoq-jp/(videoq-[a-z-]+)@(sha256:[a-f0-9]{64})')
     for ref in refs:
-        if not re.fullmatch(r'[A-Za-z0-9_./-]+', ref):
-            raise ValueError('Invalid source ref')
-        result = subprocess.run(['git', 'grep', '-I', '-h', '-E', 'ghcr.io/videoq-jp/videoq-', ref, '--',
+        check_git_ref(ref)
+        # Read every file from one immutable commit, even if a branch moves.
+        commit = subprocess.run(['git', 'rev-parse', '--verify', '--end-of-options', ref + '^{commit}'],
+                                capture_output=True, text=True, check=True).stdout.strip()
+        if not re.fullmatch(r'[a-f0-9]{40}', commit):
+            raise ValueError('Cannot resolve protected source commit')
+        result = subprocess.run(['git', 'grep', '-I', '-h', '-E', 'ghcr.io/videoq-jp/videoq-', commit, '--',
                     ':(glob)**/Dockerfile*', ':(glob)charts/**/*.yaml', ':(glob).github/workflows/*.yml',
                     ':(glob)apps/inference/**/runtime-base.json'], capture_output=True, text=True)
         if result.returncode not in (0, 1):
@@ -180,14 +212,14 @@ def source_roots(refs):
             if package not in roots:
                 raise ValueError('Unknown source package')
             roots[package].add(digest)
-        files = subprocess.run(['git', 'ls-tree', '-r', '--name-only', ref, '--', '.github/deployment-pins/'],
+        files = subprocess.run(['git', 'ls-tree', '-r', '--name-only', commit, '--', '.github/deployment-pins/'],
                                capture_output=True, text=True, check=True)
         for path in files.stdout.splitlines():
             if not path.endswith('.json'):
                 continue
             if not re.fullmatch(r'\.github/deployment-pins/[a-z0-9-]+\.json', path):
                 raise ValueError('Unreviewed deployment pin path')
-            raw = subprocess.run(['git', 'show', ref + ':' + path], capture_output=True, text=True, check=True)
+            raw = subprocess.run(['git', 'show', commit + ':' + path], capture_output=True, text=True, check=True)
             for package, digests in deployment_roots(json.loads(raw.stdout)).items():
                 roots[package].update(digests)
     return roots
@@ -349,22 +381,13 @@ def main():
     parser.add_argument('--file', required=True, type=Path)
     parser.add_argument('--keep', type=int, default=2)
     parser.add_argument('--grace-days', type=int, default=7)
-    parser.add_argument('--source-ref', action='append', default=['origin/main'])
+    parser.add_argument('--source-ref', action='append', default=['refs/remotes/origin/main'])
     args = parser.parse_args()
     if args.keep < 2 or args.grace_days < 7:
         parser.error('Keep at least two releases and seven days of build grace')
     # Protect operational image pins in every open same-repository PR as well.
     refs = set(args.source_ref)
-    for pull in listing(f'repos/{REPO}/pulls?state=open&per_page=100'):
-        head = pull['head']
-        if head.get('repo', {}).get('full_name') != REPO:
-            continue
-        branch = head['ref']
-        if not re.fullmatch(r'[A-Za-z0-9_./-]+', branch):
-            raise ValueError('Unreviewed open-PR branch name')
-        subprocess.run(['git', 'fetch', '--quiet', 'origin',
-                        f'refs/heads/{branch}:refs/remotes/origin/{branch}'], check=True)
-        refs.add('origin/' + branch)
+    refs.update(open_pr_source_refs(listing(f'repos/{REPO}/pulls?state=open&per_page=100')))
     args.source_ref = sorted(refs)
     data = snapshot()
     roots, retained, removed = release_roots(data['releases'], args.keep, fetch_json)
