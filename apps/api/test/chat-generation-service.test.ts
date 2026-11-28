@@ -90,6 +90,15 @@ async function collect(
 }
 
 describe("answer application lifecycle without runtime adapters", () => {
+  it('rejects NUL share slugs before context, quota or model access for send and stream', async () => {
+    const { service, deps } = fixture();
+    for (const userId of [null, 'owner']) {
+      const input = { ...options, userId, shareSlug: 'bad\0slug' };
+      expect(await service.send(input)).toMatchObject({ ok: false, failure: { kind: 'invalid' } });
+      expect(await collect(service, input)).toMatchObject([{ type: 'error', failure: { kind: 'invalid' } }]);
+    }
+    for (const method of ['context', 'reserve', 'run', 'stream', 'createLog'] as const) expect(deps[method]).not.toHaveBeenCalled();
+  });
   it.each([undefined, '12345678-1234-4234-8234-123456789abc'])('rejects NUL before quota, models and writes (conversation %s)', async conversationId => {
     const text = 'question' + String.fromCharCode(0) + 'suffix';
     const messages = [{ role: 'user', content: text }];

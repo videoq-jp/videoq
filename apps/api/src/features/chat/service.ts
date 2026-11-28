@@ -1,4 +1,6 @@
 import type { ChatRepository, ChatHistoryExportRow } from '../../persistence/contracts/chat-repository';
+import { textValueFailure } from '@videoq/domain/text-value';
+import { validationFailure } from '../../application/errors';
 
 export interface ChatHistoryDependencies {
   chat: Pick<ChatRepository, 'shareExists' | 'history' | 'deleteHistory' | 'analytics' | 'feedback'>;
@@ -26,6 +28,8 @@ export function createChatHistoryService(deps: ChatHistoryDependencies) {
     feedback: "good" | "bad" | null,
     opts: { userId?: string; shareSlug?: string | null; feedbackToken?: string },
   ) {
+    const error = opts.shareSlug == null ? null : textValueFailure(opts.shareSlug);
+    if (error) throw validationFailure(error);
     if (opts.shareSlug && !await deps.verifyFeedbackToken(logId, opts.shareSlug, opts.feedbackToken)) {
       return { forbidden: "Invalid feedback token" } as const;
     }
@@ -43,7 +47,11 @@ export function createChatHistoryService(deps: ChatHistoryDependencies) {
 
   return {
     exportHistoryCsv, submitFeedback,
-    shareSlugExists: (slug: string) => deps.chat.shareExists(slug),
+    async shareSlugExists(slug: string) {
+      const error = textValueFailure(slug);
+      if (error) throw validationFailure(error);
+      return deps.chat.shareExists(slug);
+    },
     historyForCourse: (courseId: number, userId: string, limit: number, offset: number) => deps.chat.history(courseId, userId, limit, offset),
     resetHistory: (courseId: number, userId: string) => deps.chat.deleteHistory(courseId, userId),
     analyticsForCourse: (courseId: number, userId: string) => deps.chat.analytics(courseId, userId),

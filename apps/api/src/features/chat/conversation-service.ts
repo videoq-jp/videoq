@@ -1,6 +1,7 @@
 import type { ConversationRepository, ConversationScope, ConversationListInput, ConversationDetailInput } from '../../persistence/contracts/conversation-read';
 import type { ChatContextInput, GroupChatContext } from '../../persistence/contracts/chat-repository';
-import { ApplicationError, notFound } from '../../application/errors';
+import { ApplicationError, notFound, validationFailure } from '../../application/errors';
+import { textValueFailure } from '@videoq/domain/text-value';
 
 export interface ConversationDependencies {
   conversations: ConversationRepository;
@@ -11,6 +12,8 @@ export interface ConversationDependencies {
 type AccessInput = { courseId?: number | null; shareSlug?: string };
 export function createConversationService(deps: ConversationDependencies) {
   async function conversationScope(userId: string | null, input: AccessInput, visitorSessionId?: string): Promise<ConversationScope> {
+    const error = input.shareSlug === undefined ? null : textValueFailure(input.shareSlug);
+    if (error) throw validationFailure(error);
     if (!userId && !input.shareSlug) throw new ApplicationError('unauthorized', 'UNAUTHORIZED', 'Authentication is required.');
     if (input.shareSlug && !input.courseId) throw new ApplicationError('validation', 'VALIDATION_ERROR', 'Course ID is required.');
     const course = input.courseId ? await deps.courseContext({

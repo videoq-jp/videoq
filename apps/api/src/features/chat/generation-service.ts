@@ -95,6 +95,9 @@ export function createChatGenerationService<Ledger, Signal extends CancellationS
       opts.shareSlug !== null || opts.ltiCourseGrant !== undefined;
     const userId = opts.userId;
 
+    const shareError = opts.shareSlug === null ? null : textValueFailure(opts.shareSlug);
+    if (shareError) return { ok: false, failure: failures.invalidRequest(shareError) };
+
     if (opts.req.messages.length === 0) {
       return {
         ok: false,
