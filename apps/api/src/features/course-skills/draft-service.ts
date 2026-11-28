@@ -49,14 +49,32 @@ export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, ch
     }
     // Never silently truncate applicable conditions to meet a model context budget.
     if (JSON.stringify(taskFacts).length > 100_000) { candidates.push({ task, draft: null, facts: taskFacts, issues: ['SKILL_TASK_REQUIRES_SPLITTING'] }); continue; }
-    let draft = await deps.synthesize(task, taskFacts);
-    if (draft.slug !== task.slug) throw new Error('INVALID_SKILL_IDENTITY');
-    validateSkillDraft(draft, taskFacts);
-    let audit = await deps.audit(draft, taskFacts);
+    let draft: SkillDraft;
+    try { draft = await deps.synthesize(task, taskFacts); }
+    catch (error) {
+      // Reference translation can reject a schema-valid response before a draft
+      // exists. Keep the task held; never turn source/usage/runtime failures into content issues.
+      if (!isSkillDraftValidationError(error)) throw error;
+      candidates.push({ task, draft: null, facts: taskFacts, issues: [error.message, 'SKILL_INITIAL_DRAFT_INVALID'] });
+      continue;
+    }
+    let validDraft: SkillDraft | null = null;
+    let initialValidationIssues: string[] = [];
+    let audit: { supported: boolean; issues: string[] } = { supported: false, issues: ['SKILL_INITIAL_DRAFT_INVALID'] };
+    try {
+      if (draft.slug !== task.slug) throw new Error('INVALID_SKILL_IDENTITY');
+      validateSkillDraft(draft, taskFacts);
+      validDraft = draft;
+    } catch (error) {
+      if (!isSkillDraftValidationError(error) && !(error instanceof Error && error.message === 'INVALID_SKILL_IDENTITY')) throw error;
+      initialValidationIssues = [error.message];
+      audit = { supported: false, issues: initialValidationIssues };
+    }
+    if (validDraft) audit = await deps.audit(validDraft, taskFacts);
     let generationRepair: SkillDraftRepairHistory | undefined;
     let repairIssues: string[] = [];
     if (deps.revise && (!audit.supported || audit.issues.length)) {
-      generationRepair = { initialAudit: { supported: audit.supported, issueCount: audit.issues.length }, attempts: [] };
+      generationRepair = { ...(initialValidationIssues.length ? { initialValidationIssues } : {}), initialAudit: { supported: audit.supported, issueCount: audit.issues.length }, attempts: [] };
       while (generationRepair.attempts.length < MAX_SKILL_DRAFT_REPAIRS && (!audit.supported || audit.issues.length || repairIssues.length)) {
         const number = generationRepair.attempts.length + 1;
         const feedback = [...audit.issues, ...repairIssues];
@@ -65,6 +83,7 @@ export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, ch
           if (revision.slug !== task.slug) throw new Error('INVALID_SKILL_IDENTITY');
           validateSkillDraft(revision, taskFacts);
           draft = revision;
+          validDraft = revision;
         } catch (error) {
           if (error instanceof SkillDraftRepairFailed) {
             repairIssues = ['SKILL_AUTO_REPAIR_GENERATION_FAILED'];
@@ -82,7 +101,7 @@ export async function generateCourseSkillDrafts(deps: SkillDraftDependencies, ch
     }
     const candidateIssues = [...audit.issues, ...(!audit.supported ? ['SKILL_SEMANTIC_REVIEW_REQUIRED'] : []), ...repairIssues];
     if (generationRepair?.attempts.length === MAX_SKILL_DRAFT_REPAIRS && candidateIssues.length) candidateIssues.push('SKILL_AUTO_REPAIR_EXHAUSTED');
-    candidates.push({ task, draft, facts: taskFacts, issues: [...new Set(candidateIssues)], ...(generationRepair ? { generationRepair } : {}) });
+    candidates.push({ task, draft: validDraft, facts: taskFacts, issues: [...new Set(candidateIssues)], ...(generationRepair ? { generationRepair } : {}) });
   }
   return { candidates, issues, heldVisualFacts: chunks.flatMap(c => c.facts).filter(f => f.status === 'needs_visual_review').length };
 }

@@ -5,6 +5,7 @@ export type SupportedSkillFact = SkillKnowledgeChunk['facts'][number] & { videoI
 export type SkillTask = { skillId: string; slug: string; objective: string; factIds: string[] };
 export type SkillTaskProposal = { existingSkillId: string | null; slug: string; objective: string; factIds: string[] };
 export type SkillDraftRepairHistory = {
+  initialValidationIssues?: string[];
   initialAudit: { supported: boolean; issueCount: number };
   attempts: { number: number; status: 'passed' | 'held' | 'invalid' | 'generation_failed'; issueCount: number }[];
 };

@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "scope": "Initial draft validation repair and local runner backoff; offline only",
+  "baselineImplementation": "cb5568662305a48ae9b5620ff57d9ab2244cf5e9",
+  "baselineCi": "success",
+  "sourceFiles": [
+    {
+      "path": "apps/api/src/domain/learning/course-skill-draft.ts",
+      "sha256": "ca147e8ed85a42d4acb02ac9c8690c82488fee690bcaf6be1b711b59ba7fd7bb"
+    },
+    {
+      "path": "apps/api/src/features/course-skills/draft-service.ts",
+      "sha256": "ad86bc852dec4a7dd390d5847fe3814e7fb25a6c3269c2e05b3c50bf47a708cf"
+    },
+    {
+      "path": "apps/api/src/integrations/course-skill-candidates.ts",
+      "sha256": "5eb634703877baa692ac1eeedca5810d2054299b85ddfbb7591e23107f8302c9"
+    },
+    {
+      "path": "apps/api/scripts/course-skill-evaluation/wakeup.ts",
+      "sha256": "47aee97ac06bf1411a68f03f0a7ad29af75084f4ff76e850cb52f22ecaa9ff80"
+    },
+    {
+      "path": "apps/api/test/course-skill-draft.test.ts",
+      "sha256": "f87d7a8f1edd0a9e352c74750c8c495891a19ad3e1911249acdde6dcf35deb4d"
+    },
+    {
+      "path": "apps/api/test/course-skill-evaluation-wakeup.test.ts",
+      "sha256": "a225737d900f61c0bc73c2adabb85d5f6cc04fb9b4721e48d3632091666d679a"
+    },
+    {
+      "path": "apps/api/test/persistence/course-skill-repair.d1.integration.test.ts",
+      "sha256": "3f0be081d4475927e39517b2559137a639ac62cf462f2ddb36c632745763712e"
+    }
+  ],
+  "tests": {
+    "files": 9,
+    "passed": 68,
+    "typecheckConfigurations": 3,
+    "lint": "passed",
+    "runnerAndDriverSyntax": "passed",
+    "nativeDriverPolicyImport": "passed"
+  },
+  "redRegression": {
+    "failed": 2,
+    "passed": 13
+  },
+  "savedCourseReplay": {
+    "replayedSteps": 102,
+    "before": "SKILL_UNSUPPORTED_EXCEPTION",
+    "afterNextOperation": "skill_draft_revision",
+    "factCount": 5,
+    "localStateUnchanged": true,
+    "modelCalls": 0
+  },
+  "cache": {
+    "expectedChunks": 905,
+    "verifiedChunks": 905,
+    "supportedFacts": 2832,
+    "heldVisualFacts": 619,
+    "complete": true,
+    "semanticApproval": false,
+    "rowsSha256": "df2d59e1f61fc44146ba953f656d02ae08b6c5ba7f1efbe2584d88da01c7e624"
+  },
+  "quota": {
+    "used": 1089,
+    "limit": 1300,
+    "remaining": 211
+  },
+  "rev3Inventory": {
+    "tasks": 224,
+    "mechanicallyEligible": 29,
+    "heldInsufficient": 195,
+    "planningCallsForNewBuild": 89,
+    "newBuildEstimateMin": 147,
+    "newBuildEstimateMax": 263,
+    "guaranteed": false
+  },
+  "privateHarness": {
+    "runnerSha256": "6997879d74c7e048236e840026c2f82e6dd678009b96ae0b3b2c3c18c394d40b",
+    "driverSha256": "049b952ea96d9bc26d75e333ef1bd7799a812e4ab222476ad315a5b76c0aa930",
+    "oldRunnerUnchanged": true,
+    "oldDriverUnchanged": true,
+    "executionReady": false,
+    "reason": "New ordinary rebuild and runtime amendment require a new explicit decision; old runtime pin intentionally refuses changed sources"
+  },
+  "modelCallsThisWork": 0,
+  "productionWrites": 0,
+  "published": false,
+  "remoteCiForChanges": "pending"
+}

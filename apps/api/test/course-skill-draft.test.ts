@@ -13,6 +13,34 @@ const draft: SkillDraft = { slug: 'review-retry', title: '再試行をレビュ�
 const deps: SkillDraftDependencies = { id: () => 'server-id', plan: () => Promise.resolve({ proposals: [{ existingSkillId: null, slug: draft.slug, objective: '再試行をレビューする', factIds: chunk.facts.map(f => f.id) }], issues: [] }), synthesize: () => Promise.resolve(draft), audit: () => Promise.resolve({ supported: true, issues: [] }) };
 
 describe('task-based course skills', () => {
+  it('repairs an invalid initial exception before auditing and retains fixed sources', async () => {
+    const invalid = { ...draft, exceptions: [{ condition: 'Invented', behavior: 'Do it', factIds: ['fact-0'] }] };
+    const revise = vi.fn().mockResolvedValue(draft), audit = vi.fn().mockResolvedValue({ supported: true, issues: [] });
+    const result = await generateCourseSkillDrafts({ ...deps, synthesize: async () => invalid, revise, audit }, [chunk]);
+    expect(revise).toHaveBeenCalledWith(expect.objectContaining({ slug: draft.slug }), expect.any(Array), invalid, ['SKILL_UNSUPPORTED_EXCEPTION'], 1);
+    expect(audit).toHaveBeenCalledTimes(1);
+    expect(result.candidates[0]).toMatchObject({ draft, issues: [], generationRepair: { attempts: [{ status: 'passed' }] } });
+  });
+  it('holds an irreparable initial draft and continues to the next task', async () => {
+    let id = 0;
+    const invalid = { ...draft, exceptions: [{ condition: 'Invented', behavior: 'Do it', factIds: ['fact-0'] }] };
+    const plan = async () => ({ proposals: ['review-retry', 'second-task'].map(slug => ({ existingSkillId: null, slug, objective: 'Review', factIds: chunk.facts.map(f => f.id) })), issues: [] });
+    const revise = vi.fn().mockResolvedValue(invalid);
+    const result = await generateCourseSkillDrafts({ ...deps, id: () => `task-${id++}`, plan, synthesize: async task => task.slug === draft.slug ? invalid : { ...draft, slug: task.slug }, revise }, [chunk]);
+    expect(revise).toHaveBeenCalledTimes(2);
+    expect(result.candidates[0]).toMatchObject({ draft: null, issues: expect.arrayContaining(['SKILL_AUTO_REPAIR_EXHAUSTED']) });
+    expect(result.candidates[1]).toMatchObject({ draft: { slug: 'second-task' }, issues: [] });
+  });
+
+  it('holds a draft rejected during reference translation without admitting invented references', async () => {
+    const result = await generateCourseSkillDrafts({ ...deps, synthesize: async () => { throw new Error('SKILL_UNSUPPORTED_FACT'); } }, [chunk]);
+    expect(result.candidates[0]).toMatchObject({ draft: null, issues: ['SKILL_UNSUPPORTED_FACT', 'SKILL_INITIAL_DRAFT_INVALID'] });
+  });
+  it('never admits a changed task identity when initial repair cannot restore it', async () => {
+    const wrong = { ...draft, slug: 'wrong-task' };
+    const result = await generateCourseSkillDrafts({ ...deps, synthesize: async () => wrong, revise: async () => wrong }, [chunk]);
+    expect(result.candidates[0]).toMatchObject({ draft: null, issues: expect.arrayContaining(['INVALID_SKILL_IDENTITY', 'SKILL_AUTO_REPAIR_EXHAUSTED']) });
+  });
   it('repairs a failed audit against fixed source facts and audits the revised draft', async () => {
     const audit = vi.fn().mockResolvedValueOnce({ supported: false, issues: ['Preserve the source condition'] }).mockResolvedValue({ supported: true, issues: [] });
     const corrected = { ...draft, title: '修正済みの草案' };
@@ -47,6 +75,11 @@ describe('task-based course skills', () => {
   it('propagates unexpected repair errors instead of treating them as source validation issues', async () => {
     const error = new TypeError('Unexpected programming failure');
     await expect(generateCourseSkillDrafts({ ...deps, audit: async () => ({ supported: false, issues: [] }), revise: async () => { throw error; } }, [chunk])).rejects.toBe(error);
+  });
+  it.each(['SKILL_INPUT_CHANGED', 'SKILL_QUOTA_EXCEEDED', 'SKILL_USAGE_RECORD_FAILED', 'Unexpected internal failure'])('propagates %s from initial repair', async message => {
+    const invalid = { ...draft, doNotUseWhen: ['Invented exclusion'] };
+    const error = new Error(message);
+    await expect(generateCourseSkillDrafts({ ...deps, synthesize: async () => invalid, revise: async () => { throw error; } }, [chunk])).rejects.toBe(error);
   });
   it('refuses to render a saved candidate with a known frame outside its cited cue', () => {
     const facts = supportedSkillFacts([chunk]);
