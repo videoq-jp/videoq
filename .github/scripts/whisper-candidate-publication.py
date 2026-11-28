@@ -9,26 +9,26 @@ import subprocess
 
 REPOSITORY = 'videoq-jp/videoq'
 PACKAGE = 'ghcr.io/videoq-jp/videoq-whispercpp-candidate'
-RUN = 45538276974
-HEAD = '83aa79e99b14cbdd15d2647a724b5f2c221f26e3'
-SOURCE = '48d69177d7dfc675c13870457ad172b90c907529'
+RUN = 46150445031
+HEAD = '5101d2adb949ee2ef1d88faa1c3af13030d957da'
+SOURCE = '4646c50a3bbaa2c38838a20997e9c6d403d3c9a0'
 ATTEMPT = 1
-CANDIDATES = {'amd64': {'artifact': 14987837441,
-           'archiveDigest': 'sha256:c8ee13a996d27a91c773baf9f639b5627a98fadc811c4f2ad1d2426c4165b7c7',
-           'manifest': 'sha256:8a0500db924c9974e02cc1ace538743cb86101784b961a564c27c401859435f3',
+CANDIDATES = {'amd64': {'artifact': 15265287879,
+           'archiveDigest': 'sha256:9e34747b3f89e6951d7529e12930c31b967e9764a53a63a8b4f5bdab6c58ec94',
+           'manifest': 'sha256:fdded4d2d5fd197af632738eb8b9d7ffcd621a806173966d4c90abe9e25112c4',
            'upstream': 'ghcr.io/ggml-org/whisper.cpp@sha256:0b39b82d8febd2708a5abd2e3d8d373620604d558922f2cf921b7f4c365e6c73',
-           'evidenceHashes': {'identity.json': '9ba5b110f98a59c3329e6913632e55e0460befef1375208d845d03318a514543',
-                              'runtime-receipt.json': '69ab7d6fbcd0d50c809e0ae1dc54c5bd43a16cc3f1bd55b96f4da40874eda1a1',
-                              'security.json.syft.json': '5b4a16bceb8a554d008404a3e51a37198ce8aa4c36b9b5dacd029d48d0f5626d',
-                              'security.json.grype.json': '979f0ec0fba33797f87f4bc5e2f73d25198518442b2ef97a92af9529d9b95178'}},
- 'arm64': {'artifact': 14988555960,
-           'archiveDigest': 'sha256:fb411fd3cca8181cd50a5d8e2d82a1a07cb487dbe61f7ee854bc80e8cb17e0c0',
-           'manifest': 'sha256:4ce5623785e0ecd1dace26f7ead5e3f13688ed5ba6a0e23f7fae1bf83ddb420d',
+           'evidenceHashes': {'identity.json': '8e921dc0a2bb3890cff50135d4306319f42cd0ed24efd17e916bae914482e692',
+                              'runtime-receipt.json': '5c94812adb40f6aafbb25da24166098dc541ce7c4f6f1181190731bbf92dcffe',
+                              'security.json.syft.json': '0788477145c23853c5dbde03a3f618aa26901f16fae679e8651fe690bb2186d9',
+                              'security.json.grype.json': '520f74ec28c5300dd98037b42681fb09a5b53ab34fbf958f61a0481c7001cc0a'}},
+ 'arm64': {'artifact': 15265746867,
+           'archiveDigest': 'sha256:d17b98b4781397e62ac8cbc30d3e07fe664f49ce62eca837565740a94a416324',
+           'manifest': 'sha256:c4bc8f62d0e07241b8a5f15d00e111836bae240fd4ee4bd54930b14f0d81a27b',
            'upstream': 'ghcr.io/ggml-org/whisper.cpp@sha256:f0fed3d3d54565cb37d2995fcaa28ca09a5c9f3ffb7fada2d790099af2bfeee0',
-           'evidenceHashes': {'identity.json': '56126b2710a4896d5cfbace82fb78d26ee6d4bbc0e61b18d5ca94e43f278b589',
-                              'runtime-receipt.json': '8d7c9b548522b7026d5f1fa20a629bef1daffc05b0d64ac444973838641755d2',
-                              'security.json.syft.json': 'db29c486f1ba17eba1ba2286b1e3303810d55374822d83e2ef11b938ffa8768a',
-                              'security.json.grype.json': '57fdbb149d137980860a8389659247120a6e2dd46337fe62e73fd5eb1bc32086'}}}
+           'evidenceHashes': {'identity.json': 'c8e41c3de814e5c202b7265878bc87a191b9331d899e80fb736dec2f8141935c',
+                              'runtime-receipt.json': '98e255f5fcd09b11a71ae09fed929863ff71062ed041184c3257ca0365203869',
+                              'security.json.syft.json': '785dbeb29f95525282b7809eee97c0312fe7a2cb2c5926a1d275fe4eb8335326',
+                              'security.json.grype.json': '5cdd8ab89738ca40b27890596df5fef6d79672c04c379d728e7fbdd2fea44b09'}}}
 spec = importlib.util.spec_from_file_location('oci_identity', Path(__file__).with_name('whisper-candidate-artifact.py'))
 oci = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(oci)
